@@ -22,7 +22,11 @@
         </span>
         <span>언제표</span>
       </a>
-      <a class="header-link" href="./">일정 만들기 <span aria-hidden="true">→</span></a>
+      <nav class="saved-header-nav" aria-label="언제표 주요 메뉴">
+        <a href="./saved.html"><span class="saved-nav-wide">저장 목록</span><span class="saved-nav-short">저장</span></a>
+        <span aria-hidden="true">/</span>
+        <a href="./">일정 만들기</a>
+      </nav>
     </header>
 
     <main>
@@ -186,6 +190,7 @@
     </footer>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="saved-schedules.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

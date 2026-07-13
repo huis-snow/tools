@@ -496,6 +496,7 @@
     let dragging = null;
     let toastTimer;
     let initialMessage = "";
+    let activeSavedScheduleId = null;
     let comparisonParticipants = [];
     let nextParticipantId = 1;
     let comparisonCells = [];
@@ -555,9 +556,41 @@
       return hour < startHour ? hour + HOURS : hour;
     }
 
+    function savedSchedulesApi() {
+      return root.EonjepyoSaved && typeof root.EonjepyoSaved.get === "function"
+        ? root.EonjepyoSaved
+        : null;
+    }
+
+    function applyStoredSchedule(record) {
+      if (!record) return false;
+      slots = decodeSlots(record.slots);
+      elements.title.value = record.title === DEFAULT_TITLE ? "" : record.title;
+      elements.timezone.value = record.timezone;
+      elements.startHour.value = String(record.startHour);
+      elements.startDay.value = String(record.startDay);
+      return true;
+    }
+
+    function cleanWriterLocation({ removeSavedAction = false } = {}) {
+      const parameters = new URLSearchParams(window.location.search);
+      if (removeSavedAction) {
+        parameters.delete("load");
+        parameters.delete("edit");
+      }
+      const search = parameters.toString();
+      const cleanLocation = `${window.location.pathname}${search ? `?${search}` : ""}`;
+      try {
+        window.history.replaceState(null, "", cleanLocation);
+      } catch (_error) {
+        window.location.hash = "";
+      }
+    }
+
     function loadInitialState() {
       const shareHash = window.location.hash;
       if (shareHash && !anchorHashes.has(shareHash)) {
+        activeSavedScheduleId = null;
         try {
           const shared = parseShareHash(shareHash);
           if (shared) {
@@ -566,19 +599,41 @@
             elements.timezone.value = shared.timezone;
             elements.startHour.value = String(shared.startHour);
             elements.startDay.value = String(shared.startDay);
+            try {
+              savedSchedulesApi()?.saveSchedule(window.localStorage, shared, { source: "shared" });
+            } catch (_error) {
+              // 저장 공간을 사용할 수 없어도 공유 일정 자체는 계속 열 수 있다.
+            }
             initialMessage = "공유받은 일정표를 불러왔어요. 수정해도 원본은 바뀌지 않아요.";
           }
         } catch (_error) {
           slots = createSlots();
           initialMessage = "공유 링크가 손상되어 빈 일정표로 열었어요.";
         } finally {
-          try {
-            window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-          } catch (_error) {
-            window.location.hash = "";
-          }
+          cleanWriterLocation({ removeSavedAction: true });
         }
         return;
+      }
+
+      const query = new URLSearchParams(window.location.search);
+      const editId = query.get("edit");
+      const loadId = query.get("load");
+      if (editId || loadId) {
+        try {
+          const stored = savedSchedulesApi()?.get(window.localStorage, editId || loadId);
+          if (applyStoredSchedule(stored)) {
+            activeSavedScheduleId = editId ? stored.id : null;
+            initialMessage = editId
+              ? `저장된 '${stored.title}' 일정을 편집하고 있어요.`
+              : `저장된 '${stored.title}' 일정을 새 초안으로 불러왔어요.`;
+            return;
+          }
+          initialMessage = "불러올 저장 일정을 찾지 못해 지난 초안을 열었어요.";
+        } catch (_error) {
+          initialMessage = "저장 일정을 불러오지 못해 지난 초안을 열었어요.";
+        } finally {
+          cleanWriterLocation({ removeSavedAction: true });
+        }
       }
 
       try {
@@ -663,6 +718,14 @@
       const hash = makeShareHash(slots, metadata());
       try {
         window.localStorage.setItem("eonjepyo-draft", hash);
+        const explicitTitle = elements.title.value.trim();
+        if (activeSavedScheduleId && explicitTitle) {
+          savedSchedulesApi()?.saveSchedule(window.localStorage, {
+            slots,
+            ...metadata(),
+            title: explicitTitle,
+          }, { id: activeSavedScheduleId });
+        }
       } catch (_error) {
         // Private browsing can disable localStorage; the current tab still keeps the state.
       }
@@ -812,6 +875,7 @@
       if (hasChanges && !window.confirm("일정표 설정과 선택한 시간을 모두 초기화할까요?")) return;
 
       slots = createSlots();
+      activeSavedScheduleId = null;
       history = [];
       dragging = null;
       elements.title.value = "";
@@ -960,6 +1024,15 @@
       }
 
       const shareUrl = makeShareUrl(window.location.href, slots, { ...metadata(), title });
+      try {
+        savedSchedulesApi()?.saveSchedule(window.localStorage, {
+          slots,
+          ...metadata(),
+          title,
+        }, { source: "created" });
+      } catch (_error) {
+        // 저장 목록을 사용할 수 없어도 공유 링크 복사는 계속 진행한다.
+      }
       try {
         await copyPlainText(shareUrl);
         temporaryLabel(elements.linkLabel, "링크 복사 완료!", "공유 링크 복사");
@@ -1485,6 +1558,16 @@
     function initComparisonApp() {
       if (!elements.compareGrid) return;
       renderComparison();
+      try {
+        const savedApi = savedSchedulesApi();
+        const queued = savedApi?.consumeComparisonQueue(window.sessionStorage);
+        if (queued?.hashes?.length) {
+          elements.compareLinks.value = queued.hashes.join("\n");
+          addComparisonLinks();
+        }
+      } catch (_error) {
+        // 세션 저장소가 막혀 있으면 기존 링크 붙여넣기 흐름을 그대로 제공한다.
+      }
       elements.compareAdd.addEventListener("click", addComparisonLinks);
       elements.compareLinks.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {

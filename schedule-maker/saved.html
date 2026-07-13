@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="공유받거나 직접 만든 언제표를 이 브라우저에 보관하고, 다시 불러오거나 골라서 취합하는 저장 일정 관리 페이지"
+    />
+    <meta name="theme-color" content="#edf2e8" />
+    <title>저장한 일정 관리하기 | 언제표</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="saved-page" id="top">
+    <a class="skip-link" href="#saved-schedules">저장한 일정 목록으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="언제표 일정 만들기 페이지">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>언제표</span>
+      </a>
+      <nav class="saved-header-nav" aria-label="언제표 주요 메뉴">
+        <a href="./">
+          <span class="saved-nav-wide">일정 만들기</span><span class="saved-nav-short">작성</span>
+        </a>
+        <span aria-hidden="true">/</span>
+        <a href="./compare.html">취합하기</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="saved-page-hero" aria-labelledby="saved-hero-title">
+        <div class="saved-hero-copy">
+          <p class="eyebrow"><span></span> SAVED SCHEDULES</p>
+          <h1 id="saved-hero-title">모아둔 일정을,<br /><em>다시 쉽게.</em></h1>
+          <p>
+            공유받거나 직접 만든 일정을 이 브라우저에 보관해요.<br class="desktop-only" />
+            필요할 때 다시 고치고, 여러 개를 골라 바로 취합할 수 있어요.
+          </p>
+          <a class="hero-cta" href="#saved-schedules">저장 목록 보기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <aside class="saved-hero-note" aria-label="저장 일정 이용 안내">
+          <div class="saved-hero-note-label">ONLY IN THIS BROWSER</div>
+          <div class="saved-browser-icon" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <i></i><i></i><i></i>
+          </div>
+          <ol>
+            <li><span>01</span><p><strong>링크 열기</strong>공유받은 일정을 확인해요.</p></li>
+            <li><span>02</span><p><strong>자동 보관</strong>긴 주소는 정리하고 표는 저장해요.</p></li>
+            <li><span>03</span><p><strong>다시 활용</strong>수정하거나 골라서 취합해요.</p></li>
+          </ol>
+        </aside>
+      </section>
+
+      <section class="saved-section" id="saved-schedules" aria-labelledby="saved-title">
+        <div class="section-heading saved-heading">
+          <div>
+            <p>01 / YOUR SCHEDULE ARCHIVE</p>
+            <h2 id="saved-title">저장한 일정</h2>
+          </div>
+          <p>이 목록은 지금 사용 중인 브라우저에만 남아요. 브라우저 데이터를 지우면 함께 삭제됩니다.</p>
+        </div>
+
+        <div class="saved-panel">
+          <div class="saved-toolbar">
+            <label class="saved-search-field" for="savedSearchInput">
+              <span>일정 찾기</span>
+              <span class="saved-search-control">
+                <span aria-hidden="true">⌕</span>
+                <input
+                  id="savedSearchInput"
+                  type="search"
+                  inputmode="search"
+                  autocomplete="off"
+                  aria-describedby="savedSearchHelp"
+                  placeholder="일정 이름으로 검색"
+                />
+              </span>
+              <small id="savedSearchHelp">저장한 일정의 이름을 입력하세요.</small>
+            </label>
+            <div class="saved-total" aria-live="polite" aria-atomic="true">
+              <span>저장된 일정</span>
+              <p><strong id="savedScheduleCount">0</strong>개</p>
+            </div>
+          </div>
+
+          <div class="saved-selection-bar" id="savedSelectionToolbar">
+            <label class="saved-select-all">
+              <input id="savedSelectAllCheckbox" type="checkbox" disabled />
+              <span class="saved-checkbox-ui" aria-hidden="true">✓</span>
+              <span>보이는 일정 전체 선택</span>
+            </label>
+            <p><strong id="savedSelectedCount">0</strong>개 선택</p>
+            <div class="saved-selection-actions">
+              <button id="savedClearSelectionButton" type="button" disabled>선택 해제</button>
+              <button id="savedCompareButton" type="button" disabled>
+                선택 일정 취합하기 <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+
+          <p class="saved-list-status sr-only" id="savedListStatus" role="status" aria-live="polite" aria-atomic="true">
+            저장한 일정이 없습니다.
+          </p>
+
+          <ul class="saved-list" id="savedScheduleList" aria-label="저장한 일정 목록"></ul>
+
+          <div class="saved-empty-state" id="savedEmptyState">
+            <div class="saved-empty-illustration" aria-hidden="true">
+              <span></span><span></span><span></span>
+              <i></i>
+            </div>
+            <p>NO SAVED SCHEDULES</p>
+            <h3>아직 저장한 일정이 없어요</h3>
+            <span>직접 일정을 만들거나 공유 링크를 열면 이곳에서 다시 볼 수 있어요.</span>
+            <a href="./">첫 일정 만들기 <span aria-hidden="true">→</span></a>
+          </div>
+
+          <div class="saved-empty-state saved-no-results" id="savedNoResultsState" hidden>
+            <div class="saved-empty-illustration saved-search-empty" aria-hidden="true">
+              <span></span><span></span><span></span>
+              <i></i>
+            </div>
+            <p>NOTHING FOUND</p>
+            <h3>일치하는 일정이 없어요</h3>
+            <span>검색어를 바꾸거나 전체 목록으로 돌아가 보세요.</span>
+            <button id="savedSearchResetButton" type="button">검색 지우기</button>
+          </div>
+        </div>
+
+        <p class="saved-privacy"><span aria-hidden="true">●</span> 일정 목록과 선택 내용은 외부 서버로 전송되지 않습니다.</p>
+      </section>
+    </main>
+
+    <template id="savedScheduleTemplate">
+      <li class="saved-item" data-saved-item>
+        <article class="saved-card">
+          <div class="saved-card-body">
+            <label class="saved-card-check">
+              <input type="checkbox" data-action="toggle-selection" />
+              <span class="saved-checkbox-ui" aria-hidden="true">✓</span>
+              <span class="sr-only" data-field="selection-label">일정 선택</span>
+            </label>
+
+            <div class="saved-card-content">
+              <div class="saved-card-heading" data-view-mode>
+                <div>
+                  <p>SAVED <span data-field="saved-at">방금</span></p>
+                  <h3 data-field="title">일정 이름</h3>
+                </div>
+                <span class="saved-slot-badge"><strong data-field="selected-count">0</strong>칸 가능</span>
+              </div>
+
+              <form class="saved-rename-form" data-rename-form hidden>
+                <label>
+                  <span>일정 이름 수정</span>
+                  <input type="text" maxlength="60" autocomplete="off" required data-field="rename-input" />
+                </label>
+                <div>
+                  <button type="button" data-action="cancel-rename">취소</button>
+                  <button type="submit" data-action="save-rename">저장</button>
+                </div>
+              </form>
+
+              <dl class="saved-card-meta">
+                <div><dt>시간 범위</dt><dd data-field="start-range">08:00–익일 08:00</dd></div>
+                <div><dt>기준 시간대</dt><dd data-field="timezone">Asia/Seoul</dd></div>
+                <div><dt>최근 저장</dt><dd data-field="saved-date">-</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="saved-card-actions">
+            <a href="./" data-action="load">사본으로 불러오기 <span aria-hidden="true">↗</span></a>
+            <a class="saved-edit-link" href="./" data-action="edit">시간표 수정 <span aria-hidden="true">→</span></a>
+            <button type="button" data-action="rename">이름 수정</button>
+            <button type="button" class="saved-delete-button" data-action="delete">삭제</button>
+          </div>
+        </article>
+      </li>
+    </template>
+
+    <dialog class="saved-delete-dialog" id="savedDeleteDialog" aria-labelledby="saved-delete-title" aria-describedby="saved-delete-description">
+      <form method="dialog">
+        <p>DELETE SCHEDULE?</p>
+        <h2 id="saved-delete-title">이 일정을 삭제할까요?</h2>
+        <p id="saved-delete-description">
+          <strong id="savedDeleteTargetName">선택한 일정</strong>을 저장 목록에서 지웁니다.<br />삭제한 일정은 되돌릴 수 없어요.
+        </p>
+        <div>
+          <button id="savedDeleteCancelButton" type="submit" value="cancel">취소</button>
+          <button id="savedDeleteConfirmButton" type="submit" value="confirm">삭제하기</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer>
+      <a class="brand footer-brand" href="./">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+        <span>언제표</span>
+      </a>
+      <p>언제표 · 저장한 일정</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="saved-schedules.js"></script>
+    <script src="app.js"></script>
+    <script src="saved-page.js"></script>
+  </body>
+</html>
