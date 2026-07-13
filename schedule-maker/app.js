@@ -15,6 +15,7 @@
   const SLOT_BYTES = SLOT_COUNT / 8;
   const SHARE_VERSION = "1";
   const DEFAULT_TITLE = "우리의 가능한 시간";
+  const MAX_OVERLAP_LEVEL = 8;
 
   function slotIndex(hour, day) {
     return hour * DAYS.length + day;
@@ -305,6 +306,12 @@
     });
 
     return { startHour, cells, maxCount };
+  }
+
+  function overlapColorLevel(count) {
+    const normalized = Number(count);
+    if (!Number.isFinite(normalized) || normalized <= 0) return 0;
+    return Math.min(MAX_OVERLAP_LEVEL, Math.floor(normalized));
   }
 
   function truncateCanvasText(context, value, maximumWidth) {
@@ -1374,9 +1381,7 @@
           const index = slotIndex(hour, day);
           const cell = aggregate.cells[index];
           const names = cell.participantIndexes.map((participantIndex) => roster[participantIndex].displayName);
-          const level = roster.length && cell.count
-            ? Math.max(1, Math.ceil((cell.count / roster.length) * 5))
-            : 0;
+          const level = overlapColorLevel(cell.count);
           const button = document.createElement("button");
           button.type = "button";
           button.className = "compare-cell";
@@ -1621,6 +1626,7 @@
 
   const api = {
     DEFAULT_TITLE,
+    MAX_OVERLAP_LEVEL,
     DAYS,
     HOURS,
     SLOT_COUNT,
@@ -1645,6 +1651,7 @@
     formatScheduleText,
     parseShareInput,
     aggregateSchedules,
+    overlapColorLevel,
     renderScheduleImage,
     canvasToBlob,
     slotsEqual,

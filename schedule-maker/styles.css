@@ -1508,22 +1508,34 @@ footer {
 .compare-heat-legend i {
   width: 15px;
   height: 9px;
-  background: rgba(243, 108, 63, 0.12);
+  background: rgba(243, 108, 63, 0.14);
 }
 
 .compare-heat-legend i:nth-of-type(2) {
-  background: rgba(243, 108, 63, 0.3);
+  background: rgba(243, 108, 63, 0.24);
 }
 
 .compare-heat-legend i:nth-of-type(3) {
-  background: rgba(243, 108, 63, 0.48);
+  background: rgba(243, 108, 63, 0.34);
 }
 
 .compare-heat-legend i:nth-of-type(4) {
-  background: rgba(243, 108, 63, 0.68);
+  background: rgba(243, 108, 63, 0.44);
 }
 
 .compare-heat-legend i:nth-of-type(5) {
+  background: rgba(243, 108, 63, 0.54);
+}
+
+.compare-heat-legend i:nth-of-type(6) {
+  background: rgba(243, 108, 63, 0.66);
+}
+
+.compare-heat-legend i:nth-of-type(7) {
+  background: rgba(243, 108, 63, 0.8);
+}
+
+.compare-heat-legend i:nth-of-type(8) {
   background: var(--orange);
 }
 
@@ -1632,23 +1644,36 @@ footer {
 }
 
 .compare-cell[data-level="1"] {
-  background: rgba(243, 108, 63, 0.16);
+  background: rgba(243, 108, 63, 0.14);
 }
 
 .compare-cell[data-level="2"] {
-  background: rgba(243, 108, 63, 0.34);
+  background: rgba(243, 108, 63, 0.24);
 }
 
 .compare-cell[data-level="3"] {
-  background: rgba(243, 108, 63, 0.52);
+  background: rgba(243, 108, 63, 0.34);
 }
 
 .compare-cell[data-level="4"] {
-  background: rgba(243, 108, 63, 0.72);
-  color: white;
+  background: rgba(243, 108, 63, 0.44);
 }
 
 .compare-cell[data-level="5"] {
+  background: rgba(243, 108, 63, 0.54);
+}
+
+.compare-cell[data-level="6"] {
+  background: rgba(243, 108, 63, 0.66);
+  color: white;
+}
+
+.compare-cell[data-level="7"] {
+  background: rgba(243, 108, 63, 0.8);
+  color: white;
+}
+
+.compare-cell[data-level="8"] {
   background-color: var(--orange);
   background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0 5px, transparent 5px 10px);
   color: white;
