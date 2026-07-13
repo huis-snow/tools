@@ -72,6 +72,11 @@
               <select id="startHourSelect" aria-describedby="startHourHelp"></select>
               <small id="startHourHelp">자정 이후도 같은 요일의 밤으로 묶어요</small>
             </label>
+            <label class="select-field start-day-field">
+              <span>시작 요일</span>
+              <select id="startDaySelect" aria-describedby="startDayHelp"></select>
+              <small id="startDayHelp">표의 첫 번째 요일을 정해요</small>
+            </label>
             <label class="text-field timezone-field">
               <span>기준 시간대</span>
               <input id="timezoneInput" type="text" maxlength="40" value="Asia/Seoul" aria-describedby="timezoneHelp" />
@@ -195,11 +200,18 @@
                 <span>결과 설정</span>
                 <strong>모든 링크를 같은 기준으로 맞춰요</strong>
               </div>
-              <label class="select-field compare-start-field">
-                <span>결과 하루 시작</span>
-                <select id="compareStartHourSelect" aria-describedby="compareStartHourHelp"></select>
-                <small id="compareStartHourHelp">선택한 시각부터 24시간을 보여줘요</small>
-              </label>
+              <div class="compare-start-controls">
+                <label class="select-field compare-start-field">
+                  <span>결과 하루 시작</span>
+                  <select id="compareStartHourSelect" aria-describedby="compareStartHourHelp"></select>
+                  <small id="compareStartHourHelp">선택한 시각부터 24시간을 보여줘요</small>
+                </label>
+                <label class="select-field compare-start-field compare-start-day-field">
+                  <span>결과 시작 요일</span>
+                  <select id="compareStartDaySelect" aria-describedby="compareStartDayHelp"></select>
+                  <small id="compareStartDayHelp">표의 첫 번째 요일을 정해요</small>
+                </label>
+              </div>
               <div class="compare-timezone-card" aria-labelledby="compareTimezoneLabel">
                 <span id="compareTimezoneLabel">시간대 확인</span>
                 <p id="compareTimezoneStatus" role="status" aria-live="polite" aria-atomic="true">

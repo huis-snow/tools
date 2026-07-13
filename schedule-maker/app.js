@@ -110,12 +110,23 @@
     return Array.from({ length: HOURS }, (_value, offset) => (start + offset) % HOURS);
   }
 
+  function normalizeStartDay(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isInteger(number) && number >= 0 && number < DAYS.length ? number : fallback;
+  }
+
+  function displayDayIndexes(startDay = 0) {
+    const start = normalizeStartDay(startDay);
+    return Array.from({ length: DAYS.length }, (_value, offset) => (start + offset) % DAYS.length);
+  }
+
   function makeShareHash(slots, metadata = {}) {
     const parameters = new URLSearchParams();
     parameters.set("v", SHARE_VERSION);
     parameters.set("t", cleanMeta(metadata.title, DEFAULT_TITLE, 60));
     parameters.set("z", cleanMeta(metadata.timezone, "Asia/Seoul", 40));
     parameters.set("h", String(normalizeStartHour(metadata.startHour, 0)));
+    parameters.set("d", String(normalizeStartDay(metadata.startDay, 0)));
     parameters.set("s", encodeSlots(slots));
     return `#${parameters.toString()}`;
   }
@@ -129,7 +140,12 @@
       throw new Error("지원하지 않는 공유 링크 버전입니다.");
     }
     if (parameters.getAll("s").length !== 1) throw new Error("공유 일정 데이터가 없습니다.");
-    if (parameters.getAll("t").length > 1 || parameters.getAll("z").length > 1 || parameters.getAll("h").length > 1) {
+    if (
+      parameters.getAll("t").length > 1 ||
+      parameters.getAll("z").length > 1 ||
+      parameters.getAll("h").length > 1 ||
+      parameters.getAll("d").length > 1
+    ) {
       throw new Error("공유 일정 정보가 중복되어 있습니다.");
     }
     const rawStartHour = parameters.get("h");
@@ -137,12 +153,18 @@
       ? normalizeStartHour(rawStartHour, -1)
       : parameters.has("h") ? -1 : 0;
     if (startHour === -1) throw new Error("하루 시작 시간이 올바르지 않습니다.");
+    const rawStartDay = parameters.get("d");
+    const startDay = parameters.has("d") && /^\d$/.test(rawStartDay)
+      ? normalizeStartDay(rawStartDay, -1)
+      : parameters.has("d") ? -1 : 0;
+    if (startDay === -1) throw new Error("시작 요일이 올바르지 않습니다.");
 
     return {
       slots: decodeSlots(parameters.get("s")),
       title: cleanMeta(parameters.get("t"), DEFAULT_TITLE, 60),
       timezone: cleanMeta(parameters.get("z"), "Asia/Seoul", 40),
       startHour,
+      startDay,
     };
   }
 
@@ -186,9 +208,15 @@
     const title = cleanMeta(metadata.title, DEFAULT_TITLE, 60);
     const timezone = cleanMeta(metadata.timezone, "Asia/Seoul", 40);
     const startHour = normalizeStartHour(metadata.startHour, 0);
-    const lines = [`[${title}]`, `기준 시간대: ${timezone} · 하루 시작: ${formatHour(startHour)}`, ""];
+    const startDay = normalizeStartDay(metadata.startDay, 0);
+    const lines = [
+      `[${title}]`,
+      `기준 시간대: ${timezone} · 하루 시작: ${formatHour(startHour)} · 시작 요일: ${DAYS[startDay].full}`,
+      "",
+    ];
 
-    DAYS.forEach((day, dayIndex) => {
+    displayDayIndexes(startDay).forEach((dayIndex) => {
+      const day = DAYS[dayIndex];
       const ranges = selectedRanges(slots, dayIndex, startHour);
       const description = ranges.length
         ? ranges.map(([start, end]) => `${formatTimelineHour(start, startHour)}–${formatTimelineHour(end, startHour)}`).join(", ")
@@ -304,6 +332,8 @@
     const title = cleanMeta(metadata.title, DEFAULT_TITLE, 60);
     const timezone = cleanMeta(metadata.timezone, "Asia/Seoul", 40);
     const startHour = normalizeStartHour(metadata.startHour, 0);
+    const startDay = normalizeStartDay(metadata.startDay, 0);
+    const dayOrder = displayDayIndexes(startDay);
 
     if (document.fonts) {
       await document.fonts.load('400 16px "Schedule D2Coding"', "월화수목금토일 00:00 가능");
@@ -337,7 +367,7 @@
 
     context.font = `400 12px ${fontFamily}`;
     context.fillStyle = "#708078";
-    context.fillText(`기준 시간대  ${timezone}  ·  하루 시작  ${formatHour(startHour)}`, 38, 117);
+    context.fillText(`기준 시간대  ${timezone}  ·  하루 시작  ${formatHour(startHour)}  ·  시작 요일  ${DAYS[startDay].full}`, 38, 117);
     context.textAlign = "right";
     context.fillText(`가능한 시간  ${countSelected(slots)}칸`, width - 36, 117);
 
@@ -350,12 +380,12 @@
 
     const dayAreaX = gridX;
     const dayAreaWidth = gridWidth;
-    for (let day = 0; day < DAYS.length; day += 1) {
-      const left = dayAreaX + Math.round((day * dayAreaWidth) / DAYS.length);
-      const right = dayAreaX + Math.round(((day + 1) * dayAreaWidth) / DAYS.length);
+    dayOrder.forEach((day, columnIndex) => {
+      const left = dayAreaX + Math.round((columnIndex * dayAreaWidth) / DAYS.length);
+      const right = dayAreaX + Math.round(((columnIndex + 1) * dayAreaWidth) / DAYS.length);
       context.fillStyle = day === 6 ? "#ffc2ae" : day === 5 ? "#b9d1d8" : "#ffffff";
       context.fillText(DAYS[day].short, (left + right) / 2, gridY + headerHeight / 2);
-    }
+    });
 
     displayHours(startHour).forEach((hour, rowOffset) => {
       const top = gridY + headerHeight + rowOffset * rowHeight;
@@ -366,16 +396,16 @@
       context.textAlign = "center";
       context.fillText(`${hour < startHour ? "익일 " : ""}${formatHour(hour)}`, 70, top + rowHeight / 2);
 
-      for (let day = 0; day < DAYS.length; day += 1) {
-        if (!isSelected(slots, slotIndex(hour, day))) continue;
-        const left = dayAreaX + Math.round((day * dayAreaWidth) / DAYS.length);
-        const right = dayAreaX + Math.round(((day + 1) * dayAreaWidth) / DAYS.length);
+      dayOrder.forEach((day, columnIndex) => {
+        if (!isSelected(slots, slotIndex(hour, day))) return;
+        const left = dayAreaX + Math.round((columnIndex * dayAreaWidth) / DAYS.length);
+        const right = dayAreaX + Math.round(((columnIndex + 1) * dayAreaWidth) / DAYS.length);
         context.fillStyle = "#f36c3f";
         context.fillRect(left + 1, top + 1, right - left - 1, rowHeight - 1);
         context.font = `400 12px ${fontFamily}`;
         context.fillStyle = "#ffffff";
         context.fillText("✓", (left + right) / 2, top + rowHeight / 2 + 0.5);
-      }
+      });
     });
 
     context.fillStyle = "#9aaba1";
@@ -421,6 +451,7 @@
     const elements = {
       title: document.querySelector("#titleInput"),
       startHour: document.querySelector("#startHourSelect"),
+      startDay: document.querySelector("#startDaySelect"),
       timezone: document.querySelector("#timezoneInput"),
       rangeLabel: document.querySelector("#rangeLabel"),
       grid: document.querySelector("#scheduleGrid"),
@@ -442,6 +473,7 @@
       compareLinks: document.querySelector("#compareLinksInput"),
       compareAdd: document.querySelector("#compareAddButton"),
       compareStartHour: document.querySelector("#compareStartHourSelect"),
+      compareStartDay: document.querySelector("#compareStartDaySelect"),
       compareInputStatus: document.querySelector("#compareInputStatus"),
       participantArea: document.querySelector("#participantArea"),
       participantCount: document.querySelector("#participantCount"),
@@ -491,17 +523,31 @@
     }
     elements.startHour.value = "8";
     elements.compareStartHour.value = "8";
+    DAYS.forEach((day, dayIndex) => {
+      const option = document.createElement("option");
+      option.value = String(dayIndex);
+      option.textContent = `${day.full} 시작`;
+      elements.startDay.append(option);
+      elements.compareStartDay.append(option.cloneNode(true));
+    });
+    elements.startDay.value = "0";
+    elements.compareStartDay.value = "0";
 
     function metadata() {
       return {
         title: cleanMeta(elements.title.value, DEFAULT_TITLE, 60),
         timezone: cleanMeta(elements.timezone.value, detectedTimezone, 40),
         startHour: normalizeStartHour(elements.startHour.value, 8),
+        startDay: normalizeStartDay(elements.startDay.value, 0),
       };
     }
 
     function currentStartHour() {
       return normalizeStartHour(elements.startHour.value, 8);
+    }
+
+    function currentStartDay() {
+      return normalizeStartDay(elements.startDay.value, 0);
     }
 
     function timelineHourFor(hour) {
@@ -519,6 +565,7 @@
             elements.title.value = shared.title === DEFAULT_TITLE ? "" : shared.title;
             elements.timezone.value = shared.timezone;
             elements.startHour.value = String(shared.startHour);
+            elements.startDay.value = String(shared.startDay);
             initialMessage = "공유받은 일정표를 불러왔어요. 수정해도 원본은 바뀌지 않아요.";
             return;
           }
@@ -538,6 +585,7 @@
         elements.title.value = restored.title === DEFAULT_TITLE ? "" : restored.title;
         elements.timezone.value = restored.timezone;
         elements.startHour.value = String(restored.startHour);
+        elements.startDay.value = String(restored.startDay);
         if (countSelected(slots)) initialMessage = "지난번에 칠하던 일정표를 불러왔어요.";
       } catch (_error) {
         slots = createSlots();
@@ -664,6 +712,12 @@
       slotElements = [];
       dayButtons = [];
       timeButtons = [];
+      const startDay = currentStartDay();
+      const dayOrder = displayDayIndexes(startDay);
+      elements.grid.setAttribute(
+        "aria-label",
+        `${DAYS[startDay].full}부터 ${DAYS[dayOrder[dayOrder.length - 1]].full}까지 시간별 가능 여부`,
+      );
 
       const fragment = document.createDocumentFragment();
       const headerRow = document.createElement("div");
@@ -676,7 +730,8 @@
       corner.textContent = "시간";
       headerRow.append(corner);
 
-      DAYS.forEach((day, dayIndex) => {
+      dayOrder.forEach((dayIndex) => {
+        const day = DAYS[dayIndex];
         const button = document.createElement("button");
         button.type = "button";
         button.className = "day-toggle";
@@ -689,7 +744,7 @@
             for (let hour = 0; hour < HOURS; hour += 1) setSelected(slots, slotIndex(hour, dayIndex), select);
           }, `${day.full} 전체를 ${select ? "선택했습니다" : "지웠습니다"}.`);
         });
-        dayButtons.push(button);
+        dayButtons[dayIndex] = button;
         headerRow.append(button);
       });
       fragment.append(headerRow);
@@ -720,7 +775,7 @@
         timeButtons[hour] = timeButton;
         row.append(timeButton);
 
-        for (let day = 0; day < DAYS.length; day += 1) {
+        dayOrder.forEach((day) => {
           const index = slotIndex(hour, day);
           const button = document.createElement("button");
           button.type = "button";
@@ -732,16 +787,16 @@
           button.addEventListener("keydown", handleSlotKeydown);
           slotElements[index] = button;
           row.append(button);
-        }
+        });
         fragment.append(row);
       });
 
       elements.grid.append(fragment);
     }
 
-    function rebuildGridForStartHour() {
+    function rebuildScheduleGrid() {
       dragging = null;
-      rovingIndex = slotIndex(currentStartHour(), 0);
+      rovingIndex = slotIndex(currentStartHour(), currentStartDay());
       createGrid();
       renderAll();
       elements.scroller.scrollTop = 0;
@@ -752,7 +807,8 @@
         history.length > 0 ||
         elements.title.value.trim() !== "" ||
         elements.timezone.value.trim() !== detectedTimezone ||
-        currentStartHour() !== 8;
+        currentStartHour() !== 8 ||
+        currentStartDay() !== 0;
       if (hasChanges && !window.confirm("일정표 설정과 선택한 시간을 모두 초기화할까요?")) return;
 
       slots = createSlots();
@@ -761,6 +817,7 @@
       elements.title.value = "";
       elements.timezone.value = detectedTimezone;
       elements.startHour.value = "8";
+      elements.startDay.value = "0";
       rovingIndex = slotIndex(8, 0);
       createGrid();
       renderAll();
@@ -773,17 +830,20 @@
       const index = Number(event.currentTarget.dataset.index);
       const { hour, day } = slotCoordinates(index);
       const startHour = currentStartHour();
+      const startDay = currentStartDay();
       const rowOffset = (hour - startHour + HOURS) % HOURS;
+      const columnOffset = (day - startDay + DAYS.length) % DAYS.length;
+      const lastDay = (startDay + DAYS.length - 1) % DAYS.length;
       let destination = null;
 
-      if (event.key === "ArrowLeft" && day > 0) destination = slotIndex(hour, day - 1);
-      else if (event.key === "ArrowRight" && day < DAYS.length - 1) destination = slotIndex(hour, day + 1);
+      if (event.key === "ArrowLeft" && columnOffset > 0) destination = slotIndex(hour, (day + DAYS.length - 1) % DAYS.length);
+      else if (event.key === "ArrowRight" && columnOffset < DAYS.length - 1) destination = slotIndex(hour, (day + 1) % DAYS.length);
       else if (event.key === "ArrowUp" && rowOffset > 0) destination = slotIndex((hour + HOURS - 1) % HOURS, day);
       else if (event.key === "ArrowDown" && rowOffset < HOURS - 1) destination = slotIndex((hour + 1) % HOURS, day);
-      else if (event.key === "Home") destination = event.ctrlKey ? slotIndex(startHour, 0) : slotIndex(hour, 0);
+      else if (event.key === "Home") destination = event.ctrlKey ? slotIndex(startHour, startDay) : slotIndex(hour, startDay);
       else if (event.key === "End") destination = event.ctrlKey
-        ? slotIndex((startHour + HOURS - 1) % HOURS, DAYS.length - 1)
-        : slotIndex(hour, DAYS.length - 1);
+        ? slotIndex((startHour + HOURS - 1) % HOURS, lastDay)
+        : slotIndex(hour, lastDay);
       else if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
         commitMutation(() => setSelected(slots, index, !isSelected(slots, index)));
@@ -976,6 +1036,10 @@
       return normalizeStartHour(elements.compareStartHour.value, 8);
     }
 
+    function currentComparisonStartDay() {
+      return normalizeStartDay(elements.compareStartDay.value, 0);
+    }
+
     function comparisonTimezoneKey(value) {
       const timezone = cleanMeta(value, "Asia/Seoul", 40);
       try {
@@ -1029,7 +1093,7 @@
       inputs.forEach((input) => {
         try {
           const schedule = parseShareInput(input);
-          const key = makeShareHash(schedule.slots, schedule);
+          const key = makeShareHash(schedule.slots, { ...schedule, startDay: 0 });
           if (comparisonParticipants.some((participant) => participant.key === key)) {
             duplicateCount += 1;
             return;
@@ -1175,6 +1239,12 @@
     function createComparisonGrid(aggregate, roster) {
       elements.compareGrid.replaceChildren();
       comparisonCellElements = [];
+      const startDay = currentComparisonStartDay();
+      const dayOrder = displayDayIndexes(startDay);
+      elements.compareGrid.setAttribute(
+        "aria-label",
+        `${DAYS[startDay].full}부터 ${DAYS[dayOrder[dayOrder.length - 1]].full}까지 시간별 가능 인원`,
+      );
       const fragment = document.createDocumentFragment();
       const headerRow = document.createElement("div");
       headerRow.className = "compare-grid-row";
@@ -1185,7 +1255,8 @@
       corner.setAttribute("role", "columnheader");
       corner.textContent = "시간";
       headerRow.append(corner);
-      DAYS.forEach((day, dayIndex) => {
+      dayOrder.forEach((dayIndex) => {
+        const day = DAYS[dayIndex];
         const header = document.createElement("div");
         header.className = "compare-day";
         header.dataset.day = String(dayIndex);
@@ -1215,7 +1286,7 @@
         time.append(timeEnd);
         row.append(time);
 
-        for (let day = 0; day < DAYS.length; day += 1) {
+        dayOrder.forEach((day) => {
           const index = slotIndex(hour, day);
           const cell = aggregate.cells[index];
           const names = cell.participantIndexes.map((participantIndex) => roster[participantIndex].displayName);
@@ -1242,7 +1313,7 @@
           button.textContent = cell.count ? `${cell.count}명` : "–";
           comparisonCellElements[index] = button;
           row.append(button);
-        }
+        });
         fragment.append(row);
       });
       elements.compareGrid.append(fragment);
@@ -1264,11 +1335,12 @@
       }
 
       const startHour = currentComparisonStartHour();
+      const startDay = currentComparisonStartDay();
       const aggregate = aggregateSchedules(compatible, startHour);
       comparisonCells = aggregate.cells;
       comparisonRoster = compatible;
       comparisonActiveIndex = null;
-      comparisonRovingIndex = slotIndex(startHour, 0);
+      comparisonRovingIndex = slotIndex(startHour, startDay);
       createComparisonGrid(aggregate, compatible);
       resetComparisonDetail();
       elements.compareGridScroller.scrollTop = 0;
@@ -1303,17 +1375,20 @@
       const index = Number(element.dataset.index);
       const { hour, day } = slotCoordinates(index);
       const startHour = currentComparisonStartHour();
+      const startDay = currentComparisonStartDay();
       const rowOffset = (hour - startHour + HOURS) % HOURS;
+      const columnOffset = (day - startDay + DAYS.length) % DAYS.length;
+      const lastDay = (startDay + DAYS.length - 1) % DAYS.length;
       let destination = null;
 
-      if (event.key === "ArrowLeft" && day > 0) destination = slotIndex(hour, day - 1);
-      else if (event.key === "ArrowRight" && day < DAYS.length - 1) destination = slotIndex(hour, day + 1);
+      if (event.key === "ArrowLeft" && columnOffset > 0) destination = slotIndex(hour, (day + DAYS.length - 1) % DAYS.length);
+      else if (event.key === "ArrowRight" && columnOffset < DAYS.length - 1) destination = slotIndex(hour, (day + 1) % DAYS.length);
       else if (event.key === "ArrowUp" && rowOffset > 0) destination = slotIndex((hour + HOURS - 1) % HOURS, day);
       else if (event.key === "ArrowDown" && rowOffset < HOURS - 1) destination = slotIndex((hour + 1) % HOURS, day);
-      else if (event.key === "Home") destination = event.ctrlKey ? slotIndex(startHour, 0) : slotIndex(hour, 0);
+      else if (event.key === "Home") destination = event.ctrlKey ? slotIndex(startHour, startDay) : slotIndex(hour, startDay);
       else if (event.key === "End") destination = event.ctrlKey
-        ? slotIndex((startHour + HOURS - 1) % HOURS, DAYS.length - 1)
-        : slotIndex(hour, DAYS.length - 1);
+        ? slotIndex((startHour + HOURS - 1) % HOURS, lastDay)
+        : slotIndex(hour, lastDay);
       else if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
         setComparisonRovingFocus(index, false);
@@ -1333,7 +1408,7 @@
     }
 
     loadInitialState();
-    rovingIndex = slotIndex(currentStartHour(), 0);
+    rovingIndex = slotIndex(currentStartHour(), currentStartDay());
     createGrid();
     renderAll();
     renderComparison();
@@ -1359,8 +1434,12 @@
     elements.title.addEventListener("input", syncState);
     elements.timezone.addEventListener("input", syncState);
     elements.startHour.addEventListener("change", () => {
-      rebuildGridForStartHour();
+      rebuildScheduleGrid();
       announce(`하루 시작을 ${formatHour(currentStartHour())}로 바꿨습니다.`);
+    });
+    elements.startDay.addEventListener("change", () => {
+      rebuildScheduleGrid();
+      announce(`${DAYS[currentStartDay()].full}부터 보이도록 순서를 바꿨습니다. 기존 선택은 유지됩니다.`);
     });
     elements.linkButton.addEventListener("click", copyLink);
     elements.textButton.addEventListener("click", copyScheduleText);
@@ -1376,6 +1455,10 @@
     elements.compareStartHour.addEventListener("change", () => {
       renderComparison();
       setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
+    });
+    elements.compareStartDay.addEventListener("change", () => {
+      renderComparison();
+      setComparisonInputStatus(`결과를 ${DAYS[currentComparisonStartDay()].full}부터 보이도록 바꿨어요.`, "success");
     });
     elements.compareClear.addEventListener("click", () => {
       comparisonParticipants = [];
@@ -1440,6 +1523,8 @@
     decodeSlots,
     normalizeStartHour,
     displayHours,
+    normalizeStartDay,
+    displayDayIndexes,
     makeShareHash,
     parseShareHash,
     makeShareUrl,
