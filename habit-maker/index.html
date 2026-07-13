@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="매일의 작은 습관을 기록하고 연속 달성일과 월간 성취를 한눈에 확인하는 무료 습관 달력"
+    />
+    <meta name="theme-color" content="#f5efe6" />
+    <title>월간 습관 달력 | 꾸준표</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#habitTracker">습관 달력으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="꾸준표 홈">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>꾸준표</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> 오늘도 한 칸</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="introTitle">
+        <div class="intro-copy">
+          <p class="eyebrow"><span></span> MONTHLY HABIT TRACKER</p>
+          <h1 id="introTitle">하루 한 칸씩,<br /><em>꾸준하게.</em></h1>
+          <p>
+            완벽한 하루보다 이어가는 마음을 기록해요.<br class="desktop-only" />
+            작은 성취가 쌓이는 모습을 달력에서 만나보세요.
+          </p>
+          <a class="intro-cta" href="#habitTracker">이번 달 기록하기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="streak-card" aria-label="일주일 동안 이어진 습관 예시">
+          <div class="streak-card-top">
+            <span>THIS WEEK</span>
+            <b>6일째 이어가는 중</b>
+          </div>
+          <div class="streak-days" aria-hidden="true">
+            <span><b>월</b><i class="done">✓</i></span>
+            <span><b>화</b><i class="done">✓</i></span>
+            <span><b>수</b><i class="done">✓</i></span>
+            <span><b>목</b><i class="done">✓</i></span>
+            <span><b>금</b><i class="done">✓</i></span>
+            <span><b>토</b><i class="done">✓</i></span>
+            <span><b>일</b><i>·</i></span>
+          </div>
+          <div class="streak-note">
+            <span aria-hidden="true">↗</span>
+            <p><strong>조금씩 자라는 중</strong><br />오늘의 한 칸이면 충분해요.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="tracker-section" id="habitTracker" aria-labelledby="trackerTitle">
+        <div class="section-heading">
+          <div>
+            <p>01 / KEEP GOING</p>
+            <h2 id="trackerTitle">나의 월간 꾸준표</h2>
+          </div>
+          <p>날짜를 누르고 오늘 해낸 만큼 표시해 보세요. 기록은 이 브라우저에 자동으로 저장됩니다.</p>
+        </div>
+
+        <div class="tracker-panel">
+          <div class="tracker-toolbar">
+            <nav class="month-navigation" aria-label="달력 월 이동">
+              <button id="prevMonthButton" type="button" aria-label="이전 달">
+                <span aria-hidden="true">←</span>
+              </button>
+              <time id="currentMonthLabel" aria-live="polite" aria-atomic="true">이번 달</time>
+              <button id="nextMonthButton" type="button" aria-label="다음 달">
+                <span aria-hidden="true">→</span>
+              </button>
+              <button id="todayButton" class="today-button" type="button">오늘</button>
+            </nav>
+            <button id="addHabitButton" class="add-habit-button" type="button">
+              <span aria-hidden="true">＋</span> 새 습관
+            </button>
+          </div>
+
+          <div class="habit-tab-bar">
+            <div class="habit-tabs" id="habitTabs" role="tablist" aria-label="표시할 습관 선택">
+              <button
+                id="allHabitsTab"
+                class="habit-tab is-active"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="calendarGrid"
+                data-habit-id="all"
+              >
+                종합
+              </button>
+            </div>
+            <div class="habit-tab-meta">
+              <p><span aria-hidden="true">●</span> 탭을 눌러 습관별 기록을 볼 수 있어요.</p>
+              <button id="editHabitButton" type="button" disabled>선택한 습관 설정</button>
+            </div>
+          </div>
+
+          <div class="tracker-layout">
+            <article class="calendar-card" aria-labelledby="calendarTitle">
+              <div class="card-heading">
+                <div>
+                  <span>MONTH VIEW</span>
+                  <h3 id="calendarTitle">매일의 작은 기록</h3>
+                </div>
+                <p id="calendarHelp">날짜를 선택하면 그날의 기록이 열려요.</p>
+              </div>
+
+              <div class="calendar-shell">
+                <div
+                  class="calendar-grid"
+                  id="calendarGrid"
+                  role="grid"
+                  aria-label="월간 습관 달력"
+                  aria-describedby="calendarHelp"
+                >
+                  <div class="calendar-weekdays" role="row">
+                    <span role="columnheader">월</span>
+                    <span role="columnheader">화</span>
+                    <span role="columnheader">수</span>
+                    <span role="columnheader">목</span>
+                    <span role="columnheader">금</span>
+                    <span class="saturday" role="columnheader">토</span>
+                    <span class="sunday" role="columnheader">일</span>
+                  </div>
+                  <div class="calendar-empty" role="status">
+                    <span class="empty-calendar-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <strong>첫 습관을 기다리고 있어요</strong>
+                    <p>새 습관을 만들면 매일의 성취가 이 달력에 차곡차곡 쌓입니다.</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <aside class="day-panel" aria-labelledby="selectedDateLabel">
+              <div class="day-panel-heading">
+                <div>
+                  <span>DAILY CHECK-IN</span>
+                  <h3 id="selectedDateLabel" aria-live="polite" aria-atomic="true">날짜를 선택해 주세요</h3>
+                </div>
+                <span class="day-panel-icon" aria-hidden="true">✓</span>
+              </div>
+              <div class="day-records" id="dayRecords" aria-live="polite" aria-relevant="additions removals text">
+                <div class="empty-state">
+                  <span aria-hidden="true">○</span>
+                  <strong>아직 기록할 습관이 없어요</strong>
+                  <p>새 습관을 하나 만들고 오늘의 첫 체크를 남겨보세요.</p>
+                </div>
+              </div>
+              <p class="day-panel-tip"><span aria-hidden="true">✦</span> 쉬어간 날도 기록의 일부예요. 부담 없이 다시 이어가면 됩니다.</p>
+            </aside>
+          </div>
+
+          <section class="stats-section" aria-labelledby="statsTitle">
+            <div class="stats-heading">
+              <div>
+                <span>MONTHLY MOMENTUM</span>
+                <h3 id="statsTitle">이번 달의 흐름</h3>
+              </div>
+              <p>선택한 탭을 기준으로 계산해요.</p>
+            </div>
+            <dl class="stats-grid">
+              <div class="stat-card accent-stat">
+                <dt>월간 달성률</dt>
+                <dd id="monthlyRate">0%</dd>
+                <span aria-hidden="true">↗</span>
+              </div>
+              <div class="stat-card">
+                <dt>완료한 날</dt>
+                <dd><span id="completedDays">0</span><small>일</small></dd>
+                <span aria-hidden="true">✓</span>
+              </div>
+              <div class="stat-card">
+                <dt>현재 연속</dt>
+                <dd><span id="currentStreak">0</span><small>회</small></dd>
+                <span aria-hidden="true">→</span>
+              </div>
+              <div class="stat-card">
+                <dt>최장 연속</dt>
+                <dd><span id="bestStreak">0</span><small>회</small></dd>
+                <span aria-hidden="true">★</span>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </section>
+
+      <section class="data-section" aria-labelledby="dataTitle">
+        <div class="section-heading data-heading">
+          <div>
+            <p>02 / KEEP YOUR RECORDS</p>
+            <h2 id="dataTitle">기록을 간직하세요</h2>
+          </div>
+          <p>이미지로 남기거나 데이터 파일로 옮길 수 있어요. 서버로 전송되는 정보는 없습니다.</p>
+        </div>
+
+        <div class="data-panel">
+          <div class="data-copy">
+            <span class="data-stamp">LOCAL ONLY</span>
+            <h3>내 기록은 내 브라우저에</h3>
+            <p>가입도 동기화도 없어요. 기기를 옮길 때는 데이터 파일을 내보내 보관해 주세요.</p>
+          </div>
+          <div class="data-actions">
+            <button id="exportImageButton" type="button">
+              <span class="action-icon" aria-hidden="true">▧</span>
+              <span><strong>이미지 저장</strong><small>이번 달 꾸준표를 PNG로</small></span>
+            </button>
+            <button id="exportDataButton" type="button">
+              <span class="action-icon" aria-hidden="true">↓</span>
+              <span><strong>데이터 내보내기</strong><small>기록 전체를 JSON 파일로</small></span>
+            </button>
+            <button id="importDataButton" type="button">
+              <span class="action-icon" aria-hidden="true">↑</span>
+              <span><strong>데이터 가져오기</strong><small>저장해 둔 JSON 복원</small></span>
+            </button>
+            <input id="importDataInput" class="sr-only" type="file" accept="application/json,.json" tabindex="-1" />
+            <button id="resetButton" class="danger-action" type="button">
+              <span class="action-icon" aria-hidden="true">×</span>
+              <span><strong>모든 기록 초기화</strong><small>이 브라우저의 기록을 비워요</small></span>
+            </button>
+          </div>
+          <p class="data-notice" id="dataNotice"><span aria-hidden="true">●</span> 이 브라우저에만 저장돼요 · 삭제 전 백업을 권장합니다.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>꾸준표</span>
+      </a>
+      <p>작은 도구함의 세 번째 도구</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <dialog class="habit-modal" id="habitModal" aria-labelledby="habitModalTitle">
+      <form id="habitForm" novalidate>
+        <input id="habitIdInput" name="habitId" type="hidden" />
+        <div class="modal-heading">
+          <div>
+            <span>BUILD A ROUTINE</span>
+            <h2 id="habitModalTitle">새 습관 만들기</h2>
+          </div>
+          <span class="modal-mark" aria-hidden="true">＋1</span>
+        </div>
+
+        <div class="form-grid primary-fields">
+          <label class="form-field name-field">
+            <span>습관 이름</span>
+            <input id="habitNameInput" name="name" type="text" maxlength="30" placeholder="예: 물 마시기" autocomplete="off" required />
+            <small>짧고 행동이 보이는 이름이 좋아요.</small>
+          </label>
+
+          <label class="form-field type-field">
+            <span>기록 방식</span>
+            <select id="habitTypeSelect" name="type">
+              <option value="check">완료 체크</option>
+              <option value="quantity">수량 기록</option>
+            </select>
+            <small>했는지만 체크하거나 양을 기록할 수 있어요.</small>
+          </label>
+        </div>
+
+        <div class="form-grid quantity-fields" id="quantityFields" hidden>
+          <label class="form-field unit-field">
+            <span>단위</span>
+            <input id="habitUnitInput" name="unit" type="text" maxlength="10" placeholder="예: 잔, 분, 쪽" autocomplete="off" />
+            <small>횟수 기록에 사용해요.</small>
+          </label>
+
+          <label class="form-field target-field">
+            <span>하루 목표</span>
+            <input id="habitTargetInput" name="target" type="number" min="1" max="9999" step="1" value="1" />
+            <small>목표 이상 기록하면 완료로 계산해요.</small>
+          </label>
+        </div>
+
+        <div class="form-grid color-fields">
+          <label class="form-field color-field">
+            <span>표시 색</span>
+            <span class="color-input-wrap">
+              <input id="habitColorInput" name="color" type="color" value="#e9794a" />
+              <span>달력과 통계에 사용할 색</span>
+            </span>
+          </label>
+        </div>
+
+        <fieldset class="form-section repeat-section" id="repeatDays">
+          <legend>반복 요일</legend>
+          <p>기록할 요일을 모두 선택해 주세요.</p>
+          <div class="weekday-options">
+            <label><input id="repeatMonday" name="habitWeekday" type="checkbox" value="0" checked /><span>월</span></label>
+            <label><input id="repeatTuesday" name="habitWeekday" type="checkbox" value="1" checked /><span>화</span></label>
+            <label><input id="repeatWednesday" name="habitWeekday" type="checkbox" value="2" checked /><span>수</span></label>
+            <label><input id="repeatThursday" name="habitWeekday" type="checkbox" value="3" checked /><span>목</span></label>
+            <label><input id="repeatFriday" name="habitWeekday" type="checkbox" value="4" checked /><span>금</span></label>
+            <label class="saturday"><input id="repeatSaturday" name="habitWeekday" type="checkbox" value="5" checked /><span>토</span></label>
+            <label class="sunday"><input id="repeatSunday" name="habitWeekday" type="checkbox" value="6" checked /><span>일</span></label>
+          </div>
+        </fieldset>
+
+        <p class="form-status" id="habitFormStatus" role="status" aria-live="polite"></p>
+
+        <div class="modal-actions">
+          <button id="deleteHabitButton" class="delete-habit-button" type="button" hidden>습관 삭제</button>
+          <div>
+            <button id="cancelHabitButton" class="cancel-button" type="button">취소</button>
+            <button id="saveHabitButton" class="save-button" type="submit">습관 저장</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="가능한 시간을 칠해 공유하고 여러 사람의 링크에서 겹치는 시간을 찾는 무료 주간 일정표 만들기"
+      content="월요일부터 일요일까지 가능한 시간을 칠하고 링크·이미지·텍스트로 공유하는 무료 주간 일정표 만들기"
     />
     <meta name="theme-color" content="#edf2e8" />
     <title>주간 가능 시간표 만들기 | 언제표</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body id="top">
+  <body class="write-page" id="top">
     <a class="skip-link" href="#schedule">일정표로 바로가기</a>
 
     <header class="site-header">
@@ -22,7 +22,7 @@
         </span>
         <span>언제표</span>
       </a>
-      <a class="header-link" href="#share">공유하기 <span aria-hidden="true">↘</span></a>
+      <a class="header-link" href="./compare.html">취합하기 <span aria-hidden="true">→</span></a>
     </header>
 
     <main>
@@ -159,128 +159,18 @@
         </div>
 
         <p class="privacy-note"><span aria-hidden="true">●</span> 모든 편집은 브라우저에서 처리됩니다. 공유할 때만 선택 내용이 링크나 이미지에 포함돼요.</p>
-      </section>
 
-      <section class="compare-section" id="compare" aria-labelledby="compare-title">
-        <div class="section-heading compare-heading">
+        <aside class="compare-route-cta" aria-labelledby="compare-route-title">
+          <div class="compare-route-icon" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
           <div>
-            <p>03 / FIND A TIME TOGETHER</p>
-            <h2 id="compare-title">여럿의 시간을 겹쳐보세요</h2>
+            <p>LINKS READY?</p>
+            <h3 id="compare-route-title">여럿의 링크를 받았다면</h3>
+            <span>공유받은 언제표를 한곳에 모아 가장 많이 겹치는 시간을 찾아보세요.</span>
           </div>
-          <p>언제표 공유 링크를 모으면 모두가 가능한 시간을 한눈에 찾을 수 있어요.</p>
-        </div>
-
-        <div class="compare-panel">
-          <div class="compare-setup">
-            <div class="compare-link-input">
-              <div class="compare-block-heading">
-                <span>링크 모으기</span>
-                <strong>여러 개를 한 번에 붙여넣어도 돼요</strong>
-              </div>
-              <label for="compareLinksInput">언제표 공유 링크</label>
-              <textarea
-                id="compareLinksInput"
-                rows="5"
-                spellcheck="false"
-                inputmode="url"
-                aria-describedby="compareLinksHelp compareInputStatus"
-                placeholder="https://…/schedule-maker/#…&#10;https://…/schedule-maker/#…"
-              ></textarea>
-              <div class="compare-input-actions">
-                <p id="compareLinksHelp">한 줄에 하나씩 · 일정 이름이 참여자 닉네임으로 보여요.</p>
-                <button id="compareAddButton" type="button"><span aria-hidden="true">＋</span> 일정 링크 추가</button>
-              </div>
-              <p id="compareInputStatus" class="compare-input-status" role="status" aria-live="polite" aria-atomic="true">
-                붙여넣은 링크를 아직 추가하지 않았어요.
-              </p>
-            </div>
-
-            <div class="compare-options">
-              <div class="compare-block-heading">
-                <span>결과 설정</span>
-                <strong>모든 링크를 같은 기준으로 맞춰요</strong>
-              </div>
-              <div class="compare-start-controls">
-                <label class="select-field compare-start-field">
-                  <span>결과 하루 시작</span>
-                  <select id="compareStartHourSelect" aria-describedby="compareStartHourHelp"></select>
-                  <small id="compareStartHourHelp">선택한 시각부터 24시간을 보여줘요</small>
-                </label>
-                <label class="select-field compare-start-field compare-start-day-field">
-                  <span>결과 시작 요일</span>
-                  <select id="compareStartDaySelect" aria-describedby="compareStartDayHelp"></select>
-                  <small id="compareStartDayHelp">표의 첫 번째 요일을 정해요</small>
-                </label>
-              </div>
-              <div class="compare-timezone-card" aria-labelledby="compareTimezoneLabel">
-                <span id="compareTimezoneLabel">시간대 확인</span>
-                <p id="compareTimezoneStatus" role="status" aria-live="polite" aria-atomic="true">
-                  링크를 추가하면 기준 시간대를 확인해요.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <section class="participant-area" id="participantArea" aria-labelledby="participant-title">
-            <div class="participant-heading">
-              <div>
-                <p id="participant-title">추가한 일정</p>
-                <strong><span id="participantCount">0</span>명 참여 중</strong>
-              </div>
-              <button id="compareClearButton" type="button" disabled>모두 비우기</button>
-            </div>
-            <div
-              class="participant-list"
-              id="participantList"
-              role="list"
-              aria-label="추가한 일정 링크 목록"
-              aria-live="polite"
-              aria-relevant="additions removals"
-            >
-              <p class="participant-empty">아직 추가한 일정이 없어요.</p>
-            </div>
-          </section>
-
-          <section class="compare-result" aria-labelledby="compare-result-title">
-            <div class="compare-result-heading">
-              <div>
-                <p>겹치는 시간</p>
-                <h3 id="compare-result-title">함께 가능한 시간 찾기</h3>
-              </div>
-              <div class="compare-summary" aria-live="polite" aria-atomic="true">
-                <div class="compare-max">
-                  <strong id="compareMaxCount">0</strong>
-                  <span>명<br />최대 겹침</span>
-                </div>
-                <p id="compareSummaryText">링크를 추가하면 가장 많이 겹치는 시간을 찾아드려요.</p>
-              </div>
-            </div>
-
-            <div class="compare-grid-toolbar">
-              <div class="compare-heat-legend" aria-label="겹치는 인원이 많을수록 색이 진해집니다">
-                <span>적게</span><i></i><i></i><i></i><i></i><i></i><span>많이</span>
-              </div>
-              <p><span aria-hidden="true">◎</span> 칸에 마우스를 올리거나 탭하면 참여자를 확인할 수 있어요.</p>
-            </div>
-
-            <div class="compare-grid-scroller" id="compareGridScroller" tabindex="0" aria-label="요일과 시간별 가능 인원 겹침표 스크롤 영역">
-              <div
-                class="compare-grid"
-                id="compareGrid"
-                role="grid"
-                aria-label="월요일부터 일요일까지 시간별 가능 인원"
-                aria-describedby="compareDetail"
-              ></div>
-            </div>
-
-            <div class="compare-detail" id="compareDetail" role="status" aria-live="polite" aria-atomic="true">
-              <span aria-hidden="true">↖</span>
-              <p>시간 칸을 가리키거나 선택하면 가능한 사람을 여기에 보여드려요.</p>
-            </div>
-          </section>
-        </div>
-
-        <p class="compare-privacy"><span aria-hidden="true">●</span> 링크 분석과 겹침 계산도 이 브라우저 안에서만 이루어집니다.</p>
+          <a href="./compare.html">일정 링크 취합하기 <span aria-hidden="true">→</span></a>
+        </aside>
       </section>
     </main>
 

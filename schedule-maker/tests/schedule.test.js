@@ -1,7 +1,10 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 const {
   DEFAULT_TITLE,
   DAYS,
@@ -354,4 +357,152 @@ test("23시 시작 일정도 자정 전후와 일요일·월요일 경계를 보
   assert.equal(cells[slotIndex(22, 0)].count, 1);
   assert.equal(cells[slotIndex(0, 0)].count, 1);
   assert.equal(cells[slotIndex(22, 6)].count, 0);
+});
+
+class FakeElement {
+  constructor(id = "") {
+    this.id = id;
+    this.children = [];
+    this.dataset = {};
+    this.attributes = new Map();
+    this.listeners = new Map();
+    this.classList = {
+      values: new Set(),
+      add: (...values) => values.forEach((value) => this.classList.values.add(value)),
+      remove: (...values) => values.forEach((value) => this.classList.values.delete(value)),
+    };
+    this.style = { setProperty(name, value) { this[name] = value; } };
+    this.value = "";
+    this.textContent = "";
+    this.disabled = false;
+    this.tabIndex = -1;
+    this.scrollTop = 0;
+  }
+
+  append(...children) { this.children.push(...children); }
+  replaceChildren(...children) { this.children = children; }
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+  setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  removeAttribute(name) { this.attributes.delete(name); }
+  focus() {}
+  scrollIntoView() {}
+  closest() { return null; }
+  cloneNode() {
+    const clone = new FakeElement();
+    clone.value = this.value;
+    clone.textContent = this.textContent;
+    return clone;
+  }
+}
+
+function runWithPageDom(ids, hash = "#top") {
+  const source = fs.readFileSync(path.join(__dirname, "../app.js"), "utf8");
+  const elements = new Map(ids.map((id) => [id, new FakeElement(id)]));
+  const body = new FakeElement("body");
+  let storageReads = 0;
+  const document = {
+    readyState: "complete",
+    body,
+    querySelector(selector) {
+      return selector.startsWith("#") ? elements.get(selector.slice(1)) || null : null;
+    },
+    querySelectorAll() { return []; },
+    createElement() { return new FakeElement(); },
+    createDocumentFragment() { return new FakeElement(); },
+    createTextNode(value) { return String(value); },
+    elementFromPoint() { return null; },
+    addEventListener() {},
+    execCommand() { return true; },
+  };
+  const location = {
+    pathname: "/schedule-maker/compare.html",
+    search: "",
+    hash,
+    href: `https://example.test/schedule-maker/compare.html${hash}`,
+    replacedWith: null,
+    replace(value) { this.replacedWith = value; },
+  };
+  const window = {
+    location,
+    history: { replaceState() {} },
+    localStorage: {
+      getItem() { storageReads += 1; return null; },
+      setItem() {},
+    },
+    requestAnimationFrame(callback) { callback(); },
+    setTimeout,
+    clearTimeout,
+    confirm() { return true; },
+    isSecureContext: true,
+  };
+  const context = {
+    module: { exports: {} },
+    Buffer,
+    URL,
+    URLSearchParams,
+    Intl,
+    Uint8Array,
+    Date,
+    Math,
+    Set,
+    Map,
+    String,
+    Number,
+    Array,
+    Object,
+    RegExp,
+    Error,
+    TypeError,
+    RangeError,
+    Promise,
+    document,
+    window,
+    navigator: {},
+    setTimeout,
+    clearTimeout,
+  };
+  context.globalThis = context;
+  vm.runInNewContext(source, context, { filename: "schedule-maker/app.js" });
+  return { elements, storageReads, location, api: context.module.exports };
+}
+
+test("작성 전용 DOM은 취합 요소 없이 독립 초기화된다", () => {
+  const ids = [
+    "titleInput", "startHourSelect", "startDaySelect", "timezoneInput", "rangeLabel",
+    "scheduleGrid", "scheduleScroller", "selectedCount", "selectionProgress", "undoButton",
+    "clearButton", "resetButton", "liveRegion", "linkButton", "linkLabel", "textButton",
+    "textLabel", "imageButton", "imageLabel", "pngButton", "toast",
+  ];
+  const result = runWithPageDom(ids);
+  assert.equal(result.elements.get("scheduleGrid").children[0].children.length, 25);
+  assert.equal(result.storageReads, 1);
+  assert.equal(typeof result.api.aggregateSchedules, "function");
+});
+
+test("취합 전용 DOM은 작성 요소 없이 초기화되고 페이지 hash를 공유 일정으로 읽지 않는다", () => {
+  const ids = [
+    "compareLinksInput", "compareAddButton", "compareStartHourSelect", "compareStartDaySelect",
+    "compareInputStatus", "participantArea", "participantCount", "participantList",
+    "compareClearButton", "compareTimezoneStatus", "compareMaxCount", "compareSummaryText",
+    "compareGrid", "compareGridScroller", "compareDetail", "toast",
+  ];
+  const hash = "#v=1&s=손상된-공유-일정";
+  const result = runWithPageDom(ids, hash);
+  assert.equal(result.elements.get("compareGrid").children[0].children.length, 25);
+  assert.equal(result.storageReads, 0);
+  assert.equal(result.location.hash, hash);
+  assert.equal(typeof result.api.makeShareHash, "function");
+});
+
+test("작성 페이지의 기존 #compare 북마크는 취합 페이지로 이동하고 draft를 읽지 않는다", () => {
+  const ids = [
+    "titleInput", "startHourSelect", "startDaySelect", "timezoneInput", "rangeLabel",
+    "scheduleGrid", "scheduleScroller", "selectedCount", "selectionProgress", "undoButton",
+    "clearButton", "resetButton", "liveRegion", "linkButton", "linkLabel", "textButton",
+    "textLabel", "imageButton", "imageLabel", "pngButton", "toast",
+  ];
+  const result = runWithPageDom(ids, "#compare");
+  assert.equal(result.location.replacedWith, "./compare.html");
+  assert.equal(result.storageReads, 0);
+  assert.equal(result.elements.get("scheduleGrid").children.length, 0);
 });

@@ -447,7 +447,7 @@
     });
   }
 
-  function initApp() {
+  function initApps() {
     const elements = {
       title: document.querySelector("#titleInput"),
       startHour: document.querySelector("#startHourSelect"),
@@ -513,25 +513,25 @@
         return "Asia/Seoul";
       }
     })();
-    elements.timezone.value = detectedTimezone;
+    if (elements.timezone) elements.timezone.value = detectedTimezone;
     for (let hour = 0; hour < HOURS; hour += 1) {
       const option = document.createElement("option");
       option.value = String(hour);
       option.textContent = `${formatHour(hour)}${hour === 8 ? " · 추천" : ""}`;
-      elements.startHour.append(option);
-      elements.compareStartHour.append(option.cloneNode(true));
+      if (elements.startHour) elements.startHour.append(option);
+      if (elements.compareStartHour) elements.compareStartHour.append(option.cloneNode(true));
     }
-    elements.startHour.value = "8";
-    elements.compareStartHour.value = "8";
+    if (elements.startHour) elements.startHour.value = "8";
+    if (elements.compareStartHour) elements.compareStartHour.value = "8";
     DAYS.forEach((day, dayIndex) => {
       const option = document.createElement("option");
       option.value = String(dayIndex);
       option.textContent = `${day.full} 시작`;
-      elements.startDay.append(option);
-      elements.compareStartDay.append(option.cloneNode(true));
+      if (elements.startDay) elements.startDay.append(option);
+      if (elements.compareStartDay) elements.compareStartDay.append(option.cloneNode(true));
     });
-    elements.startDay.value = "0";
-    elements.compareStartDay.value = "0";
+    if (elements.startDay) elements.startDay.value = "0";
+    if (elements.compareStartDay) elements.compareStartDay.value = "0";
 
     function metadata() {
       return {
@@ -921,6 +921,7 @@
     }
 
     function showToast(message) {
+      if (!elements.toast) return;
       window.clearTimeout(toastTimer);
       elements.toast.textContent = message;
       elements.toast.classList.add("show");
@@ -1407,104 +1408,119 @@
       }
     }
 
-    loadInitialState();
-    rovingIndex = slotIndex(currentStartHour(), currentStartDay());
-    createGrid();
-    renderAll();
-    renderComparison();
-
-    elements.grid.addEventListener("pointerdown", startDrag);
-    document.addEventListener("pointermove", continueDrag, { passive: false });
-    document.addEventListener("pointerup", finishDrag);
-    document.addEventListener("pointercancel", finishDrag);
-
-    document.querySelectorAll("[data-preset]").forEach((button) => {
-      button.addEventListener("click", () => applyPreset(button.dataset.preset));
-    });
-    elements.undo.addEventListener("click", () => {
-      if (!history.length) return;
-      slots = history.pop();
-      renderAll();
-      announce("마지막 선택을 되돌렸습니다.");
-    });
-    elements.clear.addEventListener("click", () => {
-      commitMutation(() => slots.fill(0), "모든 선택을 지웠습니다.");
-    });
-    elements.reset.addEventListener("click", resetSchedule);
-    elements.title.addEventListener("input", syncState);
-    elements.timezone.addEventListener("input", syncState);
-    elements.startHour.addEventListener("change", () => {
-      rebuildScheduleGrid();
-      announce(`하루 시작을 ${formatHour(currentStartHour())}로 바꿨습니다.`);
-    });
-    elements.startDay.addEventListener("change", () => {
-      rebuildScheduleGrid();
-      announce(`${DAYS[currentStartDay()].full}부터 보이도록 순서를 바꿨습니다. 기존 선택은 유지됩니다.`);
-    });
-    elements.linkButton.addEventListener("click", copyLink);
-    elements.textButton.addEventListener("click", copyScheduleText);
-    elements.imageButton.addEventListener("click", copyImage);
-    elements.pngButton.addEventListener("click", savePng);
-    elements.compareAdd.addEventListener("click", addComparisonLinks);
-    elements.compareLinks.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        addComparisonLinks();
+    function initScheduleApp() {
+      if (!elements.grid) return false;
+      if (window.location.hash === "#compare") {
+        window.location.replace("./compare.html");
+        return true;
       }
-    });
-    elements.compareStartHour.addEventListener("change", () => {
-      renderComparison();
-      setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
-    });
-    elements.compareStartDay.addEventListener("change", () => {
-      renderComparison();
-      setComparisonInputStatus(`결과를 ${DAYS[currentComparisonStartDay()].full}부터 보이도록 바꿨어요.`, "success");
-    });
-    elements.compareClear.addEventListener("click", () => {
-      comparisonParticipants = [];
-      renderComparison();
-      setComparisonInputStatus("추가한 일정을 모두 비웠어요.", "success");
-    });
-    elements.participantList.addEventListener("click", (event) => {
-      const remove = event.target.closest("[data-participant-id]");
-      if (!remove) return;
-      const participantId = Number(remove.dataset.participantId);
-      const participant = comparisonParticipants.find((item) => item.id === participantId);
-      comparisonParticipants = comparisonParticipants.filter((item) => item.id !== participantId);
-      renderComparison();
-      setComparisonInputStatus(`${participant?.title || "일정"} 일정을 제거했어요.`, "success");
-    });
-    elements.compareGrid.addEventListener("pointerover", (event) => {
-      const cell = event.target.closest(".compare-cell");
-      if (cell) showComparisonDetail(Number(cell.dataset.index));
-    });
-    elements.compareGrid.addEventListener("focusin", (event) => {
-      const cell = event.target.closest(".compare-cell");
-      if (cell) showComparisonDetail(Number(cell.dataset.index));
-    });
-    elements.compareGrid.addEventListener("click", (event) => {
-      const cell = event.target.closest(".compare-cell");
-      if (!cell) return;
-      const index = Number(cell.dataset.index);
-      setComparisonRovingFocus(index, false);
-      showComparisonDetail(index);
-    });
-    elements.compareGrid.addEventListener("keydown", handleComparisonKeydown);
+      loadInitialState();
+      rovingIndex = slotIndex(currentStartHour(), currentStartDay());
+      createGrid();
+      renderAll();
 
-    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-      anchor.addEventListener("click", (event) => {
-        const target = document.querySelector(anchor.getAttribute("href"));
-        if (!target) return;
-        event.preventDefault();
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-        syncState();
+      elements.grid.addEventListener("pointerdown", startDrag);
+      document.addEventListener("pointermove", continueDrag, { passive: false });
+      document.addEventListener("pointerup", finishDrag);
+      document.addEventListener("pointercancel", finishDrag);
+
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => applyPreset(button.dataset.preset));
       });
-    });
+      elements.undo.addEventListener("click", () => {
+        if (!history.length) return;
+        slots = history.pop();
+        renderAll();
+        announce("마지막 선택을 되돌렸습니다.");
+      });
+      elements.clear.addEventListener("click", () => {
+        commitMutation(() => slots.fill(0), "모든 선택을 지웠습니다.");
+      });
+      elements.reset.addEventListener("click", resetSchedule);
+      elements.title.addEventListener("input", syncState);
+      elements.timezone.addEventListener("input", syncState);
+      elements.startHour.addEventListener("change", () => {
+        rebuildScheduleGrid();
+        announce(`하루 시작을 ${formatHour(currentStartHour())}로 바꿨습니다.`);
+      });
+      elements.startDay.addEventListener("change", () => {
+        rebuildScheduleGrid();
+        announce(`${DAYS[currentStartDay()].full}부터 보이도록 순서를 바꿨습니다. 기존 선택은 유지됩니다.`);
+      });
+      elements.linkButton.addEventListener("click", copyLink);
+      elements.textButton.addEventListener("click", copyScheduleText);
+      elements.imageButton.addEventListener("click", copyImage);
+      elements.pngButton.addEventListener("click", savePng);
 
-    window.requestAnimationFrame(() => {
-      elements.scroller.scrollTop = 0;
-      if (initialMessage) showToast(initialMessage);
-    });
+      document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener("click", (event) => {
+          const target = document.querySelector(anchor.getAttribute("href"));
+          if (!target) return;
+          event.preventDefault();
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          syncState();
+        });
+      });
+
+      window.requestAnimationFrame(() => {
+        elements.scroller.scrollTop = 0;
+        if (initialMessage) showToast(initialMessage);
+      });
+      return false;
+    }
+
+    function initComparisonApp() {
+      if (!elements.compareGrid) return;
+      renderComparison();
+      elements.compareAdd.addEventListener("click", addComparisonLinks);
+      elements.compareLinks.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          addComparisonLinks();
+        }
+      });
+      elements.compareStartHour.addEventListener("change", () => {
+        renderComparison();
+        setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
+      });
+      elements.compareStartDay.addEventListener("change", () => {
+        renderComparison();
+        setComparisonInputStatus(`결과를 ${DAYS[currentComparisonStartDay()].full}부터 보이도록 바꿨어요.`, "success");
+      });
+      elements.compareClear.addEventListener("click", () => {
+        comparisonParticipants = [];
+        renderComparison();
+        setComparisonInputStatus("추가한 일정을 모두 비웠어요.", "success");
+      });
+      elements.participantList.addEventListener("click", (event) => {
+        const remove = event.target.closest("[data-participant-id]");
+        if (!remove) return;
+        const participantId = Number(remove.dataset.participantId);
+        const participant = comparisonParticipants.find((item) => item.id === participantId);
+        comparisonParticipants = comparisonParticipants.filter((item) => item.id !== participantId);
+        renderComparison();
+        setComparisonInputStatus(`${participant?.title || "일정"} 일정을 제거했어요.`, "success");
+      });
+      elements.compareGrid.addEventListener("pointerover", (event) => {
+        const cell = event.target.closest(".compare-cell");
+        if (cell) showComparisonDetail(Number(cell.dataset.index));
+      });
+      elements.compareGrid.addEventListener("focusin", (event) => {
+        const cell = event.target.closest(".compare-cell");
+        if (cell) showComparisonDetail(Number(cell.dataset.index));
+      });
+      elements.compareGrid.addEventListener("click", (event) => {
+        const cell = event.target.closest(".compare-cell");
+        if (!cell) return;
+        const index = Number(cell.dataset.index);
+        setComparisonRovingFocus(index, false);
+        showComparisonDetail(index);
+      });
+      elements.compareGrid.addEventListener("keydown", handleComparisonKeydown);
+    }
+
+    const redirectedFromLegacyComparison = initScheduleApp();
+    if (!redirectedFromLegacyComparison) initComparisonApp();
   }
 
   const api = {
@@ -1542,7 +1558,7 @@
   root.Eonjepyo = api;
 
   if (typeof document !== "undefined") {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initApp);
-    else initApp();
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initApps);
+    else initApps();
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);
