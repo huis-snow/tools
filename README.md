@@ -5,6 +5,7 @@
 ## 도구
 
 - [반듯표](./table-maker/) — 한글·전각 문자를 지원하는 ASCII 테이블 생성기
+- [언제표](./schedule-maker/) — 가능한 시간을 공유하고 여러 사람의 겹치는 시간을 찾는 주간 일정표
 
 ## 새 도구 추가
 
@@ -18,6 +19,7 @@
 ├── hub.css
 ├── .nojekyll
 ├── table-maker/
+├── schedule-maker/
 └── next-tool/
 ```
 

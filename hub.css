@@ -359,6 +359,47 @@ footer {
   line-height: 1.65;
 }
 
+.schedule-preview {
+  padding: 22px 27px;
+}
+
+.mini-schedule {
+  width: min(100%, 360px);
+  display: grid;
+  grid-template-columns: 32px repeat(7, 1fr);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.mini-schedule span,
+.mini-schedule b,
+.mini-schedule em,
+.mini-schedule i {
+  height: 23px;
+  display: grid;
+  place-items: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.28);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  color: #d8e4dc;
+  font: 8px var(--mono);
+  font-style: normal;
+}
+
+.mini-schedule i {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mini-schedule i.picked {
+  background: var(--orange);
+}
+
+.mini-schedule i.picked::after {
+  content: "✓";
+  color: white;
+  font-size: 8px;
+}
+
 .card-content > p:first-child {
   margin: 0 0 8px;
   font-size: 9px;
