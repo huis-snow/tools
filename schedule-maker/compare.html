@@ -137,6 +137,46 @@
             </div>
           </section>
 
+          <section class="compare-collection-area" aria-labelledby="compare-collection-title">
+            <div class="compare-collection-heading">
+              <div>
+                <p>SAVE &amp; SHARE</p>
+                <h3 id="compare-collection-title">이 취합표를 보관할까요?</h3>
+              </div>
+              <p>이름을 붙여 저장하면 나중에 일정을 더 넣거나 다시 공유할 수 있어요.</p>
+            </div>
+
+            <div class="compare-collection-controls">
+              <label for="compareCollectionNameInput">
+                <span>취합 일정 이름</span>
+                <input
+                  id="compareCollectionNameInput"
+                  type="text"
+                  maxlength="60"
+                  autocomplete="off"
+                  aria-describedby="compareCollectionSaveStatus"
+                />
+              </label>
+              <div class="compare-collection-actions">
+                <button id="compareSaveCollectionButton" type="button" disabled>
+                  현재 취합 저장
+                </button>
+                <button id="compareCopyCollectionLinkButton" type="button" disabled>
+                  취합 링크 복사 <span aria-hidden="true">↗</span>
+                </button>
+              </div>
+            </div>
+            <p
+              class="compare-collection-status"
+              id="compareCollectionSaveStatus"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              취합할 일정을 추가하고 이름을 입력하면 저장할 수 있어요.
+            </p>
+          </section>
+
           <section class="compare-result" aria-labelledby="compare-result-title">
             <div class="compare-result-heading">
               <div>
@@ -191,6 +231,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="saved-schedules.js"></script>
+    <script src="saved-comparisons.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

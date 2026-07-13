@@ -15,6 +15,7 @@ const {
   slotIndex,
 } = require("../app.js");
 const saved = require("../saved-schedules.js");
+const comparisons = require("../saved-comparisons.js");
 
 class MemoryStorage {
   constructor(entries = {}) {
@@ -76,6 +77,7 @@ function runBrowserPage(ids, options = {}) {
   const localStorage = options.localStorage || new MemoryStorage();
   const sessionStorage = options.sessionStorage || new MemoryStorage();
   const historyCalls = [];
+  const clipboardWrites = [];
   const document = {
     readyState: "complete",
     body,
@@ -139,7 +141,7 @@ function runBrowserPage(ids, options = {}) {
     Promise,
     document,
     window,
-    navigator: { clipboard: { async writeText() {} } },
+    navigator: { clipboard: { async writeText(value) { clipboardWrites.push(String(value)); } } },
   };
   context.globalThis = context;
   const directory = path.join(__dirname, "..");
@@ -149,11 +151,16 @@ function runBrowserPage(ids, options = {}) {
     { filename: "schedule-maker/saved-schedules.js" },
   );
   vm.runInNewContext(
+    fs.readFileSync(path.join(directory, "saved-comparisons.js"), "utf8"),
+    context,
+    { filename: "schedule-maker/saved-comparisons.js" },
+  );
+  vm.runInNewContext(
     fs.readFileSync(path.join(directory, "app.js"), "utf8"),
     context,
     { filename: "schedule-maker/app.js" },
   );
-  return { elements, historyCalls, localStorage, sessionStorage, location };
+  return { elements, historyCalls, clipboardWrites, localStorage, sessionStorage, location };
 }
 
 const WRITER_PAGE_IDS = [
@@ -167,7 +174,8 @@ const COMPARE_PAGE_IDS = [
   "compareLinksInput", "compareAddButton", "compareStartHourSelect", "compareStartDaySelect",
   "compareInputStatus", "participantArea", "participantCount", "participantList",
   "compareClearButton", "compareTimezoneStatus", "compareMaxCount", "compareSummaryText",
-  "compareGrid", "compareGridScroller", "compareDetail", "toast",
+  "compareGrid", "compareGridScroller", "compareDetail", "compareCollectionNameInput",
+  "compareSaveCollectionButton", "compareCopyCollectionLinkButton", "compareCollectionSaveStatus", "toast",
 ];
 
 test("작성·취합·목록 페이지는 저장 모듈을 앱보다 먼저 불러온다", () => {
@@ -396,6 +404,69 @@ test("저장 목록이 만든 취합 큐는 취합 페이지에서 즉시 소비
   assert.equal(result.elements.get("participantCount").textContent, "2");
   assert.equal(localStorage.getItem(saved.ACTION_KEY), null, "목록 저장소에는 전달 큐를 섞지 않습니다");
   assert.equal(sessionStorage.getItem(saved.ACTION_KEY), null, "사용한 취합 큐는 지워야 합니다");
+});
+
+test("취합 화면에서 이름을 붙여 저장하고 공유 링크를 복사할 때 현재 주소는 바꾸지 않는다", async () => {
+  const localStorage = new MemoryStorage();
+  const sessionStorage = new MemoryStorage();
+  const first = saved.saveSchedule(localStorage, makeSchedule("쵸하"), { id: "choha", now: 120 });
+  const second = saved.saveSchedule(localStorage, makeSchedule("휴이스", slotIndex(10, 1)), {
+    id: "huis",
+    now: 130,
+  });
+  saved.queueForComparison(localStorage, [first.id, second.id], { actionStorage: sessionStorage });
+  const result = runBrowserPage(COMPARE_PAGE_IDS, {
+    pathname: "/schedule-maker/compare.html",
+    localStorage,
+    sessionStorage,
+  });
+
+  await result.elements.get("compareCopyCollectionLinkButton").listeners.get("click")();
+  assert.equal(result.clipboardWrites.length, 0);
+  assert.equal(result.elements.get("compareCollectionNameInput").focused, true);
+
+  const nameInput = result.elements.get("compareCollectionNameInput");
+  nameInput.value = "금요일 새벽 공대";
+  nameInput.listeners.get("input")();
+  result.elements.get("compareSaveCollectionButton").listeners.get("click")();
+
+  const stored = comparisons.list(localStorage);
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].name, "금요일 새벽 공대");
+  assert.equal(stored[0].members.length, 2);
+
+  const addressBeforeCopy = result.location.href;
+  await result.elements.get("compareCopyCollectionLinkButton").listeners.get("click")();
+  assert.equal(result.clipboardWrites.length, 1);
+  assert.match(result.clipboardWrites[0], /\/schedule-maker\/compare\.html#g=/);
+  assert.equal(result.location.href, addressBeforeCopy);
+});
+
+test("공유받은 취합 링크는 자동 보관하고 참여자를 복원한 뒤 주소에서 공유 데이터를 지운다", () => {
+  const localStorage = new MemoryStorage();
+  const members = [
+    makeSchedule("쵸하", slotIndex(20, 0)),
+    makeSchedule("휴이스", slotIndex(1, 6), { startDay: 5 }),
+  ];
+  const hash = comparisons.makeShareHash({
+    name: "공유받은 고정 공대",
+    startHour: 11,
+    startDay: 5,
+    members,
+  });
+  const result = runBrowserPage(COMPARE_PAGE_IDS, {
+    pathname: "/schedule-maker/compare.html",
+    localStorage,
+    hash,
+  });
+
+  assert.equal(result.elements.get("participantCount").textContent, "2");
+  assert.equal(result.elements.get("compareCollectionNameInput").value, "공유받은 고정 공대");
+  assert.equal(result.elements.get("compareStartHourSelect").value, "11");
+  assert.equal(result.elements.get("compareStartDaySelect").value, "5");
+  assert.equal(result.location.hash, "");
+  assert.ok(result.historyCalls.length > 0);
+  assert.equal(comparisons.list(localStorage).length, 1);
 });
 
 test("불러오기 동작 큐는 하나의 일정만 허용하고 손상된 큐는 제거한다", () => {
