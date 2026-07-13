@@ -14,6 +14,7 @@
   const SLOT_COUNT = DAYS.length * HOURS;
   const SLOT_BYTES = SLOT_COUNT / 8;
   const SHARE_VERSION = "1";
+  const DEFAULT_TITLE = "우리의 가능한 시간";
 
   function slotIndex(hour, day) {
     return hour * DAYS.length + day;
@@ -112,7 +113,7 @@
   function makeShareHash(slots, metadata = {}) {
     const parameters = new URLSearchParams();
     parameters.set("v", SHARE_VERSION);
-    parameters.set("t", cleanMeta(metadata.title, "주간 가능 시간", 60));
+    parameters.set("t", cleanMeta(metadata.title, DEFAULT_TITLE, 60));
     parameters.set("z", cleanMeta(metadata.timezone, "Asia/Seoul", 40));
     parameters.set("h", String(normalizeStartHour(metadata.startHour, 0)));
     parameters.set("s", encodeSlots(slots));
@@ -139,7 +140,7 @@
 
     return {
       slots: decodeSlots(parameters.get("s")),
-      title: cleanMeta(parameters.get("t"), "주간 가능 시간", 60),
+      title: cleanMeta(parameters.get("t"), DEFAULT_TITLE, 60),
       timezone: cleanMeta(parameters.get("z"), "Asia/Seoul", 40),
       startHour,
     };
@@ -182,7 +183,7 @@
   }
 
   function formatScheduleText(slots, metadata = {}) {
-    const title = cleanMeta(metadata.title, "주간 가능 시간", 60);
+    const title = cleanMeta(metadata.title, DEFAULT_TITLE, 60);
     const timezone = cleanMeta(metadata.timezone, "Asia/Seoul", 40);
     const startHour = normalizeStartHour(metadata.startHour, 0);
     const lines = [`[${title}]`, `기준 시간대: ${timezone} · 하루 시작: ${formatHour(startHour)}`, ""];
@@ -300,7 +301,7 @@
     const gridHeight = headerHeight + HOURS * rowHeight;
     const height = gridY + gridHeight + 74;
     const fontFamily = '"Schedule D2Coding", "D2Coding", monospace';
-    const title = cleanMeta(metadata.title, "주간 가능 시간", 60);
+    const title = cleanMeta(metadata.title, DEFAULT_TITLE, 60);
     const timezone = cleanMeta(metadata.timezone, "Asia/Seoul", 40);
     const startHour = normalizeStartHour(metadata.startHour, 0);
 
@@ -428,6 +429,7 @@
       progress: document.querySelector("#selectionProgress"),
       undo: document.querySelector("#undoButton"),
       clear: document.querySelector("#clearButton"),
+      reset: document.querySelector("#resetButton"),
       live: document.querySelector("#liveRegion"),
       linkButton: document.querySelector("#linkButton"),
       linkLabel: document.querySelector("#linkLabel"),
@@ -492,7 +494,7 @@
 
     function metadata() {
       return {
-        title: cleanMeta(elements.title.value, "주간 가능 시간", 60),
+        title: cleanMeta(elements.title.value, DEFAULT_TITLE, 60),
         timezone: cleanMeta(elements.timezone.value, detectedTimezone, 40),
         startHour: normalizeStartHour(elements.startHour.value, 8),
       };
@@ -514,7 +516,7 @@
           const shared = parseShareHash(shareHash);
           if (shared) {
             slots = shared.slots;
-            elements.title.value = shared.title;
+            elements.title.value = shared.title === DEFAULT_TITLE ? "" : shared.title;
             elements.timezone.value = shared.timezone;
             elements.startHour.value = String(shared.startHour);
             initialMessage = "공유받은 일정표를 불러왔어요. 수정해도 원본은 바뀌지 않아요.";
@@ -533,7 +535,7 @@
         const restored = parseShareHash(draft);
         if (!restored) return;
         slots = restored.slots;
-        elements.title.value = restored.title;
+        elements.title.value = restored.title === DEFAULT_TITLE ? "" : restored.title;
         elements.timezone.value = restored.timezone;
         elements.startHour.value = String(restored.startHour);
         if (countSelected(slots)) initialMessage = "지난번에 칠하던 일정표를 불러왔어요.";
@@ -743,6 +745,28 @@
       createGrid();
       renderAll();
       elements.scroller.scrollTop = 0;
+    }
+
+    function resetSchedule() {
+      const hasChanges = countSelected(slots) > 0 ||
+        history.length > 0 ||
+        elements.title.value.trim() !== "" ||
+        elements.timezone.value.trim() !== detectedTimezone ||
+        currentStartHour() !== 8;
+      if (hasChanges && !window.confirm("일정표 설정과 선택한 시간을 모두 초기화할까요?")) return;
+
+      slots = createSlots();
+      history = [];
+      dragging = null;
+      elements.title.value = "";
+      elements.timezone.value = detectedTimezone;
+      elements.startHour.value = "8";
+      rovingIndex = slotIndex(8, 0);
+      createGrid();
+      renderAll();
+      elements.scroller.scrollTop = 0;
+      announce("일정표를 처음 상태로 초기화했습니다.");
+      showToast("빈 일정표로 초기화했어요");
     }
 
     function handleSlotKeydown(event) {
@@ -1331,6 +1355,7 @@
     elements.clear.addEventListener("click", () => {
       commitMutation(() => slots.fill(0), "모든 선택을 지웠습니다.");
     });
+    elements.reset.addEventListener("click", resetSchedule);
     elements.title.addEventListener("input", syncState);
     elements.timezone.addEventListener("input", syncState);
     elements.startHour.addEventListener("change", () => {
@@ -1400,6 +1425,7 @@
   }
 
   const api = {
+    DEFAULT_TITLE,
     DAYS,
     HOURS,
     SLOT_COUNT,
