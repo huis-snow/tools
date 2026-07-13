@@ -492,6 +492,10 @@
       compareGrid: document.querySelector("#compareGrid"),
       compareGridScroller: document.querySelector("#compareGridScroller"),
       compareDetail: document.querySelector("#compareDetail"),
+      compareCollectionName: document.querySelector("#compareCollectionNameInput"),
+      compareCollectionSave: document.querySelector("#compareSaveCollectionButton"),
+      compareCollectionShare: document.querySelector("#compareCopyCollectionLinkButton"),
+      compareCollectionStatus: document.querySelector("#compareCollectionSaveStatus"),
     };
 
     let slots = createSlots();
@@ -511,6 +515,8 @@
     let comparisonActiveIndex = null;
     let comparisonRovingIndex = slotIndex(8, 0);
     let comparisonCellElements = [];
+    let activeComparisonCollectionId = null;
+    let comparisonCollectionDirty = false;
     const participantColors = ["#f36c3f", "#2d765f", "#49778a", "#d69231", "#7b6aa8", "#b85167", "#42877d"];
     const anchorHashes = new Set(["#top", "#schedule", "#share", "#compare"]);
 
@@ -566,6 +572,12 @@
     function savedSchedulesApi() {
       return root.EonjepyoSaved && typeof root.EonjepyoSaved.get === "function"
         ? root.EonjepyoSaved
+        : null;
+    }
+
+    function savedComparisonsApi() {
+      return root.EonjepyoComparisons && typeof root.EonjepyoComparisons.get === "function"
+        ? root.EonjepyoComparisons
         : null;
     }
 
@@ -1168,6 +1180,232 @@
       else delete elements.compareInputStatus.dataset.state;
     }
 
+    function setComparisonCollectionStatus(message, state = "") {
+      if (!elements.compareCollectionStatus) return;
+      elements.compareCollectionStatus.textContent = message;
+      if (state) elements.compareCollectionStatus.dataset.state = state;
+      else delete elements.compareCollectionStatus.dataset.state;
+    }
+
+    function syncComparisonCollectionControls() {
+      const hasParticipants = comparisonParticipants.length > 0;
+      if (elements.compareCollectionSave) elements.compareCollectionSave.disabled = !hasParticipants;
+      if (elements.compareCollectionShare) elements.compareCollectionShare.disabled = !hasParticipants;
+    }
+
+    function describeComparisonCollectionState() {
+      syncComparisonCollectionControls();
+      if (!comparisonParticipants.length) {
+        setComparisonCollectionStatus("취합할 일정을 추가하고 이름을 입력하면 저장할 수 있어요.");
+        return;
+      }
+      if (!elements.compareCollectionName?.value.trim()) {
+        setComparisonCollectionStatus("저장하거나 공유하려면 취합 일정 이름을 입력해 주세요.", "warning");
+        return;
+      }
+      if (activeComparisonCollectionId && comparisonCollectionDirty) {
+        setComparisonCollectionStatus("저장된 취합표에 반영하지 않은 변경사항이 있어요.", "warning");
+        return;
+      }
+      if (activeComparisonCollectionId) {
+        setComparisonCollectionStatus("이 취합표는 내 브라우저 보관함에 저장되어 있어요.", "success");
+        return;
+      }
+      setComparisonCollectionStatus("현재 참여 일정과 보기 설정을 새 취합표로 저장할 수 있어요.");
+    }
+
+    function markComparisonCollectionDirty() {
+      comparisonCollectionDirty = true;
+      describeComparisonCollectionState();
+    }
+
+    function comparisonParticipantKey(schedule, participantSlots) {
+      return makeShareHash(participantSlots, {
+        title: schedule.title,
+        timezone: schedule.timezone,
+        startHour: schedule.startHour,
+        // 시작 요일은 선택 데이터가 아니라 작성 화면의 보기 순서라서 중복 판별에서 제외한다.
+        startDay: 0,
+      });
+    }
+
+    function appendComparisonSchedules(schedules) {
+      let added = 0;
+      let duplicateCount = 0;
+      schedules.forEach((schedule) => {
+        const participantSlots = schedule.slots instanceof Uint8Array
+          ? schedule.slots.slice()
+          : decodeSlots(schedule.slots);
+        const participant = {
+          title: cleanMeta(schedule.title, DEFAULT_TITLE, 60),
+          timezone: cleanMeta(schedule.timezone, "Asia/Seoul", 40),
+          startHour: normalizeStartHour(schedule.startHour, 0),
+          startDay: normalizeStartDay(schedule.startDay, 0),
+          slots: participantSlots,
+        };
+        const key = comparisonParticipantKey(participant, participantSlots);
+        if (comparisonParticipants.some((item) => item.key === key)) {
+          duplicateCount += 1;
+          return;
+        }
+        comparisonParticipants.push({
+          ...participant,
+          id: nextParticipantId,
+          key,
+        });
+        nextParticipantId += 1;
+        added += 1;
+      });
+      return { added, duplicateCount };
+    }
+
+    function comparisonCollectionSnapshot() {
+      return comparisonParticipants.map((participant) => ({
+        title: participant.title,
+        timezone: participant.timezone,
+        startHour: participant.startHour,
+        startDay: participant.startDay,
+        slots: participant.slots.slice(),
+      }));
+    }
+
+    function applyComparisonCollection(record) {
+      comparisonParticipants = [];
+      nextParticipantId = 1;
+      appendComparisonSchedules(record.members || []);
+      elements.compareCollectionName.value = record.name || "";
+      elements.compareCollectionName.removeAttribute("aria-invalid");
+      elements.compareStartHour.value = String(normalizeStartHour(record.startHour, 8));
+      elements.compareStartDay.value = String(normalizeStartDay(record.startDay, 0));
+      activeComparisonCollectionId = record.id || null;
+      comparisonCollectionDirty = false;
+    }
+
+    function cleanComparisonLocation({ removeCollection = false, removeGroupHash = false } = {}) {
+      const parameters = new URLSearchParams(window.location.search || "");
+      if (removeCollection) parameters.delete("collection");
+      const search = parameters.toString();
+      const hash = removeGroupHash ? "" : (window.location.hash || "");
+      const cleanLocation = `${window.location.pathname}${search ? `?${search}` : ""}${hash}`;
+      try {
+        window.history.replaceState(null, "", cleanLocation);
+      } catch (_error) {
+        if (removeGroupHash) window.location.hash = "";
+      }
+    }
+
+    function loadInitialComparisonCollection() {
+      const api = savedComparisonsApi();
+      if (!api) return false;
+
+      const shareHash = window.location.hash || "";
+      if (shareHash.startsWith(`#${api.SHARE_PARAMETER || "g"}=`)) {
+        let shared;
+        let stored = null;
+        try {
+          shared = api.parseShareHash(shareHash);
+          try {
+            stored = api.saveComparison(window.localStorage, shared);
+          } catch (_error) {
+            // 저장 공간을 사용할 수 없어도 공유받은 취합표는 계속 열 수 있다.
+          }
+          applyComparisonCollection(stored || shared);
+          setComparisonCollectionStatus(
+            stored
+              ? "공유받은 취합표를 내 브라우저 보관함에 저장했어요."
+              : "공유받은 취합표를 열었지만 브라우저 보관함에는 저장하지 못했어요.",
+            stored ? "success" : "warning",
+          );
+          showToast(`${shared.name} 취합표를 불러왔어요`);
+        } catch (error) {
+          setComparisonCollectionStatus(error.message || "공유받은 취합표를 읽지 못했어요.", "error");
+          showToast("공유 취합 링크가 손상되어 열지 못했어요");
+        } finally {
+          cleanComparisonLocation({ removeCollection: true, removeGroupHash: true });
+        }
+        return Boolean(shared);
+      }
+
+      const parameters = new URLSearchParams(window.location.search || "");
+      const collectionId = parameters.get("collection");
+      if (!collectionId) return false;
+      try {
+        const record = api.get(window.localStorage, collectionId);
+        if (!record) {
+          setComparisonCollectionStatus("저장된 취합표를 찾지 못했어요. 보관함에서 다시 열어 주세요.", "error");
+          return false;
+        }
+        applyComparisonCollection(record);
+        setComparisonCollectionStatus("저장된 취합표를 불러왔어요.", "success");
+        return true;
+      } catch (_error) {
+        setComparisonCollectionStatus("브라우저 보관함에서 취합표를 읽지 못했어요.", "error");
+        return false;
+      } finally {
+        cleanComparisonLocation({ removeCollection: true });
+      }
+    }
+
+    function requireComparisonCollectionName() {
+      const name = elements.compareCollectionName.value.trim();
+      if (name) {
+        elements.compareCollectionName.removeAttribute("aria-invalid");
+        return name;
+      }
+      elements.compareCollectionName.setAttribute("aria-invalid", "true");
+      elements.compareCollectionName.focus();
+      setComparisonCollectionStatus("취합 일정 이름을 먼저 입력해 주세요.", "error");
+      showToast("취합 일정 이름을 입력해 주세요");
+      return null;
+    }
+
+    function saveCurrentComparisonCollection() {
+      const api = savedComparisonsApi();
+      if (!api) {
+        setComparisonCollectionStatus("취합표 저장 기능을 불러오지 못했어요.", "error");
+        return null;
+      }
+      if (!comparisonParticipants.length) {
+        setComparisonCollectionStatus("먼저 한 명 이상의 일정을 추가해 주세요.", "error");
+        return null;
+      }
+      const name = requireComparisonCollectionName();
+      if (!name) return null;
+      try {
+        const record = api.saveComparison(window.localStorage, {
+          name,
+          startHour: currentComparisonStartHour(),
+          startDay: currentComparisonStartDay(),
+          members: comparisonCollectionSnapshot(),
+        }, activeComparisonCollectionId ? { id: activeComparisonCollectionId } : {});
+        activeComparisonCollectionId = record.id;
+        comparisonCollectionDirty = false;
+        elements.compareCollectionName.value = record.name;
+        setComparisonCollectionStatus(`${record.name} 취합표를 내 브라우저 보관함에 저장했어요.`, "success");
+        return record;
+      } catch (error) {
+        setComparisonCollectionStatus(error.message || "취합표를 저장하지 못했어요.", "error");
+        showToast("취합표를 저장하지 못했어요");
+        return null;
+      }
+    }
+
+    async function copyCurrentComparisonCollection() {
+      const record = saveCurrentComparisonCollection();
+      if (!record) return;
+      try {
+        const baseUrl = new URL("./compare.html", window.location.href);
+        baseUrl.search = "";
+        baseUrl.hash = "";
+        await copyPlainText(savedComparisonsApi().makeShareUrl(baseUrl.toString(), record));
+        setComparisonCollectionStatus("취합표 공유 링크를 복사했어요. 받은 사람도 같은 취합 결과를 열 수 있어요.", "success");
+        showToast("취합표 공유 링크를 복사했어요");
+      } catch (error) {
+        setComparisonCollectionStatus(error.message || "취합표 공유 링크를 복사하지 못했어요.", "error");
+        showToast("공유 링크를 복사하지 못했어요");
+      }
+    }
+
     function addComparisonLinks() {
       const inputs = elements.compareLinks.value.match(/\S+/g) || [];
       if (!inputs.length) {
@@ -1184,19 +1422,9 @@
       inputs.forEach((input) => {
         try {
           const schedule = parseShareInput(input);
-          const key = makeShareHash(schedule.slots, { ...schedule, startDay: 0 });
-          if (comparisonParticipants.some((participant) => participant.key === key)) {
-            duplicateCount += 1;
-            return;
-          }
-          comparisonParticipants.push({
-            ...schedule,
-            slots: schedule.slots.slice(),
-            id: nextParticipantId,
-            key,
-          });
-          nextParticipantId += 1;
-          added += 1;
+          const result = appendComparisonSchedules([schedule]);
+          added += result.added;
+          duplicateCount += result.duplicateCount;
         } catch (error) {
           invalidInputs.push(input);
           invalidMessages.push(error.message || "링크 형식을 읽지 못했습니다.");
@@ -1211,7 +1439,10 @@
       const state = invalidInputs.length || duplicateCount ? "warning" : added ? "success" : "error";
       setComparisonInputStatus(messages.join(" ") || "추가된 일정이 없어요.", state);
       renderComparison();
-      if (added) showToast(`${added}명의 가능 시간을 겹침표에 반영했어요`);
+      if (added) {
+        markComparisonCollectionDirty();
+        showToast(`${added}명의 가능 시간을 겹침표에 반영했어요`);
+      }
     }
 
     function renderParticipantList(roster, excluded) {
@@ -1448,6 +1679,7 @@
           ? `${result} 다른 시간대 ${excluded.length}명은 제외했어요.`
           : result;
       }
+      syncComparisonCollectionControls();
     }
 
     function setComparisonRovingFocus(index, shouldFocus = true) {
@@ -1562,7 +1794,14 @@
 
     function initComparisonApp() {
       if (!elements.compareGrid) return;
+      const comparisonApi = savedComparisonsApi();
+      const hasInitialCollection = Boolean(
+        (comparisonApi && (window.location.hash || "").startsWith(`#${comparisonApi.SHARE_PARAMETER || "g"}=`))
+        || new URLSearchParams(window.location.search || "").has("collection")
+      );
+      loadInitialComparisonCollection();
       renderComparison();
+      if (!hasInitialCollection) describeComparisonCollectionState();
       try {
         const savedApi = savedSchedulesApi();
         const queued = savedApi?.consumeComparisonQueue(window.sessionStorage);
@@ -1582,15 +1821,18 @@
       });
       elements.compareStartHour.addEventListener("change", () => {
         renderComparison();
+        markComparisonCollectionDirty();
         setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
       });
       elements.compareStartDay.addEventListener("change", () => {
         renderComparison();
+        markComparisonCollectionDirty();
         setComparisonInputStatus(`결과를 ${DAYS[currentComparisonStartDay()].full}부터 보이도록 바꿨어요.`, "success");
       });
       elements.compareClear.addEventListener("click", () => {
         comparisonParticipants = [];
         renderComparison();
+        markComparisonCollectionDirty();
         setComparisonInputStatus("추가한 일정을 모두 비웠어요.", "success");
       });
       elements.participantList.addEventListener("click", (event) => {
@@ -1600,7 +1842,23 @@
         const participant = comparisonParticipants.find((item) => item.id === participantId);
         comparisonParticipants = comparisonParticipants.filter((item) => item.id !== participantId);
         renderComparison();
+        markComparisonCollectionDirty();
         setComparisonInputStatus(`${participant?.title || "일정"} 일정을 제거했어요.`, "success");
+      });
+      elements.compareCollectionName?.addEventListener("input", () => {
+        elements.compareCollectionName.removeAttribute("aria-invalid");
+        markComparisonCollectionDirty();
+      });
+      elements.compareCollectionSave?.addEventListener("click", () => {
+        const record = saveCurrentComparisonCollection();
+        if (record) showToast(`${record.name} 취합표를 저장했어요`);
+      });
+      elements.compareCollectionShare?.addEventListener("click", copyCurrentComparisonCollection);
+      window.addEventListener?.("hashchange", () => {
+        const api = savedComparisonsApi();
+        if (!api || !(window.location.hash || "").startsWith(`#${api.SHARE_PARAMETER || "g"}=`)) return;
+        loadInitialComparisonCollection();
+        renderComparison();
       });
       elements.compareGrid.addEventListener("pointerover", (event) => {
         const cell = event.target.closest(".compare-cell");
