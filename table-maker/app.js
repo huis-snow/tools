@@ -151,6 +151,30 @@
     return width;
   }
 
+  function truncateDisplayWidth(value, maximumWidth) {
+    if (!Number.isInteger(maximumWidth) || maximumWidth < 0) {
+      throw new RangeError("말줄임 폭은 0 이상의 정수여야 합니다.");
+    }
+
+    const text = String(value ?? "");
+    if (displayWidth(text) <= maximumWidth) return text;
+    if (maximumWidth === 0) return "";
+
+    const ellipsis = "…";
+    const contentWidth = maximumWidth - displayWidth(ellipsis);
+    if (contentWidth < 0) return "";
+
+    let result = "";
+    let width = 0;
+    for (const cluster of splitGraphemes(text)) {
+      const clusterWidth = displayWidth(cluster);
+      if (width + clusterWidth > contentWidth) break;
+      result += cluster;
+      width += clusterWidth;
+    }
+    return result + ellipsis;
+  }
+
   function padCell(value, targetWidth, alignment) {
     const text = String(value ?? "");
     const remaining = Math.max(0, targetWidth - displayWidth(text));
@@ -276,13 +300,18 @@
     return characters.edges[0] + segments.join(characters.edges[1]) + characters.edges[2];
   }
 
-  function buildMarkdownTable(rows, _widths, alignments, hasHeader) {
+  function buildMarkdownTable(rows, _widths, alignments, hasHeader, fixedWidth) {
     if (!rows.length) return "";
     const safeRows = rows.map((row) => row.map((cell) => String(cell).replace(/\|/g, "\\|")));
-    const widths = Array.from({ length: safeRows[0].length }, (_, index) =>
-      Math.max(5, ...safeRows.map((row) => displayWidth(row[index]))),
-    );
-    const body = safeRows.map((row) =>
+    const fittedRows = fixedWidth === null
+      ? safeRows
+      : safeRows.map((row) => row.map((cell) => truncateDisplayWidth(cell, fixedWidth)));
+    const widths = fixedWidth === null
+      ? Array.from({ length: safeRows[0].length }, (_, index) =>
+        Math.max(5, ...safeRows.map((row) => displayWidth(row[index]))),
+      )
+      : Array.from({ length: safeRows[0].length }, () => fixedWidth);
+    const body = fittedRows.map((row) =>
       "| " + row.map((cell, index) => padCell(cell, widths[index], alignments[index])).join(" | ") + " |",
     );
 
@@ -309,13 +338,22 @@
 
     const columnCount = rows[0].length;
     const alignments = Array.from({ length: columnCount }, (_, index) => options.alignments?.[index] || "left");
-    const widths = Array.from({ length: columnCount }, (_, index) =>
-      Math.max(0, ...rows.map((row) => displayWidth(row[index]))),
-    );
+    const fixedWidth = Number.isInteger(options.fixedWidth) && options.fixedWidth >= 5 && options.fixedWidth <= 80
+      ? options.fixedWidth
+      : null;
 
     if (options.style === "markdown") {
-      return buildMarkdownTable(rows, widths, alignments, options.hasHeader !== false);
+      return buildMarkdownTable(rows, null, alignments, options.hasHeader !== false, fixedWidth);
     }
+
+    const fittedRows = fixedWidth === null
+      ? rows
+      : rows.map((row) => row.map((cell) => truncateDisplayWidth(cell, fixedWidth)));
+    const widths = fixedWidth === null
+      ? Array.from({ length: columnCount }, (_, index) =>
+        Math.max(0, ...rows.map((row) => displayWidth(row[index]))),
+      )
+      : Array.from({ length: columnCount }, () => fixedWidth);
 
     const style = BORDER_STYLES[options.style] || BORDER_STYLES.rounded;
     const padding = Number.isFinite(options.padding) ? options.padding : 1;
@@ -324,7 +362,7 @@
     const bottom = buildRule(widths, padding, { horizontal: style.horizontal, edges: style.bottom });
     const lines = [top];
 
-    rows.forEach((row, rowIndex) => {
+    fittedRows.forEach((row, rowIndex) => {
       const cells = row.map((cell, columnIndex) => {
         const padded = padCell(cell, widths[columnIndex], alignments[columnIndex]);
         return " ".repeat(padding) + padded + " ".repeat(padding);
@@ -424,6 +462,9 @@
       delimiter: document.querySelector("#delimiterSelect"),
       border: document.querySelector("#borderSelect"),
       padding: document.querySelector("#paddingSelect"),
+      widthMode: document.querySelector("#widthModeSelect"),
+      fixedWidth: document.querySelector("#fixedWidthInput"),
+      fixedWidthControl: document.querySelector("#fixedWidthControl"),
       header: document.querySelector("#headerToggle"),
       output: document.querySelector("#tableOutput"),
       parseStatus: document.querySelector("#parseStatus"),
@@ -441,6 +482,7 @@
 
     let alignments = [];
     let lastHeaders = [];
+    let lastFixedWidth = 12;
     let toastTimer;
 
     function selectedDelimiter() {
@@ -449,6 +491,27 @@
       if (selected === "comma") return ",";
       if (selected === "pipe") return "|";
       return detectDelimiter(elements.dataInput.value);
+    }
+
+    function selectedFixedWidth() {
+      if (elements.widthMode.value !== "fixed") return null;
+
+      const value = Number(elements.fixedWidth.value);
+      if (Number.isInteger(value) && value >= 5 && value <= 80) lastFixedWidth = value;
+      return lastFixedWidth;
+    }
+
+    function syncWidthMode() {
+      const isFixed = elements.widthMode.value === "fixed";
+      elements.fixedWidth.disabled = !isFixed;
+      elements.fixedWidthControl.setAttribute("aria-disabled", String(!isFixed));
+    }
+
+    function commitFixedWidth() {
+      const value = Number(elements.fixedWidth.value);
+      const normalized = Number.isFinite(value) ? Math.min(80, Math.max(5, Math.round(value))) : lastFixedWidth;
+      lastFixedWidth = normalized;
+      elements.fixedWidth.value = String(normalized);
     }
 
     function renderAlignmentControls(rows) {
@@ -490,11 +553,13 @@
     function update() {
       const delimiter = selectedDelimiter();
       const rows = normalizeRows(parseDelimited(elements.dataInput.value, delimiter));
+      const fixedWidth = selectedFixedWidth();
       renderAlignmentControls(rows);
 
       const output = generateTable(rows, {
         style: elements.border.value,
         padding: Number(elements.padding.value),
+        fixedWidth,
         hasHeader: elements.header.checked,
         alignments,
       });
@@ -505,7 +570,9 @@
         ? `${delimiterPhrase(delimiter)} 구분한 ${rows.length}행 · ${columnCount}열`
         : "데이터를 기다리는 중";
       elements.outputMeta.textContent = output
-        ? `유니코드 폭 보정 완료 · ${displayWidth(output.split("\n")[0])}칸`
+        ? fixedWidth === null
+          ? `유니코드 폭 보정 완료 · ${displayWidth(output.split("\n")[0])}칸`
+          : `고정 열 너비 ${fixedWidth}칸 · 전체 ${displayWidth(output.split("\n")[0])}칸`
         : "유니코드 폭을 자동으로 계산해요";
       elements.copyButton.disabled = !output;
       elements.imageButton.disabled = !output;
@@ -597,10 +664,20 @@
 
     elements.dataInput.value = SAMPLE_DATA;
     elements.currentYear.textContent = new Date().getFullYear();
+    syncWidthMode();
     elements.dataInput.addEventListener("input", update);
     [elements.delimiter, elements.border, elements.padding, elements.header].forEach((element) =>
       element.addEventListener("change", update),
     );
+    elements.widthMode.addEventListener("change", () => {
+      syncWidthMode();
+      update();
+    });
+    elements.fixedWidth.addEventListener("input", update);
+    elements.fixedWidth.addEventListener("change", () => {
+      commitFixedWidth();
+      update();
+    });
     elements.sampleButton.addEventListener("click", () => {
       elements.dataInput.value = SAMPLE_DATA;
       elements.delimiter.value = "auto";
@@ -619,6 +696,7 @@
 
   const api = {
     displayWidth,
+    truncateDisplayWidth,
     padCell,
     detectDelimiter,
     parseDelimited,

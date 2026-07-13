@@ -117,6 +117,25 @@
                 </select>
               </label>
 
+              <label class="select-control width-mode-control">
+                <span>열 너비</span>
+                <select id="widthModeSelect" aria-controls="fixedWidthControl">
+                  <option value="auto">내용에 맞춤</option>
+                  <option value="fixed">고정폭</option>
+                </select>
+              </label>
+
+              <div class="fixed-width-control" id="fixedWidthControl">
+                <label for="fixedWidthInput">고정 열 너비 <span class="sr-only">(칸)</span></label>
+                <div class="fixed-width-body">
+                  <span class="fixed-width-input">
+                    <input id="fixedWidthInput" type="number" min="5" max="80" value="12" aria-describedby="fixedWidthHelp" disabled />
+                    <span aria-hidden="true">칸</span>
+                  </span>
+                  <small id="fixedWidthHelp">긴 내용은 말줄임표로 줄여요.</small>
+                </div>
+              </div>
+
               <label class="toggle-control">
                 <span>
                   <strong>첫 행을 머리글로</strong>
