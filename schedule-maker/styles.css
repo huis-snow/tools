@@ -504,7 +504,7 @@ footer {
 .schedule-grid {
   min-width: 820px;
   display: grid;
-  grid-template-columns: 78px repeat(7, minmax(96px, 1fr));
+  grid-template-columns: 88px repeat(7, minmax(96px, 1fr));
   user-select: none;
 }
 
@@ -574,13 +574,7 @@ footer {
   background: #f0f3e9;
   color: #425e55;
   font: 10px var(--mono);
-}
-
-.time-toggle span {
-  display: block;
-  margin-top: 2px;
-  color: #9aa49e;
-  font-size: 7px;
+  white-space: nowrap;
 }
 
 .time-toggle:hover {
@@ -1568,7 +1562,7 @@ footer {
 .compare-grid {
   min-width: 820px;
   display: grid;
-  grid-template-columns: 78px repeat(7, minmax(96px, 1fr));
+  grid-template-columns: 88px repeat(7, minmax(96px, 1fr));
 }
 
 .compare-grid-row {
@@ -1617,12 +1611,7 @@ footer {
   background: #f0f3e9;
   color: #425e55;
   font: 10px var(--mono);
-}
-
-.compare-time span {
-  display: block;
-  color: #9aa49e;
-  font-size: 7px;
+  white-space: nowrap;
 }
 
 .compare-cell {
@@ -2022,8 +2011,8 @@ footer > a:last-child {
   }
 
   .schedule-grid {
-    grid-template-columns: 66px repeat(7, 86px);
-    min-width: 668px;
+    grid-template-columns: 88px repeat(7, 86px);
+    min-width: 690px;
   }
 
   .grid-corner,
@@ -2197,8 +2186,8 @@ footer > a:last-child {
   }
 
   .compare-grid {
-    min-width: 668px;
-    grid-template-columns: 66px repeat(7, 86px);
+    min-width: 690px;
+    grid-template-columns: 88px repeat(7, 86px);
   }
 
   .compare-corner,
@@ -3985,7 +3974,6 @@ footer > a:last-child {
 .grid-corner,
 .day-toggle,
 .time-toggle,
-.time-toggle span,
 .selection-status p,
 .share-card > p,
 .share-card > button,
@@ -4010,7 +3998,6 @@ footer > a:last-child {
 .compare-corner,
 .compare-day,
 .compare-time,
-.compare-time span,
 .compare-cell,
 .compare-detail p,
 .toast,

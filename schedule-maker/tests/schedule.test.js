@@ -405,6 +405,16 @@ class FakeElement {
   }
 }
 
+function descendantsMatching(element, predicate) {
+  const matches = [];
+  (element?.children || []).forEach((child) => {
+    if (!child || typeof child !== "object") return;
+    if (predicate(child)) matches.push(child);
+    matches.push(...descendantsMatching(child, predicate));
+  });
+  return matches;
+}
+
 function runWithPageDom(ids, hash = "#top", options = {}) {
   const source = fs.readFileSync(path.join(__dirname, "../app.js"), "utf8");
   const elements = new Map(ids.map((id) => [id, new FakeElement(id)]));
@@ -622,6 +632,13 @@ test("작성 전용 DOM은 취합 요소 없이 독립 초기화된다", () => {
   ];
   const result = runWithPageDom(ids);
   assert.equal(result.elements.get("scheduleGrid").children[0].children.length, 25);
+  const timeLabels = descendantsMatching(
+    result.elements.get("scheduleGrid"),
+    (element) => element.className === "time-toggle",
+  ).map((element) => element.textContent);
+  assert.equal(timeLabels.length, 24);
+  assert.ok(timeLabels.includes("익일 00:00"));
+  assert.ok(timeLabels.every((label) => !label.includes("~")), "시간 행에는 반복되는 끝시간을 표시하지 않습니다");
   assert.equal(result.storageReads, 1);
   assert.equal(typeof result.api.aggregateSchedules, "function");
 });
@@ -636,6 +653,13 @@ test("취합 전용 DOM은 작성 요소 없이 초기화되고 페이지 hash�
   const hash = "#v=1&s=손상된-공유-일정";
   const result = runWithPageDom(ids, hash);
   assert.equal(result.elements.get("compareGrid").children[0].children.length, 25);
+  const timeLabels = descendantsMatching(
+    result.elements.get("compareGrid"),
+    (element) => element.className === "compare-time",
+  ).map((element) => element.textContent);
+  assert.equal(timeLabels.length, 24);
+  assert.ok(timeLabels.includes("익일 00:00"));
+  assert.ok(timeLabels.every((label) => !label.includes("~")), "취합표 시간 행에도 끝시간을 반복하지 않습니다");
   assert.equal(result.storageReads, 0);
   assert.equal(result.location.hash, hash);
   assert.equal(typeof result.api.makeShareHash, "function");

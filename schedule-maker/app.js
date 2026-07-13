@@ -840,14 +840,13 @@
         const timelineHour = hour < startHour ? hour + HOURS : hour;
         const isNextDayStart = startHour !== 0 && hour === 0;
         const startLabel = formatTimelineHour(timelineHour, startHour);
-        const endLabel = formatTimelineHour(timelineHour + 1, startHour);
 
         const timeButton = document.createElement("button");
         timeButton.type = "button";
         timeButton.className = "time-toggle";
         if (isNextDayStart) timeButton.classList.add("next-day-start");
         timeButton.setAttribute("role", "checkbox");
-        timeButton.innerHTML = `${startLabel}<span>~ ${endLabel}</span>`;
+        timeButton.textContent = startLabel;
         timeButton.addEventListener("click", () => {
           const select = hourSelectionState(hour) !== "true";
           commitMutation(() => {
@@ -1602,10 +1601,7 @@
         time.className = "compare-time";
         if (isNextDayStart) time.classList.add("next-day-start");
         time.setAttribute("role", "rowheader");
-        time.append(document.createTextNode(startLabel));
-        const timeEnd = document.createElement("span");
-        timeEnd.textContent = `~ ${endLabel}`;
-        time.append(timeEnd);
+        time.textContent = startLabel;
         row.append(time);
 
         dayOrder.forEach((day) => {
