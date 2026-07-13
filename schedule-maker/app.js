@@ -567,13 +567,18 @@
             elements.startHour.value = String(shared.startHour);
             elements.startDay.value = String(shared.startDay);
             initialMessage = "공유받은 일정표를 불러왔어요. 수정해도 원본은 바뀌지 않아요.";
-            return;
           }
         } catch (_error) {
           slots = createSlots();
           initialMessage = "공유 링크가 손상되어 빈 일정표로 열었어요.";
-          return;
+        } finally {
+          try {
+            window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+          } catch (_error) {
+            window.location.hash = "";
+          }
         }
+        return;
       }
 
       try {
@@ -654,17 +659,12 @@
       elements.clear.disabled = selected === 0;
     }
 
-    function syncState() {
+    function saveDraft() {
       const hash = makeShareHash(slots, metadata());
-      try {
-        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
-      } catch (_error) {
-        window.location.hash = hash;
-      }
       try {
         window.localStorage.setItem("eonjepyo-draft", hash);
       } catch (_error) {
-        // Private browsing can disable localStorage; the URL still keeps the state.
+        // Private browsing can disable localStorage; the current tab still keeps the state.
       }
     }
 
@@ -673,7 +673,7 @@
       window.setTimeout(() => (elements.live.textContent = message), 20);
     }
 
-    function renderAll({ sync = true } = {}) {
+    function renderAll({ save = true } = {}) {
       slotElements.forEach((_element, index) => updateSlotElement(index));
       updateHeaders();
       updateStatus();
@@ -681,7 +681,7 @@
       elements.rangeLabel.textContent = startHour === 0
         ? "00:00부터 24:00까지"
         : `${formatHour(startHour)}부터 익일 ${formatHour(startHour)}까지`;
-      if (sync) syncState();
+      if (save) saveDraft();
     }
 
     function pushHistory(previous) {
@@ -902,7 +902,7 @@
       if (!pushHistory(completed.before)) return;
       updateHeaders();
       updateStatus();
-      syncState();
+      saveDraft();
       announce(`${completed.touched.size}칸을 ${completed.paintValue ? "선택했습니다" : "지웠습니다"}.`);
     }
 
@@ -949,13 +949,23 @@
     }
 
     async function copyLink() {
-      syncState();
+      const title = elements.title.value.trim();
+      if (!title) {
+        const message = "공유 링크를 복사하려면 일정 이름을 입력해 주세요.";
+        elements.title.setAttribute("aria-invalid", "true");
+        elements.title.focus();
+        announce(message);
+        showToast(message);
+        return;
+      }
+
+      const shareUrl = makeShareUrl(window.location.href, slots, { ...metadata(), title });
       try {
-        await copyPlainText(window.location.href);
+        await copyPlainText(shareUrl);
         temporaryLabel(elements.linkLabel, "링크 복사 완료!", "공유 링크 복사");
         showToast("같은 선택 상태를 여는 링크를 복사했어요");
       } catch (_error) {
-        showToast("링크를 복사하지 못했어요. 주소창의 링크를 복사해 주세요.");
+        showToast("링크를 복사하지 못했어요. 다시 시도해 주세요.");
       }
     }
 
@@ -1437,8 +1447,11 @@
         commitMutation(() => slots.fill(0), "모든 선택을 지웠습니다.");
       });
       elements.reset.addEventListener("click", resetSchedule);
-      elements.title.addEventListener("input", syncState);
-      elements.timezone.addEventListener("input", syncState);
+      elements.title.addEventListener("input", () => {
+        elements.title.removeAttribute("aria-invalid");
+        saveDraft();
+      });
+      elements.timezone.addEventListener("input", saveDraft);
       elements.startHour.addEventListener("change", () => {
         rebuildScheduleGrid();
         announce(`하루 시작을 ${formatHour(currentStartHour())}로 바꿨습니다.`);
@@ -1458,7 +1471,7 @@
           if (!target) return;
           event.preventDefault();
           target.scrollIntoView({ behavior: "smooth", block: "start" });
-          syncState();
+          saveDraft();
         });
       });
 
