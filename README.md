@@ -5,7 +5,9 @@
 ## 도구
 
 - [반듯표](./table-maker/) — 한글·전각 문자를 지원하는 ASCII 테이블 생성기
-- [언제표](./schedule-maker/) — 가능한 시간을 공유하고 여러 사람의 겹치는 시간을 찾는 주간 일정표
+- [언제표](./schedule-maker/) — 가능한 시간을 칠하고 링크·이미지·텍스트로 공유하는 주간 일정표
+- [언제표 취합](./schedule-maker/compare.html) — 여러 사람의 언제표 링크에서 겹치는 시간을 찾는 도구
+- [꾸준표](./habit-maker/) — 목표량과 실천 정도를 기록하는 월간 습관 캘린더
 
 ## 새 도구 추가
 
@@ -20,6 +22,7 @@
 ├── .nojekyll
 ├── table-maker/
 ├── schedule-maker/
+├── habit-maker/
 └── next-tool/
 ```
 
