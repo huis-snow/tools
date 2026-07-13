@@ -1480,6 +1480,108 @@ footer {
   text-align: right;
 }
 
+.compare-image-export {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 11px 10px 15px;
+  border: 1px solid var(--ink);
+  border-bottom: 0;
+  background: #f7f7ed;
+}
+
+.compare-image-export-copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.compare-image-export-icon {
+  width: 33px;
+  height: 33px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid #9eaca4;
+}
+
+.compare-image-export-icon i {
+  width: 16px;
+  height: 13px;
+  display: block;
+  border: 1px solid var(--orange);
+  background: linear-gradient(135deg, transparent 47%, var(--orange) 48% 53%, transparent 54%);
+}
+
+.compare-image-export-copy p {
+  min-width: 0;
+  margin: 0;
+}
+
+.compare-image-export-copy strong,
+.compare-image-export-copy small {
+  display: block;
+}
+
+.compare-image-export-copy strong {
+  margin-bottom: 3px;
+  font-size: 11px;
+}
+
+.compare-image-export-copy small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.compare-image-actions {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  gap: 6px;
+}
+
+.compare-image-actions button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--ink);
+  background: var(--cream);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#compareImageButton {
+  background: var(--ink);
+  color: white;
+}
+
+.compare-image-actions button span[aria-hidden="true"] {
+  margin-right: 7px;
+  font-family: var(--mono);
+}
+
+.compare-image-actions button:hover:not(:disabled),
+.compare-image-actions button:focus-visible:not(:disabled) {
+  border-color: var(--orange);
+  color: var(--orange-dark);
+}
+
+#compareImageButton:hover:not(:disabled),
+#compareImageButton:focus-visible:not(:disabled) {
+  border-color: var(--ink);
+  background: #235247;
+  color: white;
+}
+
+.compare-image-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .compare-grid-toolbar {
   min-height: 38px;
   display: flex;
@@ -2168,6 +2270,20 @@ footer > a:last-child {
   #compareSummaryText {
     max-width: none;
     text-align: left;
+  }
+
+  .compare-image-export {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px 18px;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .compare-image-actions {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .compare-grid-toolbar {
@@ -4024,6 +4140,8 @@ footer > a:last-child {
 .compare-collection-controls > label > span,
 #compareCollectionNameInput,
 .compare-collection-actions button,
+.compare-image-export-copy strong,
+.compare-image-actions button,
 .saved-collection-participants,
 .saved-collection-card-actions button,
 .saved-collection-card-actions a,
@@ -4039,6 +4157,7 @@ footer > a:last-child {
 .compare-input-actions p,
 .compare-input-status,
 #compareTimezoneStatus,
+.compare-image-export-copy small,
 .participant-chip small,
 .compare-max span,
 #compareSummaryText,

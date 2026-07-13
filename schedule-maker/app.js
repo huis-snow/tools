@@ -445,6 +445,219 @@
     return canvas;
   }
 
+  function wrapCanvasText(context, value, maximumWidth, maximumLines = 2) {
+    const words = String(value).trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return [];
+    const lines = [];
+    let line = "";
+
+    words.forEach((word) => {
+      if (lines.length >= maximumLines) return;
+      const candidate = line ? `${line} ${word}` : word;
+      if (!line || context.measureText(candidate).width <= maximumWidth) {
+        line = candidate;
+        return;
+      }
+      lines.push(line);
+      line = word;
+    });
+    if (line && lines.length < maximumLines) lines.push(line);
+
+    const source = words.join(" ");
+    const rendered = lines.join(" ");
+    if (rendered !== source && lines.length) {
+      lines[lines.length - 1] = truncateCanvasText(context, lines[lines.length - 1], maximumWidth);
+    } else if (lines.length) {
+      lines[lines.length - 1] = truncateCanvasText(context, lines[lines.length - 1], maximumWidth);
+    }
+    return lines;
+  }
+
+  async function renderComparisonImage(participants, metadata = {}, options = {}) {
+    if (!Array.isArray(participants) || !participants.length) {
+      throw new Error("이미지로 만들 취합 일정이 한 명 이상 필요합니다.");
+    }
+    if (typeof document === "undefined") throw new Error("이미지는 브라우저에서만 만들 수 있습니다.");
+
+    const roster = participants.map((participant, index) => ({
+      ...participant,
+      displayName: cleanMeta(
+        participant?.displayName || participant?.title,
+        `참여자 ${index + 1}`,
+        60,
+      ),
+      timezone: cleanMeta(participant?.timezone, "Asia/Seoul", 40),
+    }));
+    const startHour = normalizeStartHour(metadata.startHour, 8);
+    const startDay = normalizeStartDay(metadata.startDay, 0);
+    const dayOrder = displayDayIndexes(startDay);
+    const aggregate = aggregateSchedules(roster, startHour);
+    const title = cleanMeta(metadata.title, "함께 가능한 시간", 60);
+    const timezone = cleanMeta(metadata.timezone, roster[0].timezone, 40);
+    const excluded = Array.isArray(metadata.excluded)
+      ? metadata.excluded.map((participant, index) => cleanMeta(
+        typeof participant === "string" ? participant : participant?.displayName || participant?.title,
+        `제외 일정 ${index + 1}`,
+        60,
+      ))
+      : [];
+    const maximumCells = aggregate.maxCount > 0
+      ? aggregate.cells.filter((cell) => cell.count === aggregate.maxCount).length
+      : 0;
+
+    const scale = options.scale || 2;
+    const width = 1040;
+    const gridX = 124;
+    const gridY = 222;
+    const gridWidth = 880;
+    const headerHeight = 45;
+    const rowHeight = 30;
+    const gridHeight = headerHeight + HOURS * rowHeight;
+    const height = gridY + gridHeight + 92;
+    const fontFamily = '"Schedule D2Coding", "D2Coding", monospace';
+    const overlapAlphas = [0, 0.14, 0.24, 0.34, 0.44, 0.54, 0.66, 0.8, 1];
+
+    if (document.fonts) {
+      await document.fonts.load('400 16px "Schedule D2Coding"', "월화수목금토일 익일 참여 제외 최대 겹침");
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("이미지 캔버스를 만들지 못했습니다.");
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.textBaseline = "middle";
+
+    context.fillStyle = "#edf2e8";
+    context.fillRect(0, 0, width, height);
+
+    const markX = 36;
+    const markBottom = 44;
+    [14, 25, 18, 31, 24, 15, 21].forEach((barHeight, index) => {
+      context.fillStyle = [1, 3, 4].includes(index) ? "#f36c3f" : "#153c34";
+      context.fillRect(markX + index * 7, markBottom - barHeight, 5, barHeight);
+    });
+
+    context.font = `400 11px ${fontFamily}`;
+    context.fillStyle = "#61766e";
+    context.textAlign = "left";
+    context.fillText("언제표 · GROUP AVAILABILITY", 102, 30);
+
+    context.font = `400 25px ${fontFamily}`;
+    context.fillStyle = "#153c34";
+    context.fillText(truncateCanvasText(context, title, 700), 36, 78);
+
+    context.font = `400 12px ${fontFamily}`;
+    context.fillStyle = "#708078";
+    context.fillText(
+      `기준 시간대  ${timezone}  ·  하루 시작  ${formatHour(startHour)}  ·  시작 요일  ${DAYS[startDay].full}`,
+      38,
+      114,
+    );
+    context.textAlign = "right";
+    const maximumSummary = maximumCells
+      ? `집계 참여 ${roster.length}명  ·  최대 겹침 ${aggregate.maxCount}/${roster.length}명  ·  ${maximumCells}칸`
+      : `집계 참여 ${roster.length}명  ·  최대 겹침 0/${roster.length}명`;
+    context.fillText(maximumSummary, width - 36, 114);
+
+    context.textAlign = "left";
+    context.font = `400 11px ${fontFamily}`;
+    context.fillStyle = "#405f55";
+    wrapCanvasText(
+      context,
+      `참여 일정  ${roster.map((participant) => participant.displayName).join(" · ")}`,
+      width - 76,
+      2,
+    ).forEach((line, index) => context.fillText(line, 38, 148 + index * 20));
+
+    if (excluded.length) {
+      context.fillStyle = "#d8522a";
+      context.fillText(
+        truncateCanvasText(context, `집계 제외  ${excluded.join(" · ")}  ·  기준 시간대와 다름`, width - 76),
+        38,
+        194,
+      );
+    }
+
+    context.fillStyle = "#153c34";
+    context.fillRect(36, gridY, width - 72, headerHeight);
+    context.font = `400 12px ${fontFamily}`;
+    context.textAlign = "center";
+    context.fillStyle = "#dce8df";
+    context.fillText("시간", 80, gridY + headerHeight / 2);
+
+    dayOrder.forEach((day, columnIndex) => {
+      const left = gridX + Math.round((columnIndex * gridWidth) / DAYS.length);
+      const right = gridX + Math.round(((columnIndex + 1) * gridWidth) / DAYS.length);
+      context.fillStyle = day === 6 ? "#ffc2ae" : day === 5 ? "#b9d1d8" : "#ffffff";
+      context.fillText(DAYS[day].short, (left + right) / 2, gridY + headerHeight / 2);
+    });
+
+    displayHours(startHour).forEach((hour, rowOffset) => {
+      const top = gridY + headerHeight + rowOffset * rowHeight;
+      context.fillStyle = rowOffset % 2 ? "#f7f8ef" : "#fffdf5";
+      context.fillRect(36, top, width - 72, rowHeight);
+      context.font = `400 ${hour < startHour ? 9 : 10}px ${fontFamily}`;
+      context.fillStyle = "#60736c";
+      context.textAlign = "center";
+      context.fillText(`${hour < startHour ? "익일 " : ""}${formatHour(hour)}`, 80, top + rowHeight / 2);
+
+      dayOrder.forEach((day, columnIndex) => {
+        const cell = aggregate.cells[slotIndex(hour, day)];
+        const level = overlapColorLevel(cell.count);
+        const left = gridX + Math.round((columnIndex * gridWidth) / DAYS.length);
+        const right = gridX + Math.round(((columnIndex + 1) * gridWidth) / DAYS.length);
+        if (level > 0) {
+          context.fillStyle = level === MAX_OVERLAP_LEVEL
+            ? "#f36c3f"
+            : `rgba(243, 108, 63, ${overlapAlphas[level]})`;
+          context.fillRect(left + 1, top + 1, right - left - 1, rowHeight - 1);
+        }
+        context.font = `600 10px ${fontFamily}`;
+        context.fillStyle = level >= 6 ? "#ffffff" : level ? "#153c34" : "#a2ada6";
+        context.fillText(cell.count ? `${cell.count}명` : "–", (left + right) / 2, top + rowHeight / 2 + 0.5);
+      });
+    });
+
+    context.fillStyle = "#9aaba1";
+    for (let hour = 0; hour <= HOURS; hour += 1) {
+      const y = gridY + headerHeight + hour * rowHeight;
+      context.fillRect(36, y, width - 72, 1);
+    }
+    context.fillRect(gridX - 1, gridY, 1, gridHeight);
+    for (let day = 0; day <= DAYS.length; day += 1) {
+      const x = gridX + Math.round((day * gridWidth) / DAYS.length);
+      context.fillRect(x, gridY, 1, gridHeight);
+    }
+    if (startHour !== 0) {
+      const midnightOffset = HOURS - startHour;
+      const midnightY = gridY + headerHeight + midnightOffset * rowHeight;
+      context.fillStyle = "#f36c3f";
+      context.fillRect(36, midnightY, width - 72, 2);
+    }
+
+    const footerY = gridY + gridHeight + 42;
+    context.font = `400 10px ${fontFamily}`;
+    context.textAlign = "left";
+    context.fillStyle = "#61766e";
+    context.fillText("겹치는 인원", 38, footerY);
+    for (let level = 1; level <= MAX_OVERLAP_LEVEL; level += 1) {
+      const x = 116 + (level - 1) * 33;
+      context.fillStyle = level === MAX_OVERLAP_LEVEL
+        ? "#f36c3f"
+        : `rgba(243, 108, 63, ${overlapAlphas[level]})`;
+      context.fillRect(x, footerY - 8, 24, 16);
+    }
+    context.fillStyle = "#61766e";
+    context.fillText("1명", 116, footerY + 25);
+    context.fillText("8명+", 331, footerY + 25);
+    context.textAlign = "right";
+    context.fillText("언제표에서 만든 가능 시간 취합표", width - 36, footerY);
+
+    return canvas;
+  }
+
   function canvasToBlob(canvas) {
     return new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
@@ -496,6 +709,10 @@
       compareCollectionSave: document.querySelector("#compareSaveCollectionButton"),
       compareCollectionShare: document.querySelector("#compareCopyCollectionLinkButton"),
       compareCollectionStatus: document.querySelector("#compareCollectionSaveStatus"),
+      compareImageButton: document.querySelector("#compareImageButton"),
+      compareImageLabel: document.querySelector("#compareImageLabel"),
+      comparePngButton: document.querySelector("#comparePngButton"),
+      compareImageStatus: document.querySelector("#compareImageStatus"),
     };
 
     let slots = createSlots();
@@ -517,6 +734,7 @@
     let comparisonCellElements = [];
     let activeComparisonCollectionId = null;
     let comparisonCollectionDirty = false;
+    let comparisonImageBusy = false;
     const participantColors = ["#f36c3f", "#2d765f", "#49778a", "#d69231", "#7b6aa8", "#b85167", "#42877d"];
     const anchorHashes = new Set(["#top", "#schedule", "#share", "#compare"]);
 
@@ -1405,6 +1623,99 @@
       }
     }
 
+    function setComparisonImageStatus(message) {
+      if (elements.compareImageStatus) elements.compareImageStatus.textContent = message;
+    }
+
+    function syncComparisonImageControls(compatibleCount = comparisonView().compatible.length) {
+      const disabled = comparisonImageBusy || compatibleCount === 0;
+      if (elements.compareImageButton) elements.compareImageButton.disabled = disabled;
+      if (elements.comparePngButton) elements.comparePngButton.disabled = disabled;
+    }
+
+    function comparisonImageFilename() {
+      const title = elements.compareCollectionName?.value.trim() || "eonjepyo-comparison";
+      const safeTitle = title.replace(/[\\/:*?"<>|]+/g, "-").slice(0, 48).trim();
+      return `${safeTitle || "eonjepyo-comparison"}.png`;
+    }
+
+    function comparisonImageBlobPromise() {
+      const { compatible, excluded, baseTimezone } = comparisonView();
+      if (!compatible.length) throw new Error("이미지로 만들 취합 일정이 없어요.");
+      const snapshot = compatible.map((participant) => ({
+        ...participant,
+        slots: participant.slots.slice(),
+      }));
+      return renderComparisonImage(snapshot, {
+        title: elements.compareCollectionName?.value.trim() || "함께 가능한 시간",
+        timezone: baseTimezone || "Asia/Seoul",
+        startHour: currentComparisonStartHour(),
+        startDay: currentComparisonStartDay(),
+        excluded,
+      }).then(canvasToBlob);
+    }
+
+    async function copyComparisonImage() {
+      comparisonImageBusy = true;
+      syncComparisonImageControls();
+      const original = "이미지 복사";
+      if (elements.compareImageLabel) elements.compareImageLabel.textContent = "이미지 만드는 중";
+      setComparisonImageStatus("현재 취합 결과를 이미지로 만들고 있어요.");
+
+      try {
+        const blobPromise = comparisonImageBlobPromise();
+        let copied = false;
+        const supportsPng = typeof ClipboardItem !== "undefined" &&
+          (typeof ClipboardItem.supports !== "function" || ClipboardItem.supports("image/png"));
+        if (window.isSecureContext && navigator.clipboard?.write && supportsPng) {
+          try {
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": blobPromise })]);
+            copied = true;
+          } catch (_clipboardError) {
+            copied = false;
+          }
+        }
+
+        if (copied) {
+          if (elements.compareImageLabel) elements.compareImageLabel.textContent = "이미지 복사 완료!";
+          setComparisonImageStatus("취합 결과 이미지를 복사했어요. 메신저 입력창에 붙여넣을 수 있어요.");
+          showToast("취합 결과 이미지를 복사했어요");
+        } else {
+          downloadBlob(await blobPromise, comparisonImageFilename());
+          if (elements.compareImageLabel) elements.compareImageLabel.textContent = "PNG 저장 완료!";
+          setComparisonImageStatus("이미지 복사를 지원하지 않아 PNG 파일로 저장했어요.");
+          showToast("이미지 복사를 지원하지 않아 PNG로 저장했어요");
+        }
+      } catch (error) {
+        if (elements.compareImageLabel) elements.compareImageLabel.textContent = "다시 시도해 주세요";
+        setComparisonImageStatus(error.message || "취합 결과 이미지를 만들지 못했어요.");
+        showToast(error.message || "취합 결과 이미지를 만들지 못했어요");
+      } finally {
+        comparisonImageBusy = false;
+        syncComparisonImageControls();
+        window.setTimeout(() => {
+          if (elements.compareImageLabel) elements.compareImageLabel.textContent = original;
+        }, 1800);
+      }
+    }
+
+    async function saveComparisonPng() {
+      comparisonImageBusy = true;
+      syncComparisonImageControls();
+      setComparisonImageStatus("현재 취합 결과를 고해상도 PNG로 만들고 있어요.");
+      try {
+        downloadBlob(await comparisonImageBlobPromise(), comparisonImageFilename());
+        setComparisonImageStatus("고해상도 취합 결과 PNG를 저장했어요.");
+        showToast("고해상도 취합 결과 PNG를 저장했어요");
+      } catch (error) {
+        setComparisonImageStatus(error.message || "취합 결과 PNG를 저장하지 못했어요.");
+        showToast(error.message || "취합 결과 PNG를 저장하지 못했어요");
+      } finally {
+        comparisonImageBusy = false;
+        syncComparisonImageControls();
+      }
+    }
+
     function addComparisonLinks() {
       const inputs = elements.compareLinks.value.match(/\S+/g) || [];
       if (!inputs.length) {
@@ -1676,6 +1987,12 @@
           : result;
       }
       syncComparisonCollectionControls();
+      syncComparisonImageControls(compatible.length);
+      if (!comparisonImageBusy) {
+        setComparisonImageStatus(compatible.length
+          ? `현재 ${compatible.length}명의 취합 결과를 이미지로 복사하거나 저장할 수 있어요.${excluded.length ? ` 다른 시간대 ${excluded.length}명은 이미지 집계에서도 제외돼요.` : ""}`
+          : "취합할 일정을 추가하면 결과를 이미지로 내보낼 수 있어요.");
+      }
     }
 
     function setComparisonRovingFocus(index, shouldFocus = true) {
@@ -1850,6 +2167,8 @@
         if (record) showToast(`${record.name} 취합표를 저장했어요`);
       });
       elements.compareCollectionShare?.addEventListener("click", copyCurrentComparisonCollection);
+      elements.compareImageButton?.addEventListener("click", copyComparisonImage);
+      elements.comparePngButton?.addEventListener("click", saveComparisonPng);
       window.addEventListener?.("hashchange", () => {
         const api = savedComparisonsApi();
         if (!api || !(window.location.hash || "").startsWith(`#${api.SHARE_PARAMETER || "g"}=`)) return;
@@ -1907,6 +2226,7 @@
     aggregateSchedules,
     overlapColorLevel,
     renderScheduleImage,
+    renderComparisonImage,
     canvasToBlob,
     slotsEqual,
   };

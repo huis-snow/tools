@@ -192,6 +192,27 @@
               </div>
             </div>
 
+            <div class="compare-image-export" role="group" aria-labelledby="compare-image-export-title">
+              <div class="compare-image-export-copy">
+                <span class="compare-image-export-icon" aria-hidden="true"><i></i></span>
+                <p>
+                  <strong id="compare-image-export-title">이미지로 내보내기</strong>
+                  <small>현재 취합 결과를 고해상도 PNG로 복사하거나 저장해요.</small>
+                </p>
+              </div>
+              <div class="compare-image-actions">
+                <button id="compareImageButton" type="button" aria-describedby="compareImageStatus" disabled>
+                  <span aria-hidden="true">▧</span><span id="compareImageLabel">이미지 복사</span>
+                </button>
+                <button id="comparePngButton" type="button" aria-describedby="compareImageStatus" disabled>
+                  <span aria-hidden="true">↓</span><span>PNG 저장</span>
+                </button>
+              </div>
+            </div>
+            <p id="compareImageStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              취합할 일정을 추가하면 결과를 이미지로 내보낼 수 있어요.
+            </p>
+
             <div class="compare-grid-toolbar">
               <div class="compare-heat-legend" aria-label="1명부터 8명 이상까지 겹치는 인원이 많을수록 색이 진해집니다">
                 <span>1명</span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span>8명+</span>
