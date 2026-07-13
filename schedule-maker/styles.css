@@ -3958,3 +3958,152 @@ footer > a:last-child {
     width: 100%;
   }
 }
+
+/* Readable type scale: regular UI text is about 10pt at the default browser size. */
+:root {
+  --text-ui: 0.833rem;
+  --text-meta: 0.75rem;
+}
+
+.back-link,
+.header-link,
+.write-page .header-link,
+.compare-page .header-link,
+.hero-cta,
+.section-heading > p,
+.text-field > span,
+.select-field > span,
+.presets > span,
+.text-field input,
+.select-field select,
+.presets button,
+.edit-actions button,
+.legend,
+.range-help,
+.interaction-help,
+.range-help b,
+.grid-corner,
+.day-toggle,
+.time-toggle,
+.time-toggle span,
+.selection-status p,
+.share-card > p,
+.share-card > button,
+.split-actions button,
+.compare-route-cta > div:nth-child(2) > span,
+.compare-route-cta > a,
+.compare-steps strong,
+.compare-steps p,
+.compare-block-heading > span,
+.compare-link-input > label,
+.compare-timezone-card > span,
+#compareLinksInput,
+#compareAddButton,
+#compareStartHourSelect,
+#compareStartDaySelect,
+.participant-heading p,
+.compare-result-heading > div:first-child > p,
+.participant-heading strong,
+#compareClearButton,
+.participant-empty,
+.participant-chip,
+.compare-corner,
+.compare-day,
+.compare-time,
+.compare-time span,
+.compare-cell,
+.compare-detail p,
+.toast,
+.saved-header-nav,
+.saved-hero-note li p,
+.saved-hero-note li strong,
+.saved-search-field > span:first-child,
+#savedSearchInput,
+.saved-select-all,
+.saved-card-check,
+.saved-selection-bar > p,
+.saved-selection-actions button,
+.saved-card-actions button,
+.saved-card-actions a,
+.saved-rename-form button,
+.saved-empty-state > a,
+.saved-empty-state > button,
+.saved-rename-form label > span,
+.saved-rename-form input,
+.saved-empty-state > span,
+.saved-delete-dialog form > p:nth-of-type(2),
+.saved-delete-dialog button,
+.compare-collection-heading > p,
+.compare-collection-controls > label > span,
+#compareCollectionNameInput,
+.compare-collection-actions button,
+.saved-collection-participants,
+.saved-collection-card-actions button,
+.saved-collection-card-actions a,
+.saved-dialog-field > span,
+.saved-dialog-field select {
+  font-size: var(--text-ui);
+}
+
+.text-field small,
+.select-field small,
+.privacy-note,
+.compare-block-heading strong,
+.compare-input-actions p,
+.compare-input-status,
+#compareTimezoneStatus,
+.participant-chip small,
+.compare-max span,
+#compareSummaryText,
+.compare-heat-legend,
+.compare-grid-toolbar > p,
+.compare-detail .detail-participants span,
+.compare-privacy,
+footer,
+.mobile-help,
+.saved-search-field small,
+.saved-total > span,
+.saved-total p,
+.saved-slot-badge,
+.saved-card-heading p,
+.saved-card-meta dt,
+.saved-card-meta dd,
+.saved-privacy,
+.compare-collection-status,
+.saved-collection-card-heading p,
+.saved-collection-count-badge,
+.saved-collection-meta dt,
+.saved-collection-meta dd,
+.saved-add-dialog form > small {
+  font-size: var(--text-meta);
+}
+
+.saved-card-meta dd,
+.saved-collection-meta dd {
+  overflow: visible;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+@media (max-width: 680px) {
+  .write-page .site-header,
+  .compare-page .site-header,
+  .saved-page .site-header {
+    column-gap: 6px;
+  }
+
+  .saved-page .back-link {
+    max-width: 96px;
+  }
+
+  .schedule-hints {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .saved-selection-actions button {
+    padding-inline: 10px;
+  }
+}
