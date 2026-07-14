@@ -9,6 +9,7 @@
 - [언제표 취합](./schedule-maker/compare.html) — 여러 사람의 언제표 링크에서 겹치는 시간을 찾는 도구
 - [꾸준표](./habit-maker/) — 목표량과 실천 정도를 기록하는 월간 습관 캘린더
 - [공대표](./raid-maker/) — 주직업과 부직업 우선순위로 파이널판타지14 8인 공대를 구성하는 도구
+- [하루기록](./daily-log/) — 식사·음주·컨디션과 메모를 날짜별로 남기는 생활 기록 달력
 
 ## 새 도구 추가
 
@@ -25,6 +26,7 @@
 ├── schedule-maker/
 ├── habit-maker/
 ├── raid-maker/
+├── daily-log/
 └── next-tool/
 ```
 

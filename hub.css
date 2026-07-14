@@ -564,6 +564,93 @@ footer {
   color: #b8a2e3;
 }
 
+.daily-preview {
+  padding: 19px 24px;
+}
+
+.mini-daily-log {
+  width: min(100%, 360px);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.mini-daily-head,
+.mini-daily-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+}
+
+.mini-daily-head {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mini-daily-head strong {
+  color: #fffdf6;
+  font-size: 10px;
+}
+
+.mini-daily-head span {
+  color: #f9946f;
+  font-size: 7px;
+}
+
+.mini-daily-meals {
+  padding: 3px 10px;
+}
+
+.mini-daily-meals > span {
+  min-height: 25px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mini-daily-meals > span:last-child {
+  border-bottom: 0;
+}
+
+.mini-daily-meals i,
+.mini-daily-meals b {
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-daily-meals i {
+  color: #90a49b;
+  font: 7px var(--mono);
+}
+
+.mini-daily-meals b {
+  color: #d7e2dc;
+  font-size: 7px;
+  font-weight: 500;
+}
+
+.mini-daily-footer {
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  color: #9fb0a8;
+  font-size: 6px;
+}
+
+.mini-daily-footer span b {
+  color: #e8c969;
+  font-weight: 400;
+}
+
+.mini-daily-footer em {
+  color: #8fc9a0;
+  font-style: normal;
+}
+
 .card-content > p:first-child {
   margin: 0 0 8px;
   font-size: 9px;

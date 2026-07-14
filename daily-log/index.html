@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="매일의 식사와 음주, 컨디션, 짧은 메모를 달력에 차곡차곡 남기는 브라우저 일상 기록장"
+    />
+    <meta name="theme-color" content="#f2eee5" />
+    <title>식사·음주·컨디션 일상 기록 | 하루기록</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#dailyLog">오늘 기록으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="하루기록 홈">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>하루기록</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> 오늘을 가볍게 남기기</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="introTitle">
+        <div class="intro-copy">
+          <p class="eyebrow"><span></span> A SMALL NOTE FOR TODAY</p>
+          <h1 id="introTitle">먹고, 마시고,<br /><em>지나온 하루.</em></h1>
+          <p>
+            잘했는지 따지기보다 오늘 있었던 일을 있는 그대로 적어요.<br class="desktop-only" />
+            식사와 음주, 컨디션과 짧은 생각을 한 장에 남겨보세요.
+          </p>
+          <a class="intro-cta" href="#dailyLog">오늘 기록하기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="day-note" aria-label="하루기록에 남길 수 있는 항목 예시">
+          <div class="note-tape" aria-hidden="true"></div>
+          <div class="note-heading">
+            <div>
+              <span>TODAY / NOTE</span>
+              <strong>하루 한 장</strong>
+            </div>
+            <span class="note-page">TODAY</span>
+          </div>
+          <div class="note-lines" aria-hidden="true">
+            <span><i>아침</i><b>가볍게 먹은 것</b><em>○</em></span>
+            <span><i>점심</i><b>기억하고 싶은 맛</b><em>○</em></span>
+            <span><i>저녁</i><b>함께한 사람과 시간</b><em>○</em></span>
+          </div>
+          <div class="note-condition">
+            <span>오늘의 컨디션</span>
+            <div aria-hidden="true"><i></i><i></i><i></i><i class="picked"></i><i></i></div>
+          </div>
+          <p><span aria-hidden="true">✦</span> 특별하지 않은 하루도 나중에는 좋은 기록이 됩니다.</p>
+        </div>
+      </section>
+
+      <section class="log-section" id="dailyLog" aria-labelledby="logTitle">
+        <div class="section-heading">
+          <div>
+            <p>01 / WRITE THE DAY</p>
+            <h2 id="logTitle">오늘의 한 장을 채워보세요</h2>
+          </div>
+          <p>날짜를 고르고 기록하면 이 브라우저에 자동으로 저장돼요.</p>
+        </div>
+
+        <div class="log-panel">
+          <div class="log-toolbar">
+            <nav class="month-navigation" aria-label="달력 월 이동">
+              <button id="prevMonthButton" type="button" aria-label="이전 달">
+                <span aria-hidden="true">←</span>
+              </button>
+              <time id="monthLabel" aria-live="polite" aria-atomic="true">이번 달</time>
+              <button id="nextMonthButton" type="button" aria-label="다음 달">
+                <span aria-hidden="true">→</span>
+              </button>
+              <button id="todayButton" class="today-button" type="button">오늘</button>
+            </nav>
+            <p><span aria-hidden="true">●</span> 기록한 날은 달력에 작은 표시가 생겨요.</p>
+          </div>
+
+          <div class="log-layout">
+            <article class="calendar-card" aria-labelledby="calendarTitle">
+              <div class="card-heading">
+                <div>
+                  <span>MONTH AT A GLANCE</span>
+                  <h3 id="calendarTitle">한 달의 기록</h3>
+                </div>
+                <ul class="calendar-legend" aria-label="달력 기록 표시 안내">
+                  <li><i class="mark-meal" aria-hidden="true"></i> 식사</li>
+                  <li><i class="mark-alcohol" aria-hidden="true"></i> 음주</li>
+                  <li><i class="mark-note" aria-hidden="true"></i> 메모</li>
+                </ul>
+              </div>
+
+              <p class="calendar-help" id="calendarHelp">날짜를 선택하면 오른쪽에 그날의 기록이 열려요.</p>
+              <div class="calendar-shell">
+                <div
+                  class="calendar-grid"
+                  id="calendarGrid"
+                  aria-label="월간 일상 기록 달력"
+                  aria-describedby="calendarHelp"
+                >
+                  <div class="calendar-weekdays" aria-hidden="true">
+                    <span class="calendar-weekday">월</span>
+                    <span class="calendar-weekday">화</span>
+                    <span class="calendar-weekday">수</span>
+                    <span class="calendar-weekday">목</span>
+                    <span class="calendar-weekday">금</span>
+                    <span class="calendar-weekday saturday">토</span>
+                    <span class="calendar-weekday sunday">일</span>
+                  </div>
+                  <p class="calendar-loading" role="status">달력을 준비하고 있어요.</p>
+                </div>
+              </div>
+
+              <section class="month-summary" aria-labelledby="summaryTitle">
+                <div class="summary-heading">
+                  <span>MONTHLY SNAPSHOT</span>
+                  <h3 id="summaryTitle">이번 달 한눈에</h3>
+                </div>
+                <dl class="summary-grid">
+                  <div>
+                    <dt>기록한 날</dt>
+                    <dd><b id="loggedDaysCount">0</b><small>일</small></dd>
+                  </div>
+                  <div>
+                    <dt>남긴 식사</dt>
+                    <dd><b id="mealCount">0</b><small>끼</small></dd>
+                  </div>
+                  <div>
+                    <dt>음주한 날</dt>
+                    <dd><b id="drinkingDaysCount">0</b><small>일</small></dd>
+                  </div>
+                  <div class="condition-stat">
+                    <dt>평균 컨디션</dt>
+                    <dd><b id="averageCondition">—</b><small>/ 5</small></dd>
+                  </div>
+                </dl>
+              </section>
+            </article>
+
+            <aside class="entry-card" aria-labelledby="selectedDateLabel">
+              <div class="entry-heading">
+                <div>
+                  <span>DAILY NOTE</span>
+                  <h3 id="selectedDateLabel" aria-live="polite" aria-atomic="true">오늘의 기록</h3>
+                  <p id="selectedDateSummary">식사와 컨디션을 가볍게 남겨보세요.</p>
+                </div>
+                <span class="entry-date-mark" aria-hidden="true">✎</span>
+              </div>
+
+              <form id="dailyLogForm" class="entry-form" novalidate>
+                <fieldset class="entry-section meal-section">
+                  <legend><span>01</span> 식사</legend>
+                  <p>먹은 음식이나 함께한 사람처럼 기억할 만큼만 적어요.</p>
+                  <div class="meal-fields">
+                    <label for="breakfastInput">
+                      <span><i aria-hidden="true">AM</i> 아침</span>
+                      <textarea
+                        id="breakfastInput"
+                        rows="2"
+                        maxlength="300"
+                        placeholder="무엇을 먹었나요?"
+                      ></textarea>
+                    </label>
+                    <label for="lunchInput">
+                      <span><i aria-hidden="true">12</i> 점심</span>
+                      <textarea id="lunchInput" rows="2" maxlength="300" placeholder="무엇을 먹었나요?"></textarea>
+                    </label>
+                    <label for="dinnerInput">
+                      <span><i aria-hidden="true">PM</i> 저녁</span>
+                      <textarea id="dinnerInput" rows="2" maxlength="300" placeholder="무엇을 먹었나요?"></textarea>
+                    </label>
+                    <label for="snackInput">
+                      <span><i aria-hidden="true">＋</i> 간식</span>
+                      <textarea id="snackInput" rows="2" maxlength="300" placeholder="간식이나 야식도 적어두세요."></textarea>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset class="entry-section alcohol-section">
+                  <legend><span>02</span> 음주</legend>
+                  <label class="alcohol-toggle" for="alcoholDrankInput">
+                    <span>
+                      <strong>오늘 술을 마셨어요</strong>
+                      <small>체크하면 종류와 양을 기록할 수 있어요.</small>
+                    </span>
+                    <input id="alcoholDrankInput" type="checkbox" />
+                    <i aria-hidden="true"></i>
+                  </label>
+
+                  <div class="alcohol-details" id="alcoholDetails" hidden>
+                    <label for="alcoholTypeInput">
+                      <span>종류</span>
+                      <input
+                        id="alcoholTypeInput"
+                        type="text"
+                        maxlength="40"
+                        autocomplete="off"
+                        list="alcoholTypeSuggestions"
+                        placeholder="예: 맥주, 와인"
+                      />
+                      <datalist id="alcoholTypeSuggestions">
+                        <option value="맥주"></option>
+                        <option value="소주"></option>
+                        <option value="와인"></option>
+                        <option value="위스키"></option>
+                        <option value="하이볼"></option>
+                        <option value="막걸리"></option>
+                      </datalist>
+                    </label>
+                    <label for="alcoholAmountInput">
+                      <span>양</span>
+                      <input
+                        id="alcoholAmountInput"
+                        type="text"
+                        maxlength="40"
+                        autocomplete="off"
+                        placeholder="예: 맥주 2잔"
+                      />
+                    </label>
+                    <label class="alcohol-note-field" for="alcoholNoteInput">
+                      <span>짧은 메모</span>
+                      <textarea
+                        id="alcoholNoteInput"
+                        rows="2"
+                        maxlength="200"
+                        placeholder="어디서, 누구와 마셨는지 남겨도 좋아요."
+                      ></textarea>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset class="entry-section condition-section">
+                  <legend><span>03</span> 컨디션</legend>
+                  <p id="conditionHelp">오늘의 몸과 마음에 가장 가까운 숫자를 골라주세요.</p>
+                  <div class="condition-options" aria-describedby="conditionHelp">
+                    <button type="button" data-condition="1" aria-pressed="false">
+                      <b>1</b><span>많이 지침</span>
+                    </button>
+                    <button type="button" data-condition="2" aria-pressed="false">
+                      <b>2</b><span>조금 지침</span>
+                    </button>
+                    <button type="button" data-condition="3" aria-pressed="false">
+                      <b>3</b><span>보통</span>
+                    </button>
+                    <button type="button" data-condition="4" aria-pressed="false">
+                      <b>4</b><span>괜찮음</span>
+                    </button>
+                    <button type="button" data-condition="5" aria-pressed="false">
+                      <b>5</b><span>아주 좋음</span>
+                    </button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="entry-section memo-section">
+                  <legend><span>04</span> 하루 메모</legend>
+                  <label class="sr-only" for="memoInput">오늘의 짧은 메모</label>
+                  <textarea
+                    id="memoInput"
+                    rows="4"
+                    maxlength="1000"
+                    placeholder="기억하고 싶은 일이나 생각을 자유롭게 적어보세요."
+                  ></textarea>
+                </fieldset>
+
+                <div class="entry-actions">
+                  <p id="saveStatus" role="status" aria-live="polite" aria-atomic="true">
+                    입력한 내용은 자동으로 저장돼요.
+                  </p>
+                  <button id="clearDayButton" type="button">이날 기록 비우기</button>
+                </div>
+              </form>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="data-section" aria-labelledby="dataTitle">
+        <div class="section-heading data-heading">
+          <div>
+            <p>02 / KEEP IT YOURS</p>
+            <h2 id="dataTitle">기록을 내 곁에 보관하세요</h2>
+          </div>
+          <p>기기를 옮기거나 브라우저를 정리하기 전에는 파일로 백업해 주세요.</p>
+        </div>
+
+        <div class="data-panel">
+          <div class="privacy-copy">
+            <span class="local-stamp">LOCAL ONLY</span>
+            <h3>당신의 하루는<br />이 브라우저 안에만</h3>
+            <p>
+              식사, 음주, 메모를 포함한 모든 기록은 서버로 전송하지 않아요.
+              이 기기의 현재 브라우저에만 저장됩니다.
+            </p>
+          </div>
+          <div class="data-actions">
+            <button id="exportButton" type="button">
+              <span class="action-icon" aria-hidden="true">↓</span>
+              <span><strong>기록 내보내기</strong><small>전체 기록을 JSON 파일로 백업</small></span>
+            </button>
+            <button id="importButton" type="button">
+              <span class="action-icon" aria-hidden="true">↑</span>
+              <span><strong>기록 가져오기</strong><small>백업해 둔 JSON 파일 복원</small></span>
+            </button>
+            <input id="importInput" class="sr-only" type="file" accept="application/json,.json" tabindex="-1" />
+            <p class="data-notice">
+              <span aria-hidden="true">●</span>
+              공용 기기에서는 사용 후 브라우저 데이터를 확인해 주세요.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>하루기록</span>
+      </a>
+      <p>평범한 오늘을 잊지 않기 위한 작은 기록장</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>
