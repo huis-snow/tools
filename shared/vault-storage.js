@@ -32,7 +32,8 @@
       : "";
     // Whale 4.38 / Chromium 148 can crash its browser process when a
     // FileSystemHandle restored from IndexedDB calls requestPermission().
-    // Use the ordinary file-input/download path until the browser fixes it.
+    // Fresh picker handles remain usable, but permission restoration must be
+    // replaced by another explicit picker selection in that browser.
     if (/\bWhale\//i.test(userAgent) || /\bWhale\b/i.test(brands)) return "whale-stored-handle-crash";
     return "";
   }
@@ -627,9 +628,13 @@
     let needsFullPersistence = false;
 
     const fileSystemAccessDisabledReason = detectFileSystemAccessDisabledReason(environment);
-    const fileSystemAccessSupported = typeof valueFromEnvironment("showOpenFilePicker") === "function"
-      && typeof valueFromEnvironment("showSaveFilePicker") === "function"
-      && !fileSystemAccessDisabledReason;
+    const filePickerSupported = typeof valueFromEnvironment("showOpenFilePicker") === "function"
+      && typeof valueFromEnvironment("showSaveFilePicker") === "function";
+    // Keep the legacy status field as the broad direct-file capability. The
+    // more specific fields below distinguish safe fresh picker handles from
+    // restoring permission on a handle deserialized from IndexedDB.
+    const fileSystemAccessSupported = filePickerSupported;
+    const storedHandleReconnectSupported = filePickerSupported && !fileSystemAccessDisabledReason;
 
     function metadataSnapshot() {
       return {
@@ -661,6 +666,8 @@
         mode: backend.mode,
         supported: backend.supported,
         fileSystemAccessSupported,
+        filePickerSupported,
+        storedHandleReconnectSupported,
         connected: Boolean(fileHandle),
         fileName: fileHandle?.name || recentFileName || "",
         lastSyncAt: lastSyncAt || null,
@@ -670,6 +677,12 @@
         entryCount: memory.size,
         bytes: calculateBytes(),
         vaultId,
+        requiresFileReselection: Boolean(
+          filePickerSupported
+          && !storedHandleReconnectSupported
+          && recentFileName
+          && (!fileHandle || filePermission !== "granted")
+        ),
         ...(fileSystemAccessDisabledReason ? { fileSystemAccessDisabledReason } : {}),
         ...(lastError ? {
           error: {
@@ -1201,7 +1214,8 @@
       let permission;
       try {
         permission = await handle.queryPermission({ mode: "readwrite" });
-        if (permission === "prompt" && request && typeof handle.requestPermission === "function") {
+        if (permission === "prompt" && request && storedHandleReconnectSupported
+          && typeof handle.requestPermission === "function") {
           permission = await handle.requestPermission({ mode: "readwrite" });
         }
       } catch (error) {
@@ -1214,7 +1228,7 @@
     }
 
     function beginPermissionRequest(handle, request) {
-      if (!fileSystemAccessSupported || !request || filePermission === "granted"
+      if (!storedHandleReconnectSupported || !request || filePermission === "granted"
         || !handle || typeof handle.requestPermission !== "function") return null;
       // requestPermission() requires transient user activation. Invoke it
       // synchronously from the button-triggered API call, before an existing
@@ -1245,7 +1259,8 @@
       const picker = valueFromEnvironment("showSaveFilePicker");
       if (typeof picker !== "function") throw new Error("이 브라우저에서는 파일 보관함 연결을 지원하지 않습니다.");
       return picker.call(valueFromEnvironment("window") || root, {
-        suggestedName: "tools-vault.json",
+        id: options?.pickerId || "huis-tools-vault",
+        suggestedName: options?.suggestedName || "tools-vault.json",
         types: [{ description: "도구 보관함", accept: { "application/json": [".json"] } }],
       });
     }
@@ -1374,16 +1389,119 @@
       });
     }
 
+    function beginFreshSaveHandleSelection(options = {}) {
+      // File pickers require transient user activation. Start the picker before
+      // awaiting ready or the file-operation queue, and settle its rejection so
+      // a busy queue cannot temporarily create an unhandled promise rejection.
+      try {
+        return Promise.resolve(pickSaveHandle({
+          ...options,
+          pickerId: options.pickerId || "huis-tools-vault",
+          suggestedName: options.suggestedName || recentFileName || "tools-vault.json",
+        })).then(
+          (handle) => ({ handle }),
+          (error) => ({ error }),
+        );
+      } catch (error) {
+        return Promise.resolve({ error });
+      }
+    }
+
+    async function connectFreshSaveHandle(handle, expectedHandle, expectedConnectionId) {
+      if (!handle) throw new Error("선택한 보관함 파일이 없습니다.");
+      if (fileHandle !== expectedHandle || connectionId !== expectedConnectionId) {
+        throw new Error("다시 연결하는 동안 보관함 연결이 변경되었습니다.");
+      }
+
+      // showSaveFilePicker() is specified to return a readwrite-granted handle.
+      // Verify that invariant, but never try to repair it with requestPermission
+      // in Whale: that native permission path is the one known to crash.
+      let permission = "granted";
+      if (typeof handle.queryPermission === "function") {
+        try { permission = await handle.queryPermission({ mode: "readwrite" }); }
+        catch (_error) { permission = "denied"; }
+      }
+      if (permission !== "granted") {
+        throw new Error("선택한 보관함에 쓰기 권한이 없습니다. 파일을 다시 선택해 주세요.");
+      }
+
+      const { text, rawHash } = await readHandle(handle);
+      const document = await parseVaultText(text, environment);
+      await flush();
+      if (fileHandle !== expectedHandle || connectionId !== expectedConnectionId) {
+        throw new Error("다시 연결하는 동안 보관함 연결이 변경되었습니다.");
+      }
+      if (document.vaultId !== vaultId) throw createConflictError();
+
+      const nextConnectionId = randomId(environment);
+      const nextFileName = handle.name || recentFileName || "tools-vault.json";
+      const nextSyncAt = nowIso(environment);
+      if (dirty) {
+        if (!lastFileHash || lastFileRevision === null
+          || rawHash !== lastFileHash || document.revision !== lastFileRevision) {
+          throw createConflictError();
+        }
+        // Publish the new connection only after its metadata is durable. The
+        // working copy remains untouched and dirty, ready for the next autosync.
+        await backend.setMeta({
+          ...metadataSnapshot(),
+          fileHandle: handle,
+          connectionId: nextConnectionId,
+          recentFileName: nextFileName,
+          lastFileHash: rawHash,
+          lastFileRevision: document.revision,
+          lastSyncAt: nextSyncAt,
+        });
+        fileHandle = handle;
+        connectionId = nextConnectionId;
+        recentFileName = nextFileName;
+        filePermission = "granted";
+        lastFileHash = rawHash;
+        lastFileRevision = document.revision;
+        lastSyncAt = nextSyncAt;
+        postBroadcast({ type: "connection-changed", fileName: recentFileName });
+      } else {
+        await replaceWithDocument(document, {
+          dirty: false,
+          fileHandle: handle,
+          connectionId: nextConnectionId,
+          recentFileName: nextFileName,
+          filePermission: "granted",
+          lastFileHash: rawHash,
+          lastFileRevision: document.revision,
+          lastSyncAt: nextSyncAt,
+        });
+      }
+      lastError = null;
+      notify({ type: "reconnected" });
+      return getStatus();
+    }
+
     function reconnectFile(options = {}) {
       const targetHandle = fileHandle;
-      const permissionAttempt = beginPermissionRequest(targetHandle, options.requestPermission !== false);
+      const targetConnectionId = connectionId;
+      const shouldReselect = filePickerSupported
+        && !storedHandleReconnectSupported
+        && Boolean(targetHandle || recentFileName || options.handle)
+        && (!targetHandle || filePermission !== "granted");
+      const freshHandleAttempt = shouldReselect
+        ? beginFreshSaveHandleSelection(options)
+        : null;
+      const permissionAttempt = shouldReselect
+        ? null
+        : beginPermissionRequest(targetHandle, options.requestPermission !== false);
       return ready.then(() => enqueueFileOperation(async () => {
         try {
           if (!fileSystemAccessSupported) {
             throw new Error("이 브라우저에서는 안전을 위해 최근 파일 직접 재연결을 사용하지 않습니다. 파일을 다시 열어 주세요.");
           }
+          if (freshHandleAttempt) {
+            const selection = await freshHandleAttempt;
+            if (selection.error) throw selection.error;
+            return await connectFreshSaveHandle(selection.handle, targetHandle, targetConnectionId);
+          }
           if (!fileHandle) throw new Error("다시 연결할 최근 보관함이 없습니다.");
-          if (targetHandle && fileHandle !== targetHandle) {
+          if (targetHandle && (fileHandle !== targetHandle || connectionId !== targetConnectionId)) {
             throw new Error("다시 연결하는 동안 보관함 연결이 변경되었습니다.");
           }
           let permission;

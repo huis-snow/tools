@@ -137,13 +137,17 @@
   function normalizeStatus(status) {
     const next = status && typeof status === "object" ? status : {};
     const fileName = getDisplayFileName(next);
+    const legacyFileAccessSupported = next.fileSystemAccessSupported !== false;
     return {
       mode: next.mode === "localstorage" ? "localstorage" : "indexeddb",
       supported: next.supported !== false,
-      fileSystemAccessSupported: next.fileSystemAccessSupported !== false,
-      fileSystemAccessDisabledReason: typeof next.fileSystemAccessDisabledReason === "string"
-        ? next.fileSystemAccessDisabledReason
-        : "",
+      filePickerSupported: typeof next.filePickerSupported === "boolean"
+        ? next.filePickerSupported
+        : legacyFileAccessSupported,
+      storedHandleReconnectSupported: typeof next.storedHandleReconnectSupported === "boolean"
+        ? next.storedHandleReconnectSupported
+        : legacyFileAccessSupported,
+      requiresFileReselection: Boolean(next.requiresFileReselection && fileName),
       connected: Boolean(next.connected),
       fileName,
       lastSyncAt: next.lastSyncAt || null,
@@ -164,6 +168,9 @@
     if (!status.supported) {
       return { key: "error", label: "제한된 저장" };
     }
+    if (status.requiresFileReselection) {
+      return { key: "disconnected", label: "파일 재선택 필요" };
+    }
     if (status.connected && status.permission === "denied") {
       return { key: "error", label: "권한 필요" };
     }
@@ -176,7 +183,7 @@
     if (status.connected) {
       return { key: "saved", label: "동기화됨" };
     }
-    if (status.fileName && status.fileSystemAccessSupported) {
+    if (status.fileName && status.filePickerSupported) {
       return { key: "disconnected", label: "다시 연결 필요" };
     }
     return { key: "local", label: "기기 작업본" };
@@ -185,8 +192,13 @@
   function renderStatus(rawStatus) {
     const status = normalizeStatus(rawStatus);
     const hasRecentFile = Boolean(status.fileName);
-    const hasReconnectableFile = status.connected && hasRecentFile && status.fileSystemAccessSupported;
-    const isActivelyConnected = status.connected && status.permission === "granted";
+    const usesHybridPicker = status.filePickerSupported && !status.storedHandleReconnectSupported;
+    const isActivelyConnected = status.connected
+      && status.permission === "granted"
+      && !status.requiresFileReselection;
+    const hasReconnectableFile = hasRecentFile
+      && status.filePickerSupported
+      && (status.connected || status.requiresFileReselection);
     const state = getStatePresentation(status);
     const size = formatBytes(status.bytes);
     currentStatus = status;
@@ -207,8 +219,10 @@
       elements.headerLabel.textContent = `${status.fileName || "보관함"} · ${status.dirty ? "변경 있음" : "저장됨"}`;
       elements.title.textContent = "기록 보관함이 연결되어 있어요";
     } else if (hasReconnectableFile) {
-      elements.headerLabel.textContent = `${status.fileName} · 다시 연결`;
-      elements.title.textContent = "최근 보관함을 다시 연결하세요";
+      elements.headerLabel.textContent = `${status.fileName} · ${usesHybridPicker ? "다시 선택" : "다시 연결"}`;
+      elements.title.textContent = usesHybridPicker
+        ? "최근 보관함을 다시 선택해 연결하세요"
+        : "최근 보관함을 다시 연결하세요";
     } else if (hasRecentFile) {
       elements.headerLabel.textContent = `${status.fileName} · 최근 백업`;
       elements.title.textContent = "최근 보관함 백업을 불러왔어요";
@@ -225,21 +239,37 @@
       ? `${itemText}${sizeText}. 입력 내용은 기기 작업본에 먼저 저장되고 연결한 파일과 자동으로 맞춰집니다.`
       : `${itemText}${sizeText}. 파일을 연결하지 않아도 이 브라우저의 작업본에서 계속 사용할 수 있습니다.`;
 
-    const usesDownloadSave = !status.fileSystemAccessSupported;
-    elements.reconnectButton.hidden = !hasReconnectableFile || (isActivelyConnected && !reconnectFailed);
+    const usesDownloadSave = !status.filePickerSupported;
+    const showReconnect = hasReconnectableFile && (!isActivelyConnected || reconnectFailed);
+    const hybridExitReminder = usesHybridPicker
+      ? " 웨일에서는 브라우저를 완전히 종료한 뒤 보관함 파일을 다시 선택해야 할 수 있습니다."
+      : "";
+    elements.reconnectButton.hidden = !showReconnect;
+    elements.reconnectButton.textContent = usesHybridPicker
+      ? "최근 보관함 다시 선택해 연결"
+      : "최근 보관함 다시 연결";
     elements.saveButton.hidden = usesDownloadSave ? false : !isActivelyConnected || reconnectFailed;
     elements.saveButton.textContent = usesDownloadSave ? "현재 기록 저장 (JSON)" : "지금 저장";
     elements.saveButton.classList.toggle("vault-button-accent", usesDownloadSave);
     elements.createButton.hidden = usesDownloadSave;
     elements.createButton.textContent = "새 보관함 만들기";
-    elements.openButton.textContent = status.fileSystemAccessSupported ? "다른 파일 열기" : "보관함 파일 불러오기";
+    elements.createButton.classList.toggle("vault-button-accent", !usesHybridPicker || !showReconnect);
+    elements.openButton.textContent = usesHybridPicker
+      ? "기존 보관함 불러오기"
+      : status.filePickerSupported ? "다른 파일 열기" : "보관함 파일 불러오기";
     elements.connectedTools.hidden = false;
-    elements.forgetButton.hidden = !status.connected;
+    elements.forgetButton.hidden = !status.connected && !status.requiresFileReselection;
 
-    if (status.fileSystemAccessDisabledReason === "whale-stored-handle-crash") {
+    if (usesHybridPicker && isActivelyConnected) {
       elements.browserNote.textContent =
-        "현재 웨일의 최근 파일 재연결 오류를 피하기 위해 안전 모드로 동작합니다. '현재 기록 저장'을 누르면 JSON 새 파일로 내려받으며 브라우저 작업본은 그대로 유지됩니다.";
-    } else if (status.fileSystemAccessSupported) {
+        "웨일에서는 지금 연결한 파일에 직접 저장하고 자동으로 동기화합니다. 다만 브라우저를 완전히 종료한 뒤에는 보안상 같은 파일을 다시 선택해야 할 수 있습니다. 전체 경로는 표시하지 않습니다.";
+    } else if (usesHybridPicker && hasRecentFile) {
+      elements.browserNote.textContent =
+        "웨일에서는 브라우저를 완전히 종료한 뒤 보관함 파일을 다시 선택해야 할 수 있습니다. 위 버튼에서 같은 파일을 선택하면 직접 저장과 자동 동기화가 다시 시작됩니다. 파일 내용은 검증을 통과하기 전까지 변경하지 않습니다.";
+    } else if (usesHybridPicker) {
+      elements.browserNote.textContent =
+        "웨일에서는 새 보관함을 만들면 그 파일에 직접 저장하고 자동으로 동기화합니다. 기존 보관함은 먼저 불러온 뒤 같은 파일을 다시 선택해 연결할 수 있습니다.";
+    } else if (status.filePickerSupported) {
       elements.browserNote.textContent =
         "브라우저 보안상 파일의 전체 경로는 표시하거나 저장하지 않습니다. 다시 열 때 파일 권한을 요청할 수 있습니다.";
     } else {
@@ -249,10 +279,10 @@
 
     if (!status.supported) {
       elements.browserNote.textContent =
-        "이 브라우저에서는 영구 저장소를 사용할 수 없어 현재 탭의 임시 메모리로만 동작합니다. 탭을 닫기 전에 JSON이나 휴대용 텍스트로 백업해 주세요.";
+        `이 브라우저에서는 영구 저장소를 사용할 수 없어 현재 탭의 임시 메모리로만 동작합니다. 탭을 닫기 전에 JSON이나 휴대용 텍스트로 백업해 주세요.${hybridExitReminder}`;
     } else if (status.mode === "localstorage") {
       elements.browserNote.textContent =
-        "이 브라우저에서는 IndexedDB를 사용할 수 없어 용량이 작은 localStorage로 대신 저장 중입니다. 중요한 기록은 JSON이나 휴대용 텍스트로 자주 백업해 주세요.";
+        `이 브라우저에서는 IndexedDB를 사용할 수 없어 용량이 작은 localStorage로 대신 저장 중입니다. 중요한 기록은 JSON이나 휴대용 텍스트로 자주 백업해 주세요.${hybridExitReminder}`;
     }
 
     if (!firstStatusReceived) {
@@ -397,16 +427,28 @@
 
     elements.reconnectButton.addEventListener("click", async () => {
       reconnectFailed = false;
-      const result = await runAction(() => api.reconnectFile(), "최근 보관함을 다시 연결했어요.");
+      const usesHybridPicker = currentStatus
+        && currentStatus.filePickerSupported
+        && !currentStatus.storedHandleReconnectSupported;
+      const result = await runAction(
+        () => api.reconnectFile(),
+        usesHybridPicker ? "보관함 파일을 다시 선택해 연결했어요." : "최근 보관함을 다시 연결했어요."
+      );
       if (result === null) {
         reconnectFailed = true;
         renderStatus(currentStatus);
         elements.reconnectButton.focus();
       }
     });
-    elements.createButton.addEventListener("click", () =>
-      runAction(() => api.createVaultFile(), currentStatus && currentStatus.fileSystemAccessSupported ? "새 보관함을 만들었어요." : "새 보관함을 다운로드했어요.")
-    );
+    elements.createButton.addEventListener("click", () => {
+      const usesHybridPicker = currentStatus
+        && currentStatus.filePickerSupported
+        && !currentStatus.storedHandleReconnectSupported;
+      runAction(
+        () => api.createVaultFile(),
+        usesHybridPicker ? "새 보관함을 만들고 연결했어요." : "새 보관함을 만들었어요."
+      );
+    });
     elements.openButton.addEventListener("click", () => {
       if (!confirmReplacement()) {
         announce("보관함 불러오기를 취소했어요.");
@@ -415,7 +457,7 @@
       runAction(() => api.openVaultFile(), "보관함을 열고 기기 작업본과 맞췄어요.");
     });
     elements.saveButton.addEventListener("click", () => {
-      const usesDownloadSave = currentStatus && !currentStatus.fileSystemAccessSupported;
+      const usesDownloadSave = currentStatus && !currentStatus.filePickerSupported;
       if (usesDownloadSave) {
         runAction(() => api.createVaultFile(), "현재 기록을 JSON 파일로 내려받았어요.");
       } else {
