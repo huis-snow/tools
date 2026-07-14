@@ -610,6 +610,7 @@ test("FSA 미지원 create는 다운로드 snapshot으로 fallback하고 직접 
   const status = await service.createVaultFile({ filename: "내-보관함.json" });
   assert.equal(status.connected, false);
   assert.equal(status.fileName, "내-보관함.json");
+  assert.ok(status.lastSyncAt);
   const backup = await service.downloadBackup({ filename: "검증.json" });
   assert.equal((await parseVaultText(backup.text)).entries.note, "백업할 내용");
 });

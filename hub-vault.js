@@ -3,12 +3,13 @@
 
   const api = window.SmallToolsVault;
   const DISMISS_KEY = "small-tools:vault-panel-dismissed";
-  const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
+  const fullDateFormatter = new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23",
   });
 
   const elements = {
@@ -111,7 +112,12 @@
     if (Number.isNaN(date.getTime())) {
       return "—";
     }
-    return dateFormatter.format(date);
+    const year = String(date.getFullYear()).slice(-2);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hour = String(date.getHours()).padStart(2, "0");
+    const minute = String(date.getMinutes()).padStart(2, "0");
+    return `${year}.${month}.${day} ${hour}:${minute}`;
   }
 
   function formatBytes(value) {
@@ -188,6 +194,10 @@
     elements.fileName.textContent = status.fileName || "연결한 파일 없음";
     elements.fileName.title = status.fileName || "";
     elements.lastSync.textContent = formatDate(status.lastSyncAt);
+    const lastSyncDate = status.lastSyncAt ? new Date(status.lastSyncAt) : null;
+    elements.lastSync.title = lastSyncDate && !Number.isNaN(lastSyncDate.getTime())
+      ? fullDateFormatter.format(lastSyncDate)
+      : "";
     elements.revision.textContent = status.vaultId || status.revision > 0 ? `r${status.revision}` : "—";
     elements.stateBadge.textContent = state.label;
     elements.stateBadge.className = `vault-state-badge is-${state.key}`;
@@ -215,22 +225,26 @@
       ? `${itemText}${sizeText}. 입력 내용은 기기 작업본에 먼저 저장되고 연결한 파일과 자동으로 맞춰집니다.`
       : `${itemText}${sizeText}. 파일을 연결하지 않아도 이 브라우저의 작업본에서 계속 사용할 수 있습니다.`;
 
+    const usesDownloadSave = !status.fileSystemAccessSupported;
     elements.reconnectButton.hidden = !hasReconnectableFile || (isActivelyConnected && !reconnectFailed);
-    elements.saveButton.hidden = !isActivelyConnected || reconnectFailed;
-    elements.createButton.textContent = status.fileSystemAccessSupported ? "새 보관함 만들기" : "새 보관함 내려받기";
+    elements.saveButton.hidden = usesDownloadSave ? false : !isActivelyConnected || reconnectFailed;
+    elements.saveButton.textContent = usesDownloadSave ? "현재 기록 저장 (JSON)" : "지금 저장";
+    elements.saveButton.classList.toggle("vault-button-accent", usesDownloadSave);
+    elements.createButton.hidden = usesDownloadSave;
+    elements.createButton.textContent = "새 보관함 만들기";
     elements.openButton.textContent = status.fileSystemAccessSupported ? "다른 파일 열기" : "보관함 파일 불러오기";
     elements.connectedTools.hidden = false;
     elements.forgetButton.hidden = !status.connected;
 
     if (status.fileSystemAccessDisabledReason === "whale-stored-handle-crash") {
       elements.browserNote.textContent =
-        "현재 웨일의 최근 파일 재연결 오류를 피하기 위해 안전 모드로 동작합니다. 파일 불러오기와 JSON 다운로드를 사용하며 브라우저 작업본은 그대로 유지됩니다.";
+        "현재 웨일의 최근 파일 재연결 오류를 피하기 위해 안전 모드로 동작합니다. '현재 기록 저장'을 누르면 JSON 새 파일로 내려받으며 브라우저 작업본은 그대로 유지됩니다.";
     } else if (status.fileSystemAccessSupported) {
       elements.browserNote.textContent =
         "브라우저 보안상 파일의 전체 경로는 표시하거나 저장하지 않습니다. 다시 열 때 파일 권한을 요청할 수 있습니다.";
     } else {
       elements.browserNote.textContent =
-        "이 브라우저에서는 파일에 직접 다시 저장할 수 없어, 열기는 파일 선택으로 하고 저장은 새 파일 다운로드로 진행합니다. 전체 경로는 표시하지 않습니다.";
+        "이 브라우저에서는 파일을 직접 덮어쓸 수 없어, '현재 기록 저장'을 누를 때마다 JSON 새 파일로 내려받습니다. 전체 경로는 표시하지 않습니다.";
     }
 
     if (!status.supported) {
@@ -400,7 +414,14 @@
       }
       runAction(() => api.openVaultFile(), "보관함을 열고 기기 작업본과 맞췄어요.");
     });
-    elements.saveButton.addEventListener("click", () => runAction(() => api.saveNow(), "보관함 파일에 저장했어요."));
+    elements.saveButton.addEventListener("click", () => {
+      const usesDownloadSave = currentStatus && !currentStatus.fileSystemAccessSupported;
+      if (usesDownloadSave) {
+        runAction(() => api.createVaultFile(), "현재 기록을 JSON 파일로 내려받았어요.");
+      } else {
+        runAction(() => api.saveNow(), "보관함 파일에 저장했어요.");
+      }
+    });
     elements.backupButton.addEventListener("click", () =>
       runAction(() => api.downloadBackup(), "현재 작업본의 JSON 백업을 다운로드했어요.")
     );

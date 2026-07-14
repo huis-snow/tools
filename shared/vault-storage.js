@@ -1303,6 +1303,8 @@
         return enqueueFileOperation(async () => {
           const backup = await downloadBackup(options);
           recentFileName = backup.filename;
+          lastFileRevision = revision;
+          lastSyncAt = nowIso(environment);
           await backend.setMeta(metadataSnapshot());
           notify({ type: "backup-downloaded" });
           return getStatus();

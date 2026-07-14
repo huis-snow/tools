@@ -371,7 +371,7 @@ footer {
 
 .vault-file-card {
   display: grid;
-  grid-template-columns: minmax(150px, 1.5fr) repeat(3, minmax(90px, 1fr));
+  grid-template-columns: minmax(150px, 1.4fr) minmax(128px, 1.1fr) repeat(2, minmax(82px, 0.8fr));
   margin: 0 0 19px;
   border-top: 1px solid #bcc2bc;
   border-left: 1px solid #bcc2bc;
@@ -400,6 +400,12 @@ footer {
   font: 500 12px var(--mono);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+#vaultLastSync {
+  overflow: visible;
+  font-variant-numeric: tabular-nums;
+  text-overflow: clip;
 }
 
 .vault-file-primary dd {
