@@ -30,7 +30,41 @@ const {
   formatScheduleText,
   aggregateSchedules,
   overlapColorLevel,
+  prepareBrowserStorage,
 } = require("../app.js");
+
+test("브라우저 부팅은 일정 저장 키를 보관함으로 옮기고 실패하면 localStorage를 유지한다", async () => {
+  const originalVault = globalThis.SmallToolsVault;
+  const originalLocalStorage = globalThis.localStorage;
+  const fallback = { getItem() { return null; }, setItem() {} };
+  const vaultStorage = { getItem() { return null; }, setItem() {} };
+  const calls = [];
+  globalThis.localStorage = fallback;
+  try {
+    globalThis.SmallToolsVault = {
+      ready: Promise.resolve(),
+      storage: vaultStorage,
+      async migrateKeys(keys, options) { calls.push({ keys, options }); },
+    };
+    assert.equal(await prepareBrowserStorage(), vaultStorage);
+    assert.deepEqual(calls, [{
+      keys: ["eonjepyo-saved-schedules-v1", "eonjepyo-saved-comparisons-v1", "eonjepyo-draft"],
+      options: { removeSource: true },
+    }]);
+
+    globalThis.SmallToolsVault = {
+      ready: Promise.resolve(),
+      storage: vaultStorage,
+      async migrateKeys() { throw new Error("IndexedDB 쓰기 실패"); },
+    };
+    assert.equal(await prepareBrowserStorage(), fallback);
+  } finally {
+    if (originalVault === undefined) delete globalThis.SmallToolsVault;
+    else globalThis.SmallToolsVault = originalVault;
+    if (originalLocalStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = originalLocalStorage;
+  }
+});
 
 test("월요일 0시부터 일요일 23시까지 168개 인덱스가 모두 고유하다", () => {
   const indexes = new Set();

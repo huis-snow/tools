@@ -720,7 +720,34 @@
     });
   }
 
-  function initApp() {
+  function resolveStorage(storage) {
+    if (storage) return storage;
+    try {
+      return root.localStorage;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  async function prepareBrowserStorage(keys = [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
+    const fallback = resolveStorage();
+    const vault = root.SmallToolsVault;
+    if (!vault) return fallback;
+    try {
+      await vault.ready;
+      if (typeof vault.migrateKeys !== "function") throw new Error("보관함 이전 기능을 사용할 수 없습니다.");
+      await vault.migrateKeys(keys, { removeSource: true });
+      if (!vault.storage || typeof vault.storage.getItem !== "function" || typeof vault.storage.setItem !== "function") {
+        throw new Error("보관함 저장소를 사용할 수 없습니다.");
+      }
+      return vault.storage;
+    } catch (_error) {
+      return fallback;
+    }
+  }
+
+  function initApp(options = {}) {
+    const storage = resolveStorage(options.storage);
     const byId = (id) => document.getElementById(id);
     const elements = {
       eventTitle: byId("eventTitleInput"),
@@ -764,13 +791,13 @@
 
     function loadState() {
       try {
-        const saved = root.localStorage?.getItem(STORAGE_KEY);
+        const saved = storage?.getItem(STORAGE_KEY);
         if (saved) return importState(saved);
       } catch (_error) {
         // 저장소가 막힌 환경에서도 현재 탭에서는 계속 사용할 수 있다.
       }
       try {
-        const legacy = root.localStorage?.getItem(LEGACY_STORAGE_KEY);
+        const legacy = storage?.getItem(LEGACY_STORAGE_KEY);
         if (!legacy) return createEmptyState();
         const parsed = JSON.parse(legacy);
         migratedLegacy = !isLegacyExample(parsed) && Array.isArray(parsed.members) && parsed.members.length > 0;
@@ -782,7 +809,11 @@
 
     function persistState() {
       try {
-        root.localStorage?.setItem(STORAGE_KEY, serializeState(state));
+        if (!storage || typeof storage.setItem !== "function") throw new Error("브라우저 저장소를 사용할 수 없습니다.");
+        storage.setItem(STORAGE_KEY, serializeState(state));
+        if (storage === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
+          Promise.resolve(root.SmallToolsVault.flush()).catch(() => showToast("브라우저에 자동 저장하지 못했어요."));
+        }
       } catch (_error) {
         // private mode/storage quota failures should not break the editor.
       }
@@ -1446,14 +1477,16 @@
       }
     });
     root.addEventListener?.("storage", (event) => {
-      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      if (storage === root.SmallToolsVault?.storage && event.storageArea) return;
+      if (event.key !== STORAGE_KEY && event.key !== null) return;
       try {
-        state = importState(event.newValue);
+        const incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
+        state = incomingValue ? importState(incomingValue) : createEmptyState();
         selectedMemberId = null;
         editingMemberId = null;
         resetMemberForm();
         render({ persist: false });
-        showToast("다른 탭에서 바뀐 공대표를 불러왔어요.");
+        showToast(incomingValue ? "다른 탭에서 바뀐 공대표를 불러왔어요." : "다른 탭에서 공대표를 비웠어요.");
       } catch (_error) {
         // 다른 탭의 손상된 값은 현재 작업을 덮어쓰지 않는다.
       }
@@ -1463,6 +1496,14 @@
     resetMemberForm();
     render();
     if (migratedLegacy) {
+      const removeLegacyState = () => {
+        try { storage?.removeItem?.(LEGACY_STORAGE_KEY); } catch (_error) { /* keep the migrated v2 state */ }
+      };
+      if (storage === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
+        Promise.resolve(root.SmallToolsVault.flush()).then(removeLegacyState).then(() => root.SmallToolsVault.flush()).catch(() => {});
+      } else {
+        removeLegacyState();
+      }
       showToast("이전 명단을 옮겼어요. 각 공대원의 주직과 부직을 확인해 주세요.");
       announce("이전 명단 이전 완료. 직업 정보를 확인해 주세요.");
     }
@@ -1501,13 +1542,15 @@
     formatRaidText,
     renderRaidImage,
     canvasToBlob,
+    prepareBrowserStorage,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.RaidMaker = api;
 
   if (typeof document !== "undefined") {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initApp);
-    else initApp();
+    const boot = async () => initApp({ storage: await prepareBrowserStorage() });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+    else boot();
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);

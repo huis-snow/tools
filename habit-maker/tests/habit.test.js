@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   STATE_VERSION,
+  STORAGE_KEY,
   parseLocalDate,
   formatLocalDate,
   localToday,
@@ -28,6 +29,7 @@ const {
   daySummary,
   calculateMonthlyStats,
   calculateOverallMonthlyStats,
+  prepareBrowserStorage,
 } = require("../app.js");
 
 function emptyState(habits, selectedDate = "2026-07-13") {
@@ -42,6 +44,29 @@ function emptyState(habits, selectedDate = "2026-07-13") {
     },
   };
 }
+
+test("브라우저 부팅은 기존 습관 키를 보관함으로 옮긴 뒤 공용 StorageLike를 사용한다", async () => {
+  const originalVault = globalThis.SmallToolsVault;
+  const originalLocalStorage = globalThis.localStorage;
+  const fallback = { getItem() { return null; }, setItem() {} };
+  const vaultStorage = { getItem() { return null; }, setItem() {} };
+  const calls = [];
+  globalThis.localStorage = fallback;
+  globalThis.SmallToolsVault = {
+    ready: Promise.resolve(),
+    storage: vaultStorage,
+    async migrateKeys(keys, options) { calls.push({ keys, options }); },
+  };
+  try {
+    assert.equal(await prepareBrowserStorage(), vaultStorage);
+    assert.deepEqual(calls, [{ keys: [STORAGE_KEY], options: { removeSource: true } }]);
+  } finally {
+    if (originalVault === undefined) delete globalThis.SmallToolsVault;
+    else globalThis.SmallToolsVault = originalVault;
+    if (originalLocalStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = originalLocalStorage;
+  }
+});
 
 test("로컬 날짜 문자열은 UTC 변환 없이 왕복한다", () => {
   const local = new Date(2026, 6, 13, 23, 45, 0);

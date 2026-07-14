@@ -1,7 +1,12 @@
 (function (root) {
   "use strict";
 
-  if (typeof document === "undefined") return;
+  function persistentStorage() {
+    return root.EonjepyoStorage || root.localStorage || root.window?.localStorage;
+  }
+
+  function initSavedPage() {
+    if (typeof document === "undefined") return;
 
   const scheduleApi = root.Eonjepyo;
   const savedApi = root.EonjepyoSaved;
@@ -204,7 +209,7 @@
 
   function renderCollections({ announce = false } = {}) {
     try {
-      collections = comparisonsApi.list(root.localStorage);
+      collections = comparisonsApi.list(persistentStorage());
     } catch (_error) {
       collections = [];
       showToast("저장한 취합 일정 목록을 읽지 못했어요");
@@ -240,7 +245,7 @@
 
   function render({ announce = false } = {}) {
     try {
-      records = savedApi.list(root.localStorage);
+      records = savedApi.list(persistentStorage());
     } catch (_error) {
       records = [];
       showToast("저장한 일정 목록을 읽지 못했어요");
@@ -309,7 +314,7 @@
     if (!deletingId) return;
     const record = records.find((item) => item.id === deletingId);
     try {
-      savedApi.remove(root.localStorage, deletingId);
+      savedApi.remove(persistentStorage(), deletingId);
       selectedIds.delete(deletingId);
       if (renamingId === deletingId) renamingId = null;
       showToast(`${record?.title || "일정"}을 저장 목록에서 삭제했어요`);
@@ -334,7 +339,7 @@
     if (!deletingCollectionId) return;
     const record = collections.find((item) => item.id === deletingCollectionId);
     try {
-      comparisonsApi.remove(root.localStorage, deletingCollectionId);
+      comparisonsApi.remove(persistentStorage(), deletingCollectionId);
       if (renamingCollectionId === deletingCollectionId) renamingCollectionId = null;
       showToast(`${record?.name || "취합 일정"}을 보관함에서 삭제했어요`);
       deletingCollectionId = null;
@@ -377,7 +382,7 @@
     if (!members.length) return false;
 
     try {
-      const updated = comparisonsApi.addMembers(root.localStorage, target.id, members);
+      const updated = comparisonsApi.addMembers(persistentStorage(), target.id, members);
       const added = updated.members.length - target.members.length;
       const skipped = members.length - added;
       selectedIds.clear();
@@ -431,7 +436,7 @@
     const ids = records.filter((record) => selectedIds.has(record.id)).map((record) => record.id);
     if (!ids.length) return;
     try {
-      savedApi.queueForComparison(root.localStorage, ids, { actionStorage: root.sessionStorage });
+      savedApi.queueForComparison(persistentStorage(), ids, { actionStorage: root.sessionStorage });
       root.location.href = "./compare.html";
     } catch (_error) {
       showToast("선택한 일정을 취합 화면으로 보내지 못했어요");
@@ -471,7 +476,7 @@
     const id = form.closest("[data-saved-item]").dataset.savedId;
     const input = form.querySelector("[data-field='rename-input']");
     try {
-      const updated = savedApi.updateTitle(root.localStorage, id, input.value);
+      const updated = savedApi.updateTitle(persistentStorage(), id, input.value);
       renamingId = null;
       showToast(`${updated.title}(으)로 이름을 바꿨어요`);
       render({ announce: true });
@@ -507,7 +512,7 @@
     const id = form.closest("[data-saved-collection-item]").dataset.collectionId;
     const input = form.querySelector("[data-field='rename-input']");
     try {
-      const updated = comparisonsApi.rename(root.localStorage, id, input.value);
+      const updated = comparisonsApi.rename(persistentStorage(), id, input.value);
       renamingCollectionId = null;
       showToast(`${updated.name}(으)로 이름을 바꿨어요`);
       renderCollections({ announce: true });
@@ -531,6 +536,20 @@
   });
   elements.collectionDeleteDialog.addEventListener("close", () => { deletingCollectionId = null; });
 
+  root.addEventListener?.("storage", (event) => {
+    if (root.EonjepyoStorage === root.SmallToolsVault?.storage && event.storageArea) return;
+    if (event.key === null || event.key === comparisonsApi.STORAGE_KEY) renderCollections({ announce: true });
+    if (event.key === null || event.key === savedApi.STORAGE_KEY) render({ announce: true });
+  });
+
   renderCollections();
   render();
+  }
+
+  const storageReady = root.EonjepyoStorageReady || root.SmallToolsVault?.ready;
+  if (storageReady && typeof storageReady.then === "function") {
+    Promise.resolve(storageReady).catch(() => undefined).then(initSavedPage);
+  } else {
+    initSavedPage();
+  }
 })(typeof globalThis !== "undefined" ? globalThis : this);

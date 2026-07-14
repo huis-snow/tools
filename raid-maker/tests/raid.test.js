@@ -10,6 +10,7 @@ const raid = require("../app.js");
 const {
   STATE_VERSION,
   STORAGE_KEY,
+  LEGACY_STORAGE_KEY,
   normalizeJobRole,
   normalizeRole,
   createEmptyState,
@@ -33,6 +34,7 @@ const {
   importState,
   formatRaidText,
   renderRaidImage,
+  prepareBrowserStorage,
 } = raid;
 
 const SEAT_ROLES = [
@@ -46,6 +48,32 @@ const SEAT_ROLES = [
   "magical_ranged",
 ];
 const SEAT_CODES = ["MT", "ST", "MH", "SH", "D1", "D2", "D3", "D4"];
+
+test("브라우저 부팅은 공대표 v2와 이전 v1 키를 함께 보관함으로 이전한다", async () => {
+  const originalVault = globalThis.SmallToolsVault;
+  const originalLocalStorage = globalThis.localStorage;
+  const fallback = { getItem() { return null; }, setItem() {} };
+  const vaultStorage = { getItem() { return null; }, setItem() {} };
+  const calls = [];
+  globalThis.localStorage = fallback;
+  globalThis.SmallToolsVault = {
+    ready: Promise.resolve(),
+    storage: vaultStorage,
+    async migrateKeys(keys, options) { calls.push({ keys, options }); },
+  };
+  try {
+    assert.equal(await prepareBrowserStorage(), vaultStorage);
+    assert.deepEqual(calls, [{
+      keys: [STORAGE_KEY, LEGACY_STORAGE_KEY],
+      options: { removeSource: true },
+    }]);
+  } finally {
+    if (originalVault === undefined) delete globalThis.SmallToolsVault;
+    else globalThis.SmallToolsVault = originalVault;
+    if (originalLocalStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = originalLocalStorage;
+  }
+});
 
 function job(name, role) {
   return { name, role };

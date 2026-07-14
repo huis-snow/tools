@@ -7,6 +7,8 @@
     <meta name="theme-color" content="#f4f1e8" />
     <title>작은 도구함</title>
     <link rel="stylesheet" href="hub.css" />
+    <script src="./shared/vault-storage.js" defer></script>
+    <script src="./hub-vault.js" defer></script>
   </head>
   <body id="top">
     <a class="skip-link" href="#tools">도구 목록으로 바로가기</a>
@@ -18,10 +20,117 @@
         </span>
         <span>작은 도구함</span>
       </a>
-      <span class="header-note"><span aria-hidden="true"></span> 계속 만드는 중</span>
+      <div class="header-actions">
+        <button
+          class="vault-status-button"
+          id="vaultStatusButton"
+          type="button"
+          aria-controls="vaultPanel"
+          aria-expanded="false"
+        >
+          <span class="vault-status-dot" aria-hidden="true"></span>
+          <span id="vaultHeaderLabel">보관함 확인 중</span>
+        </button>
+        <span class="header-note"><span aria-hidden="true"></span> 계속 만드는 중</span>
+      </div>
     </header>
 
     <main>
+      <section class="vault-panel" id="vaultPanel" aria-labelledby="vaultTitle" hidden>
+        <div class="vault-device" aria-hidden="true">
+          <div class="vault-drive">
+            <span class="vault-drive-slot"></span>
+            <span class="vault-drive-light"></span>
+            <div class="vault-disk">
+              <span class="vault-disk-label">TOOLS<br />VAULT</span>
+              <span class="vault-disk-window"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="vault-content">
+          <div class="vault-heading-row">
+            <div>
+              <p class="vault-kicker">LOCAL DATA VAULT</p>
+              <h2 id="vaultTitle">기록 보관함을 연결하세요</h2>
+            </div>
+            <button class="vault-close-button" id="vaultCloseButton" type="button" aria-label="보관함 안내 닫기">
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+
+          <p class="vault-description" id="vaultDescription">
+            파일 하나에 여러 도구의 기록을 모아두고, 이 브라우저의 작업본과 안전하게 맞출 수 있습니다.
+          </p>
+
+          <dl class="vault-file-card" aria-label="최근 보관함 정보">
+            <div class="vault-file-primary">
+              <dt>최근 보관함</dt>
+              <dd id="vaultFileName">연결한 파일 없음</dd>
+            </div>
+            <div>
+              <dt>마지막 동기화</dt>
+              <dd id="vaultLastSync">—</dd>
+            </div>
+            <div>
+              <dt>리비전</dt>
+              <dd id="vaultRevision">—</dd>
+            </div>
+            <div>
+              <dt>상태</dt>
+              <dd><span class="vault-state-badge" id="vaultStateBadge">확인 중</span></dd>
+            </div>
+          </dl>
+
+          <div class="vault-action-groups">
+            <div class="vault-actions vault-actions-primary">
+              <button class="vault-button vault-button-accent" id="vaultReconnectButton" type="button" hidden>
+                최근 보관함 다시 연결
+              </button>
+              <button class="vault-button vault-button-accent" id="vaultCreateButton" type="button">
+                새 보관함 만들기
+              </button>
+              <button class="vault-button" id="vaultOpenButton" type="button">다른 파일 열기</button>
+              <button class="vault-button" id="vaultSaveButton" type="button" hidden>지금 저장</button>
+            </div>
+            <button class="vault-local-button" id="vaultContinueLocalButton" type="button">
+              보관함 없이 이 기기에서 시작
+            </button>
+          </div>
+
+          <div class="vault-connected-tools" id="vaultConnectedTools" hidden>
+            <div class="vault-secondary-actions">
+              <button class="vault-text-button" id="vaultBackupButton" type="button">JSON 백업 다운로드</button>
+              <button class="vault-text-button vault-danger-button" id="vaultForgetButton" type="button" hidden>
+                연결 해제
+              </button>
+            </div>
+
+            <details class="vault-portable">
+              <summary>휴대용 텍스트로 옮기기</summary>
+              <p>압축된 텍스트를 복사해 다른 브라우저로 가져갈 수 있습니다.</p>
+              <label for="vaultPortableInput">휴대용 텍스트</label>
+              <textarea
+                id="vaultPortableInput"
+                rows="4"
+                spellcheck="false"
+                placeholder="내보낸 TOOLS1.… 텍스트를 여기에 붙여넣으세요"
+              ></textarea>
+              <div class="vault-portable-actions">
+                <button class="vault-button" id="vaultCopyTextButton" type="button">텍스트 복사</button>
+                <button class="vault-button" id="vaultImportTextButton" type="button">붙여넣은 텍스트 불러오기</button>
+              </div>
+            </details>
+          </div>
+
+          <p class="vault-browser-note" id="vaultBrowserNote">
+            브라우저 보안상 파일의 전체 경로는 표시하거나 저장하지 않습니다.
+          </p>
+          <p class="vault-privacy-note">보관함 파일과 휴대용 텍스트는 암호화되지 않습니다.</p>
+          <p class="vault-notice" id="vaultNotice" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">SMALL TOOLS, USEFUL MOMENTS</p>
@@ -126,7 +235,7 @@
               <p class="description">매일의 작은 실천량을 색으로 쌓아보는 목표 기반 습관 캘린더</p>
             </div>
             <div class="card-footer">
-              <span>브라우저에 안전하게 저장</span>
+              <span>기록 보관함에 안전하게 저장</span>
               <span class="arrow" aria-hidden="true">→</span>
             </div>
           </a>
@@ -193,7 +302,7 @@
               <p class="description">식사와 음주, 컨디션과 메모를 날짜별로 차분히 남기는 생활 기록 달력</p>
             </div>
             <div class="card-footer">
-              <span>이 브라우저에만 저장</span>
+              <span>기록 보관함에 안전하게 저장</span>
               <span class="arrow" aria-hidden="true">→</span>
             </div>
           </a>

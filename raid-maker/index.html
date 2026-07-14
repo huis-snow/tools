@@ -63,7 +63,7 @@
             <p>01 / PUT THE PARTY TOGETHER</p>
             <h2 id="builderTitle">우리 공대를 구성해 보세요</h2>
           </div>
-          <p>입력한 명단과 배치는 이 브라우저에 자동으로 저장돼요.</p>
+          <p>입력한 명단과 배치는 브라우저 작업본에 자동으로 저장돼요.</p>
         </div>
 
         <div class="builder-panel">
@@ -361,6 +361,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <p id="liveRegion" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></p>
     <noscript><p class="noscript-note">공대표를 사용하려면 브라우저에서 JavaScript를 켜 주세요.</p></noscript>
-    <script src="app.js"></script>
+    <script src="../shared/vault-storage.js" defer></script>
+    <script src="app.js" defer></script>
   </body>
 </html>

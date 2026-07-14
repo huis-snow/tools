@@ -37,14 +37,14 @@
           <p class="eyebrow"><span></span> SAVED SCHEDULES</p>
           <h1 id="saved-hero-title">모아둔 일정을,<br /><em>다시 쉽게.</em></h1>
           <p>
-            공유받거나 직접 만든 일정과 취합표를 이 브라우저에 보관해요.<br class="desktop-only" />
+            공유받거나 직접 만든 일정과 취합표를 브라우저 작업본에 보관해요.<br class="desktop-only" />
             필요할 때 다시 고치고, 멤버를 더 넣어 이어서 취합할 수 있어요.
           </p>
           <a class="hero-cta" href="#saved-collections">보관함 보기 <span aria-hidden="true">↓</span></a>
         </div>
 
         <aside class="saved-hero-note" aria-label="저장 일정 이용 안내">
-          <div class="saved-hero-note-label">ONLY IN THIS BROWSER</div>
+          <div class="saved-hero-note-label">LOCAL DATA VAULT</div>
           <div class="saved-browser-icon" aria-hidden="true">
             <span></span><span></span><span></span>
             <i></i><i></i><i></i>
@@ -102,7 +102,7 @@
           </div>
         </div>
 
-        <p class="saved-privacy"><span aria-hidden="true">●</span> 취합 일정도 현재 브라우저 안에만 저장됩니다.</p>
+        <p class="saved-privacy"><span aria-hidden="true">●</span> 취합 일정은 서버로 전송되지 않으며 연결한 기록 보관함에도 백업할 수 있습니다.</p>
       </section>
 
       <section class="saved-section" id="saved-schedules" aria-labelledby="saved-title">
@@ -111,7 +111,7 @@
             <p>02 / INDIVIDUAL SCHEDULE ARCHIVE</p>
             <h2 id="saved-title">저장한 개별 일정</h2>
           </div>
-          <p>이 목록은 지금 사용 중인 브라우저에만 남아요. 브라우저 데이터를 지우면 함께 삭제됩니다.</p>
+          <p>이 목록은 브라우저 작업본에 남아요. 도구함에서 기록 보관함을 연결하면 파일에도 백업됩니다.</p>
         </div>
 
         <div class="saved-panel">
@@ -359,6 +359,7 @@
     </footer>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="../shared/vault-storage.js"></script>
     <script src="saved-schedules.js"></script>
     <script src="saved-comparisons.js"></script>
     <script src="app.js"></script>

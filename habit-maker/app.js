@@ -572,7 +572,34 @@
     });
   }
 
-  function initApp() {
+  function resolveStorage(storage) {
+    if (storage) return storage;
+    try {
+      return root.localStorage;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  async function prepareBrowserStorage(keys = [STORAGE_KEY]) {
+    const fallback = resolveStorage();
+    const vault = root.SmallToolsVault;
+    if (!vault) return fallback;
+    try {
+      await vault.ready;
+      if (typeof vault.migrateKeys !== "function") throw new Error("보관함 이전 기능을 사용할 수 없습니다.");
+      await vault.migrateKeys(keys, { removeSource: true });
+      if (!vault.storage || typeof vault.storage.getItem !== "function" || typeof vault.storage.setItem !== "function") {
+        throw new Error("보관함 저장소를 사용할 수 없습니다.");
+      }
+      return vault.storage;
+    } catch (_error) {
+      return fallback;
+    }
+  }
+
+  function initApp(options = {}) {
+    const storage = resolveStorage(options.storage);
     const byId = (id) => document.getElementById(id);
     const elements = {
       currentMonthLabel: byId("currentMonthLabel"),
@@ -616,7 +643,7 @@
     let state;
     let storageLoadFailed = false;
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = storage?.getItem(STORAGE_KEY);
       state = stored ? importState(stored) : createDefaultState();
     } catch (_error) {
       storageLoadFailed = true;
@@ -635,7 +662,11 @@
 
     function save() {
       try {
-        localStorage.setItem(STORAGE_KEY, serializeState(state));
+        if (!storage || typeof storage.setItem !== "function") throw new Error("브라우저 저장소를 사용할 수 없습니다.");
+        storage.setItem(STORAGE_KEY, serializeState(state));
+        if (storage === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
+          Promise.resolve(root.SmallToolsVault.flush()).catch(() => showToast("브라우저에 자동 저장하지 못했어요"));
+        }
       } catch (_error) {
         showToast("브라우저에 자동 저장하지 못했어요");
       }
@@ -1032,11 +1063,13 @@
     });
 
     window.addEventListener("storage", (event) => {
-      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      if (storage === root.SmallToolsVault?.storage && event.storageArea) return;
+      if (event.key !== STORAGE_KEY && event.key !== null) return;
       try {
-        state = importState(event.newValue);
+        const incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
+        state = incomingValue ? importState(incomingValue) : createDefaultState();
         render();
-        showToast("다른 탭에서 바뀐 기록을 불러왔어요");
+        showToast(incomingValue ? "다른 탭에서 바뀐 기록을 불러왔어요" : "다른 탭에서 기록을 비웠어요");
       } catch (_error) {
         showToast("다른 탭의 기록을 불러오지 못했어요");
       }
@@ -1086,13 +1119,15 @@
     calculateOverallMonthlyStats,
     renderHabitImage,
     canvasToBlob,
+    prepareBrowserStorage,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.HabitMaker = api;
 
   if (typeof document !== "undefined") {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initApp);
-    else initApp();
+    const boot = async () => initApp({ storage: await prepareBrowserStorage() });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+    else boot();
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -16,6 +16,45 @@
   const SHARE_VERSION = "1";
   const DEFAULT_TITLE = "우리의 가능한 시간";
   const MAX_OVERLAP_LEVEL = 8;
+  const PERSISTED_STORAGE_KEYS = [
+    "eonjepyo-saved-schedules-v1",
+    "eonjepyo-saved-comparisons-v1",
+    "eonjepyo-draft",
+  ];
+  let selectedPersistentStorage = null;
+
+  function fallbackStorage() {
+    try {
+      return root.localStorage || root.window?.localStorage || null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function persistentStorage() {
+    return selectedPersistentStorage || fallbackStorage();
+  }
+
+  async function prepareBrowserStorage(keys = PERSISTED_STORAGE_KEYS) {
+    const fallback = fallbackStorage();
+    const vault = root.SmallToolsVault;
+    if (!vault) {
+      selectedPersistentStorage = fallback;
+      return fallback;
+    }
+    try {
+      await vault.ready;
+      if (typeof vault.migrateKeys !== "function") throw new Error("보관함 이전 기능을 사용할 수 없습니다.");
+      await vault.migrateKeys(keys, { removeSource: true });
+      if (!vault.storage || typeof vault.storage.getItem !== "function" || typeof vault.storage.setItem !== "function") {
+        throw new Error("보관함 저장소를 사용할 수 없습니다.");
+      }
+      selectedPersistentStorage = vault.storage;
+    } catch (_error) {
+      selectedPersistentStorage = fallback;
+    }
+    return selectedPersistentStorage;
+  }
 
   function slotIndex(hour, day) {
     return hour * DAYS.length + day;
@@ -915,10 +954,22 @@
             elements.startHour.value = String(shared.startHour);
             elements.startDay.value = String(shared.startDay);
             try {
-              const savedRecord = savedSchedulesApi()?.saveSchedule(window.localStorage, shared, { source: "shared" });
+              const savedRecord = savedSchedulesApi()?.saveSchedule(persistentStorage(), shared, { source: "shared" });
               if (savedRecord) {
                 redirectingToSavedList = true;
-                window.location.replace("./saved.html#saved-schedules");
+                const redirectToSavedList = () => window.location.replace("./saved.html#saved-schedules");
+                if (persistentStorage() === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
+                  Promise.resolve(root.SmallToolsVault.flush()).catch(() => {
+                    try {
+                      const savedDocument = persistentStorage().getItem(savedSchedulesApi().STORAGE_KEY);
+                      if (savedDocument !== null) fallbackStorage()?.setItem(savedSchedulesApi().STORAGE_KEY, savedDocument);
+                    } catch (_error) {
+                      // The shared URL remains available if neither durable store accepts the record.
+                    }
+                  }).finally(redirectToSavedList);
+                } else {
+                  redirectToSavedList();
+                }
                 return true;
               }
             } catch (_error) {
@@ -941,7 +992,7 @@
       const loadId = query.get("load");
       if (editId || loadId) {
         try {
-          const stored = savedSchedulesApi()?.get(window.localStorage, editId || loadId);
+          const stored = savedSchedulesApi()?.get(persistentStorage(), editId || loadId);
           if (applyStoredSchedule(stored)) {
             activeSavedScheduleId = editId ? stored.id : null;
             initialMessage = editId
@@ -958,7 +1009,7 @@
       }
 
       try {
-        const draft = window.localStorage.getItem("eonjepyo-draft");
+        const draft = persistentStorage().getItem("eonjepyo-draft");
         if (!draft) return;
         const restored = parseShareHash(draft);
         if (!restored) return;
@@ -1039,10 +1090,10 @@
     function saveDraft() {
       const hash = makeShareHash(slots, metadata());
       try {
-        window.localStorage.setItem("eonjepyo-draft", hash);
+        persistentStorage().setItem("eonjepyo-draft", hash);
         const explicitTitle = elements.title.value.trim();
         if (activeSavedScheduleId && explicitTitle) {
-          savedSchedulesApi()?.saveSchedule(window.localStorage, {
+          savedSchedulesApi()?.saveSchedule(persistentStorage(), {
             slots,
             ...metadata(),
             title: explicitTitle,
@@ -1346,7 +1397,7 @@
 
       const shareUrl = makeShareUrl(window.location.href, slots, { ...metadata(), title });
       try {
-        savedSchedulesApi()?.saveSchedule(window.localStorage, {
+        savedSchedulesApi()?.saveSchedule(persistentStorage(), {
           slots,
           ...metadata(),
           title,
@@ -1608,7 +1659,7 @@
         try {
           shared = api.parseShareHash(shareHash);
           try {
-            stored = api.saveComparison(window.localStorage, shared);
+            stored = api.saveComparison(persistentStorage(), shared);
           } catch (_error) {
             // 저장 공간을 사용할 수 없어도 공유받은 취합표는 계속 열 수 있다.
           }
@@ -1633,7 +1684,7 @@
       const collectionId = parameters.get("collection");
       if (!collectionId) return false;
       try {
-        const record = api.get(window.localStorage, collectionId);
+        const record = api.get(persistentStorage(), collectionId);
         if (!record) {
           setComparisonCollectionStatus("저장된 취합표를 찾지 못했어요. 보관함에서 다시 열어 주세요.", "error");
           return false;
@@ -1675,7 +1726,7 @@
       const name = requireComparisonCollectionName();
       if (!name) return null;
       try {
-        const record = api.saveComparison(window.localStorage, {
+        const record = api.saveComparison(persistentStorage(), {
           name,
           startHour: currentComparisonStartHour(),
           startDay: currentComparisonStartDay(),
@@ -2395,6 +2446,12 @@
 
     const redirectedFromScheduleApp = initScheduleApp();
     if (!redirectedFromScheduleApp) initComparisonApp();
+    if (elements.grid || elements.compareGrid) {
+      window.addEventListener?.("storage", (event) => {
+        if (root.EonjepyoStorage === root.SmallToolsVault?.storage && event.storageArea) return;
+        if (event.key === null) window.location.reload?.();
+      });
+    }
   }
 
   const api = {
@@ -2429,13 +2486,30 @@
     renderComparisonImage,
     canvasToBlob,
     slotsEqual,
+    prepareBrowserStorage,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.Eonjepyo = api;
 
   if (typeof document !== "undefined") {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initApps);
-    else initApps();
+    const startApps = () => {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initApps, { once: true });
+      else initApps();
+    };
+    const vault = root.SmallToolsVault;
+    if (vault) {
+      const storageReady = prepareBrowserStorage();
+      root.EonjepyoStorageReady = storageReady;
+      storageReady.then((storage) => {
+        root.EonjepyoStorage = storage;
+        startApps();
+      });
+    } else {
+      selectedPersistentStorage = fallbackStorage();
+      root.EonjepyoStorage = selectedPersistentStorage;
+      root.EonjepyoStorageReady = Promise.resolve();
+      startApps();
+    }
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);

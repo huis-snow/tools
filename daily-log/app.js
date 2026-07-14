@@ -247,6 +247,23 @@
     }
   }
 
+  async function prepareBrowserStorage(keys = [STORAGE_KEY]) {
+    const fallback = resolveStorage();
+    const vault = root.SmallToolsVault;
+    if (!vault) return fallback;
+    try {
+      await vault.ready;
+      if (typeof vault.migrateKeys !== "function") throw new Error("보관함 이전 기능을 사용할 수 없습니다.");
+      await vault.migrateKeys(keys, { removeSource: true });
+      if (!vault.storage || typeof vault.storage.getItem !== "function" || typeof vault.storage.setItem !== "function") {
+        throw new Error("보관함 저장소를 사용할 수 없습니다.");
+      }
+      return vault.storage;
+    } catch (_error) {
+      return fallback;
+    }
+  }
+
   function loadState(storage, now = new Date()) {
     const target = resolveStorage(storage);
     if (!target || typeof target.getItem !== "function") return createEmptyState();
@@ -394,6 +411,7 @@
     let saveTimer = null;
     let toastTimer = null;
     let destroyed = false;
+    let saveGeneration = 0;
 
     function showToast(message) {
       if (!elements.toast) return;
@@ -592,7 +610,20 @@
       try {
         upsertRecord(state, selectedDate, readEditor(), getNow());
         const saved = persistState();
-        setSaveStatus(saved ? "자동 저장됨" : "저장 실패");
+        const generation = ++saveGeneration;
+        if (!saved) {
+          setSaveStatus("저장 실패");
+        } else if (storage === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
+          setSaveStatus("저장 중…");
+          Promise.resolve(root.SmallToolsVault.flush()).then(() => {
+            if (!destroyed && generation === saveGeneration) setSaveStatus("자동 저장됨");
+          }).catch(() => {
+            if (!destroyed && generation === saveGeneration) setSaveStatus("저장 실패");
+            showToast("브라우저에 자동 저장하지 못했어요");
+          });
+        } else {
+          setSaveStatus("자동 저장됨");
+        }
         renderCalendar();
         renderSelectedSummary();
         renderStats();
@@ -740,15 +771,17 @@
     });
 
     const storageListener = (event) => {
-      if (event.key !== STORAGE_KEY) return;
+      if (storage === root.SmallToolsVault?.storage && event.storageArea) return;
+      if (event.key !== STORAGE_KEY && event.key !== null) return;
       try {
+        const incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
         const hasPendingDraft = saveTimer !== null;
         const pendingDraft = hasPendingDraft ? readEditor() : null;
         if (hasPendingDraft) {
           root.clearTimeout?.(saveTimer);
           saveTimer = null;
         }
-        state = event.newValue ? importState(event.newValue, getNow()) : createEmptyState();
+        state = incomingValue ? importState(incomingValue, getNow()) : createEmptyState();
         if (pendingDraft) {
           upsertRecord(state, selectedDate, pendingDraft, getNow());
           const saved = persistState();
@@ -759,7 +792,7 @@
           return;
         }
         render();
-        showToast(event.newValue ? "다른 탭에서 바뀐 기록을 불러왔어요" : "다른 탭에서 기록을 비웠어요");
+        showToast(incomingValue ? "다른 탭에서 바뀐 기록을 불러왔어요" : "다른 탭에서 기록을 비웠어요");
       } catch (_error) {
         showToast("다른 탭의 기록을 불러오지 못했어요");
       }
@@ -827,6 +860,7 @@
     exportState,
     serializeState: exportState,
     importState,
+    prepareBrowserStorage,
     formatMonthLabel,
     formatDateLabel,
     initDailyLogApp,
@@ -836,7 +870,8 @@
   root.DailyLogApp = api;
 
   if (typeof document !== "undefined") {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => initDailyLogApp(document));
-    else initDailyLogApp(document);
+    const boot = async () => initDailyLogApp(document, { storage: await prepareBrowserStorage() });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+    else boot();
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -26,6 +26,7 @@ const {
   calculateMonthlyStats,
   exportState,
   importState,
+  prepareBrowserStorage,
   initDailyLogApp,
 } = require("../app.js");
 
@@ -187,6 +188,37 @@ test("localStorage 저장과 불러오기는 고정 키 및 검증된 상태를 
   assert.equal(loadState(storage, fixedNow).records["2026-07-14"].memo, "평온한 하루");
   values.set(STORAGE_KEY, "bad json");
   assert.throws(() => loadState(storage, fixedNow), /JSON 파일/);
+});
+
+test("브라우저 부팅 저장소는 보관함 준비와 이전을 마친 뒤 IndexedDB StorageLike를 사용한다", async () => {
+  const originalVault = globalThis.SmallToolsVault;
+  const originalLocalStorage = globalThis.localStorage;
+  const fallback = { getItem() { return null; }, setItem() {} };
+  const vaultStorage = { getItem() { return null; }, setItem() {} };
+  let releaseReady;
+  const calls = [];
+  globalThis.localStorage = fallback;
+  globalThis.SmallToolsVault = {
+    ready: new Promise((resolve) => { releaseReady = resolve; }),
+    storage: vaultStorage,
+    async migrateKeys(keys, options) { calls.push({ keys, options }); },
+  };
+  try {
+    const pending = prepareBrowserStorage();
+    await Promise.resolve();
+    assert.deepEqual(calls, [], "ready 전에는 마이그레이션하지 않는다");
+    releaseReady();
+    assert.equal(await pending, vaultStorage);
+    assert.deepEqual(calls, [{ keys: [STORAGE_KEY], options: { removeSource: true } }]);
+
+    globalThis.SmallToolsVault = { ready: Promise.reject(new Error("IndexedDB unavailable")) };
+    assert.equal(await prepareBrowserStorage(), fallback, "코어 실패 시 localStorage를 유지한다");
+  } finally {
+    if (originalVault === undefined) delete globalThis.SmallToolsVault;
+    else globalThis.SmallToolsVault = originalVault;
+    if (originalLocalStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = originalLocalStorage;
+  }
 });
 
 class FakeClassList {
@@ -473,6 +505,37 @@ test("다른 탭 변경을 받을 때 저장 대기 중인 현재 기록을 덮�
     else globalThis.addEventListener = originalAdd;
     if (originalRemove === undefined) delete globalThis.removeEventListener;
     else globalThis.removeEventListener = originalRemove;
+  }
+});
+
+test("보관함 사용 중 기존 localStorage 제거 이벤트는 무시하고 보관함 전체 교체는 다시 읽는다", () => {
+  const listeners = new Map();
+  const originalAdd = globalThis.addEventListener;
+  const originalRemove = globalThis.removeEventListener;
+  const originalVault = globalThis.SmallToolsVault;
+  globalThis.addEventListener = (type, listener) => listeners.set(type, listener);
+  globalThis.removeEventListener = () => {};
+  try {
+    const initial = createEmptyState();
+    upsertRecord(initial, "2026-07-14", fullRecord({ memo: "보관함 기록" }), fixedNow);
+    const env = createDom(initial);
+    globalThis.SmallToolsVault = { storage: env.storage, async flush() {} };
+    const app = initDailyLogApp(env.doc, { storage: env.storage, now: () => fixedNow });
+
+    listeners.get("storage")({ key: STORAGE_KEY, newValue: null, storageArea: {} });
+    assert.equal(app.getState().records["2026-07-14"].memo, "보관함 기록");
+
+    env.values.delete(STORAGE_KEY);
+    listeners.get("storage")({ key: null, newValue: null, storageArea: null });
+    assert.deepEqual(app.getState().records, {});
+    app.destroy();
+  } finally {
+    if (originalAdd === undefined) delete globalThis.addEventListener;
+    else globalThis.addEventListener = originalAdd;
+    if (originalRemove === undefined) delete globalThis.removeEventListener;
+    else globalThis.removeEventListener = originalRemove;
+    if (originalVault === undefined) delete globalThis.SmallToolsVault;
+    else globalThis.SmallToolsVault = originalVault;
   }
 });
 
