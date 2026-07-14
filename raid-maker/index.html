@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="닉네임과 주직·부직을 모아 MT부터 D4까지 파이널판타지14 8인 공대 자리를 구성하고 공유하는 브라우저 도구"
+    />
+    <meta name="theme-color" content="#edf2e8" />
+    <title>파이널판타지14 8인 공대 구성표 | 공대표</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#raidBuilder">공대 구성 도구로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="공대표 홈">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+        </span>
+        <span>공대표</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> 8인 자리 맞추기</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="introTitle">
+        <div class="intro-copy">
+          <p class="eyebrow"><span></span> BUILD THE FULL PARTY</p>
+          <h1 id="introTitle">여덟 공대원을,<br /><em>알맞은 자리로.</em></h1>
+          <p>
+            닉네임과 주직·부직을 모아 MT부터 D4까지 배치해 보세요.<br class="desktop-only" />
+            비어 있는 역할을 확인하고 완성된 구성은 바로 나눌 수 있어요.
+          </p>
+          <a class="intro-cta" href="#raidBuilder">구성 시작하기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="intro-board" aria-label="아직 공대원이 배치되지 않은 8인 공대 구성표">
+          <div class="intro-board-head">
+            <span>FULL PARTY / 8</span>
+            <strong>0 / 8</strong>
+          </div>
+          <div class="intro-slots" aria-hidden="true">
+            <span><i class="role-main_tank">MT</i><b>멘탱</b><em>—</em></span>
+            <span><i class="role-off_tank">ST</i><b>섭탱</b><em>—</em></span>
+            <span><i class="role-main_healer">MH</i><b>멘힐</b><em>—</em></span>
+            <span><i class="role-off_healer">SH</i><b>섭힐</b><em>—</em></span>
+            <span><i class="role-melee">D1</i><b>근딜</b><em>—</em></span>
+            <span><i class="role-melee">D2</i><b>근딜</b><em>—</em></span>
+            <span><i class="role-physical_ranged">D3</i><b>유격대</b><em>—</em></span>
+            <span><i class="role-magical_ranged">D4</i><b>캐스터</b><em>—</em></span>
+          </div>
+          <p><span aria-hidden="true">8</span> 역할에 맞는 공대원을 한 자리씩 채워보세요.</p>
+        </div>
+      </section>
+
+      <section class="builder-section" id="raidBuilder" aria-labelledby="builderTitle">
+        <div class="section-heading">
+          <div>
+            <p>01 / PUT THE PARTY TOGETHER</p>
+            <h2 id="builderTitle">우리 공대를 구성해 보세요</h2>
+          </div>
+          <p>입력한 명단과 배치는 이 브라우저에 자동으로 저장돼요.</p>
+        </div>
+
+        <div class="builder-panel">
+          <section class="setup-section" aria-labelledby="setupTitle">
+            <div class="block-heading">
+              <div>
+                <span>STEP 01</span>
+                <h3 id="setupTitle">공대 정보 정하기</h3>
+              </div>
+              <button id="resetButton" class="quiet-button danger-button" type="button">처음부터 다시</button>
+            </div>
+
+            <div class="raid-basics">
+              <div class="raid-meta-fields">
+                <label class="field event-title-field" for="eventTitleInput">
+                  <span>공대 이름</span>
+                  <input
+                    id="eventTitleInput"
+                    type="text"
+                    maxlength="60"
+                    autocomplete="off"
+                    placeholder="예: 금요일 영식 공대"
+                  />
+                </label>
+
+                <label class="field event-time-field" for="eventTimeInput">
+                  <span>일정 <small>선택</small></span>
+                  <input id="eventTimeInput" type="datetime-local" />
+                </label>
+              </div>
+
+              <section class="fixed-composition" aria-labelledby="fixedCompositionTitle">
+                <div class="fixed-composition-heading">
+                  <span>FULL PARTY / 8</span>
+                  <h4 id="fixedCompositionTitle">8인 고정 구성</h4>
+                </div>
+                <div class="fixed-role-grid" aria-label="고정 역할: 멘탱, 섭탱, 멘힐, 섭힐, D1 근딜, D2 근딜, D3 유격대, D4 캐스터">
+                  <span class="role-main_tank"><b>MT</b> 멘탱</span>
+                  <span class="role-off_tank"><b>ST</b> 섭탱</span>
+                  <span class="role-main_healer"><b>MH</b> 멘힐</span>
+                  <span class="role-off_healer"><b>SH</b> 섭힐</span>
+                  <span class="role-melee"><b>D1·D2</b> 근딜</span>
+                  <span class="role-physical_ranged"><b>D3</b> 유격대</span>
+                  <span class="role-magical_ranged"><b>D4</b> 캐스터</span>
+                </div>
+                <p>좌석 수와 역할은 바뀌지 않아요. 주직이나 부직 역할에 맞춰 자동으로 배치해요.</p>
+              </section>
+            </div>
+          </section>
+
+          <section class="members-section" aria-labelledby="membersTitle">
+            <div class="block-heading">
+              <div>
+                <span>STEP 02</span>
+                <h3 id="membersTitle">공대원 모으기</h3>
+              </div>
+              <p>주직은 필수, 부직과 메모는 선택이에요.</p>
+            </div>
+
+            <div class="member-entry">
+              <label class="field member-name-field" for="memberNameInput">
+                <span>닉네임</span>
+                <input id="memberNameInput" type="text" maxlength="30" autocomplete="off" placeholder="닉네임 입력" />
+              </label>
+
+              <fieldset class="member-job-group primary-job-group">
+                <legend>주직</legend>
+                <div class="job-fields">
+                  <label for="primaryJobInput">
+                    <span class="sr-only">주직 이름</span>
+                    <input id="primaryJobInput" type="text" maxlength="30" autocomplete="off" placeholder="예: 전사" />
+                  </label>
+                  <label for="primaryRoleSelect">
+                    <span class="sr-only">주직 역할</span>
+                    <select id="primaryRoleSelect" aria-label="주직 역할">
+                      <option value="" selected>역할 선택</option>
+                      <option value="tank">탱커</option>
+                      <option value="main_tank">멘탱</option>
+                      <option value="off_tank">섭탱</option>
+                      <option value="healer">힐러</option>
+                      <option value="main_healer">멘힐</option>
+                      <option value="off_healer">섭힐</option>
+                      <option value="melee">근딜</option>
+                      <option value="physical_ranged">유격대</option>
+                      <option value="magical_ranged">캐스터</option>
+                      <option value="dps">딜러</option>
+                      <option value="any">무관</option>
+                    </select>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="member-job-group secondary-job-group">
+                <legend>부직 <small>선택</small></legend>
+                <div class="job-fields">
+                  <label for="secondaryJobInput">
+                    <span class="sr-only">부직 이름</span>
+                    <input id="secondaryJobInput" type="text" maxlength="30" autocomplete="off" placeholder="예: 백마도사" />
+                  </label>
+                  <label for="secondaryRoleSelect">
+                    <span class="sr-only">부직 역할</span>
+                    <select id="secondaryRoleSelect" aria-label="부직 역할">
+                      <option value="" selected>역할 선택</option>
+                      <option value="tank">탱커</option>
+                      <option value="main_tank">멘탱</option>
+                      <option value="off_tank">섭탱</option>
+                      <option value="healer">힐러</option>
+                      <option value="main_healer">멘힐</option>
+                      <option value="off_healer">섭힐</option>
+                      <option value="melee">근딜</option>
+                      <option value="physical_ranged">유격대</option>
+                      <option value="magical_ranged">캐스터</option>
+                      <option value="dps">딜러</option>
+                      <option value="any">무관</option>
+                    </select>
+                  </label>
+                </div>
+              </fieldset>
+
+              <label class="field member-note-field" for="memberNoteInput">
+                <span>메모 <small>선택</small></span>
+                <input id="memberNoteInput" type="text" maxlength="40" autocomplete="off" placeholder="예: 수요일 제외" />
+              </label>
+
+              <div class="member-entry-actions">
+                <button id="addMemberButton" class="primary-button add-member-button" type="button">
+                  <span aria-hidden="true">＋</span> 공대원 추가
+                </button>
+                <button id="cancelEditButton" class="quiet-button cancel-edit-button" type="button" hidden>수정 취소</button>
+              </div>
+            </div>
+
+            <details class="bulk-entry">
+              <summary>여러 명을 한 번에 붙여넣기 <span aria-hidden="true">＋</span></summary>
+              <div class="bulk-entry-body">
+                <label for="bulkInput">
+                  <span>한 줄에 한 명씩 · <b>닉네임, 주직, 주역할, 부직, 부역할, 메모</b> 순서로 적어 주세요.</span>
+                  <textarea
+                    id="bulkInput"
+                    rows="5"
+                    spellcheck="false"
+                    placeholder="닉네임, 전사, 멘탱&#10;닉네임, 음유시인, 유격대, 소환사, 캐스터, 주말 가능"
+                  ></textarea>
+                </label>
+                <button id="bulkAddButton" type="button">명단에 추가</button>
+              </div>
+            </details>
+
+            <div class="roster-summary" aria-label="공대원 참여 상태 요약">
+              <div class="roster-total">
+                <span>전체 명단</span>
+                <strong><b id="rosterCount">0</b>명</strong>
+              </div>
+              <dl>
+                <div><dt><i class="status-dot confirmed" aria-hidden="true"></i> 참여</dt><dd id="confirmedCount">0</dd></div>
+                <div><dt><i class="status-dot maybe" aria-hidden="true"></i> 미정</dt><dd id="maybeCount">0</dd></div>
+                <div><dt><i class="status-dot absent" aria-hidden="true"></i> 불참</dt><dd id="absentCount">0</dd></div>
+              </dl>
+            </div>
+
+            <div class="role-legend" aria-label="고정 공대 자리 역할 안내">
+              <span>고정 자리</span>
+              <i class="role-badge role-main_tank">MT 멘탱</i>
+              <i class="role-badge role-off_tank">ST 섭탱</i>
+              <i class="role-badge role-main_healer">MH 멘힐</i>
+              <i class="role-badge role-off_healer">SH 섭힐</i>
+              <i class="role-badge role-melee">D1·D2 근딜</i>
+              <i class="role-badge role-physical_ranged">D3 유격대</i>
+              <i class="role-badge role-magical_ranged">D4 캐스터</i>
+            </div>
+
+            <div class="member-list-shell">
+              <div class="member-list-heading">
+                <strong>전체 명단</strong>
+                <span>주직·부직과 참여 상태를 확인하고 원하는 자리로 옮길 수 있어요.</span>
+              </div>
+              <div id="memberList" class="member-list" role="list" aria-label="전체 공대원 명단">
+                <div class="member-empty" role="status">
+                  <span aria-hidden="true"><i></i><i></i><i></i></span>
+                  <strong>첫 공대원을 기다리고 있어요</strong>
+                  <p>위 입력칸에서 닉네임과 주직을 적어 추가해 주세요.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="composition-section" aria-labelledby="compositionTitle">
+            <div class="block-heading composition-heading">
+              <div>
+                <span>STEP 03</span>
+                <h3 id="compositionTitle">8인 자리 맞추기</h3>
+              </div>
+              <div class="composition-actions">
+                <button id="autoAssignButton" class="primary-button" type="button" disabled>
+                  <span aria-hidden="true">✦</span> 추천 배치
+                </button>
+                <button id="clearAssignmentsButton" class="quiet-button" type="button" disabled>배치만 비우기</button>
+              </div>
+            </div>
+
+            <div class="interaction-guide" id="interactionGuide">
+              <span class="guide-icon" aria-hidden="true">↕</span>
+              <p>
+                <strong>끌어 놓거나, 한 명씩 선택해서 옮기세요.</strong>
+                <span>공대원을 누른 뒤 원하는 자리를 누르면 이동해요. 키보드는 Enter로 들고 놓고, Esc로 취소할 수 있어요.</span>
+              </p>
+            </div>
+
+            <div
+              id="raidBoard"
+              class="raid-board"
+              role="list"
+              aria-label="8인 공대 구성 보드"
+              aria-describedby="interactionGuide compositionStatus"
+            >
+              <section class="party-card full-party-card" role="listitem" aria-label="8인 공대 빈 자리">
+                <header class="party-card-header party-heading">
+                  <div><span>FULL PARTY / 8</span><h4>8인 공대</h4></div>
+                  <span class="party-count">0/8</span>
+                </header>
+                <div class="party-slots" role="list" aria-label="고정 역할 자리">
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-main_tank">MT</span><span class="slot-empty"><strong>멘탱</strong><small>—</small></span></div>
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-off_tank">ST</span><span class="slot-empty"><strong>섭탱</strong><small>—</small></span></div>
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-main_healer">MH</span><span class="slot-empty"><strong>멘힐</strong><small>—</small></span></div>
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-off_healer">SH</span><span class="slot-empty"><strong>섭힐</strong><small>—</small></span></div>
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-melee">D1</span><span class="slot-empty"><strong>근딜</strong><small>—</small></span></div>
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-melee">D2</span><span class="slot-empty"><strong>근딜</strong><small>—</small></span></div>
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-physical_ranged">D3</span><span class="slot-empty"><strong>유격대</strong><small>—</small></span></div>
+                  <div class="party-slot is-static" role="listitem"><span class="slot-code role-magical_ranged">D4</span><span class="slot-empty"><strong>캐스터</strong><small>—</small></span></div>
+                </div>
+                <p class="party-role-status">MT부터 D4까지 여덟 자리가 비어 있어요.</p>
+              </section>
+            </div>
+
+            <p id="compositionStatus" class="composition-status" role="status" aria-live="polite" aria-atomic="true">
+              공대원을 추가하면 주직·부직에 맞는 자리와 남은 역할을 알려드려요.
+            </p>
+          </section>
+        </div>
+      </section>
+
+      <section class="share-section" aria-labelledby="shareTitle">
+        <div class="section-heading share-heading">
+          <div>
+            <p>02 / SHARE THE LINEUP</p>
+            <h2 id="shareTitle">완성된 구성을 나눠보세요</h2>
+          </div>
+          <p>디스코드에는 텍스트로, 공지에는 반듯한 이미지로 공유할 수 있어요.</p>
+        </div>
+
+        <div class="share-panel">
+          <div class="share-copy">
+            <span class="share-stamp">LOCAL ONLY</span>
+            <h3>한눈에 읽히는 8인 구성표</h3>
+            <p>공대 이름과 일정, MT부터 D4까지의 닉네임과 사용 직업을 한 장에 담아요.</p>
+            <div class="share-preview" aria-hidden="true">
+              <span>[ 8인 공대 구성표 ]</span>
+              <p><b>MT</b> — <i></i><b>ST</b> —</p>
+              <p><b>MH</b> — <i></i><b>SH</b> —</p>
+              <p><b>D1</b> — <i></i><b>D2</b> —</p>
+              <p><b>D3</b> — <i></i><b>D4</b> —</p>
+            </div>
+          </div>
+          <div class="share-actions" role="group" aria-label="공대 구성 공유 방식">
+            <button id="textButton" type="button" disabled>
+              <span class="action-icon" aria-hidden="true">≡</span>
+              <span><strong>텍스트 복사</strong><small>디스코드에 바로 붙여넣기</small></span>
+            </button>
+            <button id="imageButton" type="button" aria-describedby="liveRegion" disabled>
+              <span class="action-icon" aria-hidden="true">▧</span>
+              <span><strong id="imageLabel">이미지 복사</strong><small>고해상도 PNG를 클립보드로</small></span>
+            </button>
+            <button id="pngButton" type="button" aria-describedby="liveRegion" disabled>
+              <span class="action-icon" aria-hidden="true">↓</span>
+              <span><strong>PNG 저장</strong><small>공지용 이미지 파일로 저장</small></span>
+            </button>
+          </div>
+          <p class="share-notice"><span aria-hidden="true">●</span> 입력한 명단과 배치 정보는 서버로 전송되지 않아요.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+        </span>
+        <span>공대표</span>
+      </a>
+      <p>파이널판타지14 8인 공대 구성 도구</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <p id="liveRegion" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></p>
+    <noscript><p class="noscript-note">공대표를 사용하려면 브라우저에서 JavaScript를 켜 주세요.</p></noscript>
+    <script src="app.js"></script>
+  </body>
+</html>
