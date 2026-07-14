@@ -52,6 +52,7 @@
   let busy = false;
   let firstStatusReceived = false;
   let memoryDismissed = false;
+  let reconnectFailed = false;
 
   function safeStorageGet(key) {
     try {
@@ -134,6 +135,9 @@
       mode: next.mode === "localstorage" ? "localstorage" : "indexeddb",
       supported: next.supported !== false,
       fileSystemAccessSupported: next.fileSystemAccessSupported !== false,
+      fileSystemAccessDisabledReason: typeof next.fileSystemAccessDisabledReason === "string"
+        ? next.fileSystemAccessDisabledReason
+        : "",
       connected: Boolean(next.connected),
       fileName,
       lastSyncAt: next.lastSyncAt || null,
@@ -175,7 +179,7 @@
   function renderStatus(rawStatus) {
     const status = normalizeStatus(rawStatus);
     const hasRecentFile = Boolean(status.fileName);
-    const hasReconnectableFile = hasRecentFile && status.fileSystemAccessSupported;
+    const hasReconnectableFile = status.connected && hasRecentFile && status.fileSystemAccessSupported;
     const isActivelyConnected = status.connected && status.permission === "granted";
     const state = getStatePresentation(status);
     const size = formatBytes(status.bytes);
@@ -211,14 +215,17 @@
       ? `${itemText}${sizeText}. 입력 내용은 기기 작업본에 먼저 저장되고 연결한 파일과 자동으로 맞춰집니다.`
       : `${itemText}${sizeText}. 파일을 연결하지 않아도 이 브라우저의 작업본에서 계속 사용할 수 있습니다.`;
 
-    elements.reconnectButton.hidden = isActivelyConnected || !hasReconnectableFile;
-    elements.saveButton.hidden = !isActivelyConnected;
+    elements.reconnectButton.hidden = !hasReconnectableFile || (isActivelyConnected && !reconnectFailed);
+    elements.saveButton.hidden = !isActivelyConnected || reconnectFailed;
     elements.createButton.textContent = status.fileSystemAccessSupported ? "새 보관함 만들기" : "새 보관함 내려받기";
     elements.openButton.textContent = status.fileSystemAccessSupported ? "다른 파일 열기" : "보관함 파일 불러오기";
     elements.connectedTools.hidden = false;
     elements.forgetButton.hidden = !status.connected;
 
-    if (status.fileSystemAccessSupported) {
+    if (status.fileSystemAccessDisabledReason === "whale-stored-handle-crash") {
+      elements.browserNote.textContent =
+        "현재 웨일의 최근 파일 재연결 오류를 피하기 위해 안전 모드로 동작합니다. 파일 불러오기와 JSON 다운로드를 사용하며 브라우저 작업본은 그대로 유지됩니다.";
+    } else if (status.fileSystemAccessSupported) {
       elements.browserNote.textContent =
         "브라우저 보안상 파일의 전체 경로는 표시하거나 저장하지 않습니다. 다시 열 때 파일 권한을 요청할 수 있습니다.";
     } else {
@@ -298,6 +305,7 @@
     announce("");
     try {
       const result = await operation();
+      reconnectFailed = false;
       if (successMessage) {
         announce(typeof successMessage === "function" ? successMessage(result) : successMessage);
       }
@@ -373,9 +381,15 @@
       }
     });
 
-    elements.reconnectButton.addEventListener("click", () =>
-      runAction(() => api.reconnectFile(), "최근 보관함을 다시 연결했어요.")
-    );
+    elements.reconnectButton.addEventListener("click", async () => {
+      reconnectFailed = false;
+      const result = await runAction(() => api.reconnectFile(), "최근 보관함을 다시 연결했어요.");
+      if (result === null) {
+        reconnectFailed = true;
+        renderStatus(currentStatus);
+        elements.reconnectButton.focus();
+      }
+    });
     elements.createButton.addEventListener("click", () =>
       runAction(() => api.createVaultFile(), currentStatus && currentStatus.fileSystemAccessSupported ? "새 보관함을 만들었어요." : "새 보관함을 다운로드했어요.")
     );

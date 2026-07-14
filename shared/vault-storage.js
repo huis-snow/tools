@@ -24,6 +24,19 @@
   const MAX_VALUE_LENGTH = 8 * 1024 * 1024;
   const DEFAULT_SYNC_INTERVAL = 30_000;
 
+  function detectFileSystemAccessDisabledReason(environment = root) {
+    const navigatorObject = environment.navigator || root.navigator;
+    const userAgent = String(navigatorObject?.userAgent || "");
+    const brands = Array.isArray(navigatorObject?.userAgentData?.brands)
+      ? navigatorObject.userAgentData.brands.map((item) => String(item?.brand || "")).join(" ")
+      : "";
+    // Whale 4.38 / Chromium 148 can crash its browser process when a
+    // FileSystemHandle restored from IndexedDB calls requestPermission().
+    // Use the ordinary file-input/download path until the browser fixes it.
+    if (/\bWhale\//i.test(userAgent) || /\bWhale\b/i.test(brands)) return "whale-stored-handle-crash";
+    return "";
+  }
+
   function isPlainObject(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
     const prototype = Object.getPrototypeOf(value);
@@ -613,8 +626,10 @@
     let pendingWriteError = null;
     let needsFullPersistence = false;
 
+    const fileSystemAccessDisabledReason = detectFileSystemAccessDisabledReason(environment);
     const fileSystemAccessSupported = typeof valueFromEnvironment("showOpenFilePicker") === "function"
-      && typeof valueFromEnvironment("showSaveFilePicker") === "function";
+      && typeof valueFromEnvironment("showSaveFilePicker") === "function"
+      && !fileSystemAccessDisabledReason;
 
     function metadataSnapshot() {
       return {
@@ -655,6 +670,7 @@
         entryCount: memory.size,
         bytes: calculateBytes(),
         vaultId,
+        ...(fileSystemAccessDisabledReason ? { fileSystemAccessDisabledReason } : {}),
         ...(lastError ? {
           error: {
             name: lastError.name || "Error",
@@ -953,7 +969,9 @@
       revision = Number.isSafeInteger(meta.revision) && meta.revision >= 0 ? meta.revision : 0;
       updatedAt = typeof meta.updatedAt === "string" && !Number.isNaN(Date.parse(meta.updatedAt)) ? meta.updatedAt : updatedAt;
       dirty = meta.dirty === true;
-      fileHandle = backend.mode === "indexeddb" && meta.fileHandle ? meta.fileHandle : null;
+      fileHandle = backend.mode === "indexeddb" && fileSystemAccessSupported && meta.fileHandle
+        ? meta.fileHandle
+        : null;
       connectionId = fileHandle && typeof meta.connectionId === "string" ? meta.connectionId : null;
       recentFileName = typeof meta.recentFileName === "string" ? meta.recentFileName : "";
       lastFileHash = typeof meta.lastFileHash === "string" ? meta.lastFileHash : null;
@@ -1186,12 +1204,31 @@
         if (permission === "prompt" && request && typeof handle.requestPermission === "function") {
           permission = await handle.requestPermission({ mode: "readwrite" });
         }
-      } catch (_error) {
+      } catch (error) {
+        if (request) throw error;
         permission = "denied";
       }
       if (fileHandle === handle) filePermission = permission;
       notify({ type: "permission" });
       return permission;
+    }
+
+    function beginPermissionRequest(handle, request) {
+      if (!fileSystemAccessSupported || !request || filePermission === "granted"
+        || !handle || typeof handle.requestPermission !== "function") return null;
+      // requestPermission() requires transient user activation. Invoke it
+      // synchronously from the button-triggered API call, before an existing
+      // file-operation queue can defer it into a later task. Convert both
+      // synchronous throws and rejected promises into a handled result so a
+      // busy queue cannot create an unhandled rejection in the meantime.
+      try {
+        return Promise.resolve(handle.requestPermission({ mode: "readwrite" })).then(
+          (permission) => ({ permission }),
+          (error) => ({ error }),
+        );
+      } catch (error) {
+        return Promise.resolve({ error });
+      }
     }
 
     async function readHandle(handle) {
@@ -1262,7 +1299,7 @@
     async function createVaultFile(options = {}) {
       await ready;
       const hasInjectedHandle = Boolean(options?.handle || options?.createWritable);
-      if (!hasInjectedHandle && typeof valueFromEnvironment("showSaveFilePicker") !== "function") {
+      if (!hasInjectedHandle && !fileSystemAccessSupported) {
         return enqueueFileOperation(async () => {
           const backup = await downloadBackup(options);
           recentFileName = backup.filename;
@@ -1297,7 +1334,7 @@
       const hasInjectedHandle = Boolean(options?.handle || options?.getFile);
       const hasInjectedFile = typeof options === "string" || typeof options?.text === "string"
         || Boolean(options?.file) || (typeof options?.text === "function" && !options?.getFile);
-      if (hasInjectedFile || (!hasInjectedHandle && typeof valueFromEnvironment("showOpenFilePicker") !== "function")) {
+      if (hasInjectedFile || (!hasInjectedHandle && !fileSystemAccessSupported)) {
         const imported = await pickFallbackFile(options);
         if (utf8Length(imported.text) > MAX_DOCUMENT_BYTES) throw new Error("보관함 파일이 너무 큽니다.");
         const document = await parseVaultText(imported.text, environment);
@@ -1335,28 +1372,54 @@
       });
     }
 
-    async function reconnectFile(options = {}) {
-      await ready;
-      return enqueueFileOperation(async () => {
-        if (!fileHandle) throw new Error("다시 연결할 최근 보관함이 없습니다.");
-        const permission = await refreshPermission(options.requestPermission !== false);
-        if (permission !== "granted") throw new Error("보관함 파일 권한이 필요합니다.");
-        const { text, rawHash } = await readHandle(fileHandle);
-        const document = await parseVaultText(text, environment);
-        if (dirty) {
-          if (!lastFileHash || lastFileRevision === null
-            || rawHash !== lastFileHash || document.revision !== lastFileRevision) {
-            throw createConflictError();
+    function reconnectFile(options = {}) {
+      const targetHandle = fileHandle;
+      const permissionAttempt = beginPermissionRequest(targetHandle, options.requestPermission !== false);
+      return ready.then(() => enqueueFileOperation(async () => {
+        try {
+          if (!fileSystemAccessSupported) {
+            throw new Error("이 브라우저에서는 안전을 위해 최근 파일 직접 재연결을 사용하지 않습니다. 파일을 다시 열어 주세요.");
           }
-        } else {
-          lastFileHash = rawHash;
-          lastFileRevision = document.revision;
-          lastSyncAt = nowIso(environment);
-          await replaceWithDocument(document, { dirty: false });
+          if (!fileHandle) throw new Error("다시 연결할 최근 보관함이 없습니다.");
+          if (targetHandle && fileHandle !== targetHandle) {
+            throw new Error("다시 연결하는 동안 보관함 연결이 변경되었습니다.");
+          }
+          let permission;
+          if (permissionAttempt) {
+            const result = await permissionAttempt;
+            if (result.error) throw result.error;
+            permission = result.permission;
+            if (fileHandle === targetHandle) filePermission = permission;
+            notify({ type: "permission" });
+          } else {
+            // Querying is safe without user activation. Never start a delayed
+            // permission prompt here: the original click may no longer be active.
+            permission = await refreshPermission(false);
+          }
+          if (permission !== "granted") throw new Error("보관함 파일 권한이 필요합니다.");
+          const { text, rawHash } = await readHandle(fileHandle);
+          const document = await parseVaultText(text, environment);
+          if (dirty) {
+            if (!lastFileHash || lastFileRevision === null
+              || rawHash !== lastFileHash || document.revision !== lastFileRevision) {
+              throw createConflictError();
+            }
+          } else {
+            lastFileHash = rawHash;
+            lastFileRevision = document.revision;
+            lastSyncAt = nowIso(environment);
+            await replaceWithDocument(document, { dirty: false });
+          }
+          await persistMetadata();
+          lastError = null;
+          notify({ type: "reconnected" });
+          return getStatus();
+        } catch (error) {
+          lastError = error;
+          notify({ type: error.code === "VAULT_FILE_CONFLICT" ? "conflict" : "error", error });
+          throw error;
         }
-        await persistMetadata();
-        return getStatus();
-      });
+      }));
     }
 
     async function currentDocument() {
@@ -1566,6 +1629,7 @@
     encodePortableText,
     decodePortableText,
     sha256Hex,
+    detectFileSystemAccessDisabledReason,
     buildFallbackRecoverySnapshot,
     runBrowserSmokeTest,
   });

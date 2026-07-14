@@ -14,6 +14,7 @@ const {
   serializeVaultDocument,
   encodePortableText,
   decodePortableText,
+  detectFileSystemAccessDisabledReason,
   buildFallbackRecoverySnapshot,
   runBrowserSmokeTest,
 } = require("../vault-storage.js");
@@ -476,6 +477,118 @@ test("진행 중 저장과 새 파일 열기는 직렬화되어 새 연결 basel
   service.storage.setItem("note", "new 파일 수정");
   await service.saveNow();
   assert.equal((await parseVaultText(newHandle.content)).entries.note, "new 파일 수정");
+});
+
+test("Chrome 재연결 권한 요청은 비동기 경계보다 먼저 클릭 순간에 시작한다", async () => {
+  const service = createFallbackService(undefined, {
+    showOpenFilePicker() {},
+    showSaveFilePicker() {},
+    navigator: { userAgent: "Mozilla/5.0 Chrome/150.0.0.0 Safari/537.36" },
+  });
+  await service.ready;
+  service.storage.setItem("note", "첫 작업본");
+  await service.flush();
+  const handle = new FakeFileHandle();
+  await service.createVaultFile({ handle });
+  handle.permission = "prompt";
+  await service.openVaultFile({ handle });
+
+  let userActivation = true;
+  let permissionRequests = 0;
+  handle.requestPermission = () => {
+    permissionRequests += 1;
+    if (!userActivation) {
+      const error = new Error("사용자 활성화가 끝났습니다.");
+      error.name = "SecurityError";
+      throw error;
+    }
+    handle.permission = "granted";
+    return Promise.resolve("granted");
+  };
+
+  const reconnecting = service.reconnectFile();
+  assert.equal(permissionRequests, 1);
+  userActivation = false;
+  const status = await reconnecting;
+  assert.equal(status.connected, true);
+  assert.equal(status.permission, "granted");
+});
+
+test("이미 권한이 허용된 재연결은 requestPermission을 다시 호출하지 않는다", async () => {
+  const service = createFallbackService(undefined, {
+    showOpenFilePicker() {},
+    showSaveFilePicker() {},
+    navigator: { userAgent: "Mozilla/5.0 Chrome/150.0.0.0 Safari/537.36" },
+  });
+  await service.ready;
+  const handle = new FakeFileHandle();
+  service.storage.setItem("note", "권한 유지 작업본");
+  await service.flush();
+  await service.createVaultFile({ handle });
+  let permissionRequests = 0;
+  handle.requestPermission = () => {
+    permissionRequests += 1;
+    throw new Error("이미 허용된 핸들에는 호출하면 안 됨");
+  };
+  const status = await service.reconnectFile();
+  assert.equal(status.permission, "granted");
+  assert.equal(permissionRequests, 0);
+});
+
+test("재연결 SecurityError는 권한 거부로 위조하지 않고 다시 시도할 수 있게 남긴다", async () => {
+  const service = createFallbackService(undefined, {
+    showOpenFilePicker() {},
+    showSaveFilePicker() {},
+    navigator: { userAgent: "Mozilla/5.0 Chrome/150.0.0.0 Safari/537.36" },
+  });
+  await service.ready;
+  const handle = new FakeFileHandle();
+  service.storage.setItem("note", "재시도 작업본");
+  await service.flush();
+  await service.createVaultFile({ handle });
+  handle.permission = "prompt";
+  await service.openVaultFile({ handle });
+  handle.requestPermission = () => {
+    const error = new Error("사용자 활성화 필요");
+    error.name = "SecurityError";
+    throw error;
+  };
+  await assert.rejects(service.reconnectFile(), (error) => error.name === "SecurityError");
+  assert.equal(service.getStatus().permission, "prompt");
+  assert.equal(service.getStatus().connected, true);
+});
+
+test("Whale에서는 저장 핸들 재권한 요청을 막고 파일 입출력 fallback을 사용한다", async () => {
+  const navigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Whale/4.38.386.14 Safari/537.36" };
+  assert.equal(detectFileSystemAccessDisabledReason({ navigator }), "whale-stored-handle-crash");
+  let pickerCalls = 0;
+  const service = createFallbackService(undefined, {
+    navigator,
+    showOpenFilePicker() { pickerCalls += 1; },
+    showSaveFilePicker() { pickerCalls += 1; },
+  });
+  await service.ready;
+  service.storage.setItem("note", "웨일 작업본");
+  await service.flush();
+  const fallbackStatus = await service.createVaultFile({ filename: "whale-safe-backup.json" });
+  assert.equal(fallbackStatus.connected, false);
+  assert.equal(fallbackStatus.fileName, "whale-safe-backup.json");
+  assert.equal(pickerCalls, 0);
+
+  // An injected handle models an old handle restored from IndexedDB. Even if
+  // it is present, the Whale workaround must never ask it for permission.
+  const handle = new FakeFileHandle();
+  await service.createVaultFile({ handle });
+  let permissionRequests = 0;
+  handle.requestPermission = () => {
+    permissionRequests += 1;
+    return Promise.resolve("granted");
+  };
+  await assert.rejects(service.reconnectFile(), /안전을 위해/);
+  assert.equal(permissionRequests, 0);
+  assert.equal(pickerCalls, 0);
+  assert.equal(service.getStatus().fileSystemAccessSupported, false);
+  assert.equal(service.getStatus().fileSystemAccessDisabledReason, "whale-stored-handle-crash");
 });
 
 test("파일 열기는 실제 readwrite permission을 조회해 prompt 상태를 보존한다", async () => {

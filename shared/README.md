@@ -37,3 +37,5 @@ async function prepareStorage() {
 - 휴대용 텍스트: gzip 가능한 JSON을 base64url로 만든 `TOOLS1.` 형식
 
 파일과 휴대용 텍스트는 암호화되지 않습니다. 체크섬은 우발적인 손상과 불완전한 파일을 확인하기 위한 값이며 비밀번호나 서명 역할을 하지 않습니다.
+
+네이버 웨일에서는 저장된 `FileSystemHandle`의 권한 재요청 중 브라우저 프로세스가 종료되는 호환성 문제가 확인되어 File System Access 직접 연결을 비활성화합니다. 이 환경에서는 동일한 API가 JSON 파일 선택과 다운로드 방식으로 자동 대체됩니다.
