@@ -197,8 +197,39 @@
                 <span class="compare-image-export-icon" aria-hidden="true"><i></i></span>
                 <p>
                   <strong id="compare-image-export-title">이미지로 내보내기</strong>
-                  <small>현재 취합 결과를 고해상도 PNG로 복사하거나 저장해요.</small>
+                  <small>보여줄 시간만 골라 고해상도 PNG로 복사하거나 저장해요.</small>
                 </p>
+              </div>
+              <div class="compare-image-scope">
+                <div class="compare-image-scope-controls">
+                  <label for="compareImageMode">
+                    <span>이미지 범위</span>
+                    <select id="compareImageMode" aria-describedby="compareImageScopeHelp">
+                      <option value="overlap" selected>전체 현황</option>
+                      <option value="all">전원 가능만</option>
+                      <option value="selected">직접 선택</option>
+                    </select>
+                  </label>
+                  <div
+                    class="compare-image-selection-status"
+                    id="compareImageSelectionStatus"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    hidden
+                  >
+                    <p><strong id="compareImageSelectedCount">0</strong>칸 선택</p>
+                    <button
+                      id="compareImageSelectionClearButton"
+                      type="button"
+                      aria-describedby="compareImageScopeHelp"
+                      disabled
+                    >
+                      선택 지우기
+                    </button>
+                  </div>
+                </div>
+                <p id="compareImageScopeHelp">겹치는 인원 현황을 모두 이미지에 표시해요.</p>
               </div>
               <div class="compare-image-actions">
                 <button id="compareImageButton" type="button" aria-describedby="compareImageStatus" disabled>

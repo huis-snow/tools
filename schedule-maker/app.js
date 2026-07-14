@@ -492,6 +492,20 @@
     const startDay = normalizeStartDay(metadata.startDay, 0);
     const dayOrder = displayDayIndexes(startDay);
     const aggregate = aggregateSchedules(roster, startHour);
+    const mode = ["overlap", "all", "selected"].includes(options.mode)
+      ? options.mode
+      : "overlap";
+    const selectedIndexSource = Array.isArray(options.selectedIndexes)
+      ? options.selectedIndexes
+      : options.selectedIndexes instanceof Set
+        ? Array.from(options.selectedIndexes)
+        : [];
+    const selectedIndexes = new Set(selectedIndexSource
+      .map((index) => Number(index))
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < SLOT_COUNT));
+    if (mode === "selected" && selectedIndexes.size === 0) {
+      throw new Error("이미지에 표시할 시간 칸을 하나 이상 선택해 주세요.");
+    }
     const title = cleanMeta(metadata.title, "함께 가능한 시간", 60);
     const timezone = cleanMeta(metadata.timezone, roster[0].timezone, 40);
     const excluded = Array.isArray(metadata.excluded)
@@ -504,6 +518,7 @@
     const maximumCells = aggregate.maxCount > 0
       ? aggregate.cells.filter((cell) => cell.count === aggregate.maxCount).length
       : 0;
+    const everyoneCells = aggregate.cells.filter((cell) => cell.count === roster.length).length;
 
     const scale = options.scale || 2;
     const width = 1040;
@@ -556,9 +571,13 @@
       114,
     );
     context.textAlign = "right";
-    const maximumSummary = maximumCells
-      ? `집계 참여 ${roster.length}명  ·  최대 겹침 ${aggregate.maxCount}/${roster.length}명  ·  ${maximumCells}칸`
-      : `집계 참여 ${roster.length}명  ·  최대 겹침 0/${roster.length}명`;
+    const maximumSummary = mode === "all"
+      ? `집계 참여 ${roster.length}명  ·  전원 가능 ${everyoneCells}칸`
+      : mode === "selected"
+        ? `집계 참여 ${roster.length}명  ·  직접 선택 ${selectedIndexes.size}칸`
+        : maximumCells
+          ? `집계 참여 ${roster.length}명  ·  최대 겹침 ${aggregate.maxCount}/${roster.length}명  ·  ${maximumCells}칸`
+          : `집계 참여 ${roster.length}명  ·  최대 겹침 0/${roster.length}명`;
     context.fillText(maximumSummary, width - 36, 114);
 
     context.textAlign = "left";
@@ -606,17 +625,38 @@
       dayOrder.forEach((day, columnIndex) => {
         const cell = aggregate.cells[slotIndex(hour, day)];
         const level = overlapColorLevel(cell.count);
+        const isVisible = mode === "overlap"
+          || (mode === "all" && cell.count === roster.length)
+          || (mode === "selected" && selectedIndexes.has(cell.index));
         const left = gridX + Math.round((columnIndex * gridWidth) / DAYS.length);
         const right = gridX + Math.round(((columnIndex + 1) * gridWidth) / DAYS.length);
-        if (level > 0) {
-          context.fillStyle = level === MAX_OVERLAP_LEVEL
+        if (isVisible && (level > 0 || mode === "selected")) {
+          context.fillStyle = mode === "all"
             ? "#f36c3f"
-            : `rgba(243, 108, 63, ${overlapAlphas[level]})`;
+            : level === 0
+              ? "#ffebe2"
+              : level === MAX_OVERLAP_LEVEL
+                ? "#f36c3f"
+                : `rgba(243, 108, 63, ${overlapAlphas[level]})`;
           context.fillRect(left + 1, top + 1, right - left - 1, rowHeight - 1);
         }
-        context.font = `600 10px ${fontFamily}`;
-        context.fillStyle = level >= 6 ? "#ffffff" : level ? "#153c34" : "#a2ada6";
-        context.fillText(cell.count ? `${cell.count}명` : "–", (left + right) / 2, top + rowHeight / 2 + 0.5);
+        if (mode === "selected" && isVisible) {
+          context.strokeStyle = "#d8522a";
+          context.lineWidth = 1.5;
+          context.strokeRect(left + 2, top + 2, right - left - 4, rowHeight - 4);
+        }
+        if (isVisible) {
+          context.font = `600 10px ${fontFamily}`;
+          context.fillStyle = mode === "all"
+            ? "#0f2e27"
+            : level >= 6
+              ? "#ffffff"
+              : level
+                ? "#153c34"
+                : "#8f4a35";
+          const cellLabel = cell.count ? `${cell.count}명` : mode === "selected" ? "0명" : "–";
+          context.fillText(cellLabel, (left + right) / 2, top + rowHeight / 2 + 0.5);
+        }
       });
     });
 
@@ -641,17 +681,30 @@
     context.font = `400 10px ${fontFamily}`;
     context.textAlign = "left";
     context.fillStyle = "#61766e";
-    context.fillText("겹치는 인원", 38, footerY);
-    for (let level = 1; level <= MAX_OVERLAP_LEVEL; level += 1) {
-      const x = 116 + (level - 1) * 33;
-      context.fillStyle = level === MAX_OVERLAP_LEVEL
-        ? "#f36c3f"
-        : `rgba(243, 108, 63, ${overlapAlphas[level]})`;
-      context.fillRect(x, footerY - 8, 24, 16);
+    if (mode === "overlap") {
+      context.fillText("겹치는 인원", 38, footerY);
+      for (let level = 1; level <= MAX_OVERLAP_LEVEL; level += 1) {
+        const x = 116 + (level - 1) * 33;
+        context.fillStyle = level === MAX_OVERLAP_LEVEL
+          ? "#f36c3f"
+          : `rgba(243, 108, 63, ${overlapAlphas[level]})`;
+        context.fillRect(x, footerY - 8, 24, 16);
+      }
+      context.fillStyle = "#61766e";
+      context.fillText("1명", 116, footerY + 25);
+      context.fillText("8명+", 331, footerY + 25);
+    } else {
+      context.fillStyle = "#f36c3f";
+      context.fillRect(38, footerY - 8, 24, 16);
+      context.fillStyle = "#61766e";
+      context.fillText(
+        mode === "all"
+          ? `전원 가능한 시간만 표시 · ${everyoneCells}칸`
+          : `직접 선택한 시간만 표시 · ${selectedIndexes.size}칸`,
+        74,
+        footerY,
+      );
     }
-    context.fillStyle = "#61766e";
-    context.fillText("1명", 116, footerY + 25);
-    context.fillText("8명+", 331, footerY + 25);
     context.textAlign = "right";
     context.fillText("언제표에서 만든 가능 시간 취합표", width - 36, footerY);
 
@@ -709,6 +762,11 @@
       compareCollectionSave: document.querySelector("#compareSaveCollectionButton"),
       compareCollectionShare: document.querySelector("#compareCopyCollectionLinkButton"),
       compareCollectionStatus: document.querySelector("#compareCollectionSaveStatus"),
+      compareImageMode: document.querySelector("#compareImageMode"),
+      compareImageSelectedCount: document.querySelector("#compareImageSelectedCount"),
+      compareImageSelectionClear: document.querySelector("#compareImageSelectionClearButton"),
+      compareImageSelectionStatus: document.querySelector("#compareImageSelectionStatus"),
+      compareImageScopeHelp: document.querySelector("#compareImageScopeHelp"),
       compareImageButton: document.querySelector("#compareImageButton"),
       compareImageLabel: document.querySelector("#compareImageLabel"),
       comparePngButton: document.querySelector("#comparePngButton"),
@@ -732,6 +790,7 @@
     let comparisonActiveIndex = null;
     let comparisonRovingIndex = slotIndex(8, 0);
     let comparisonCellElements = [];
+    const comparisonImageSelectedIndexes = new Set();
     let activeComparisonCollectionId = null;
     let comparisonCollectionDirty = false;
     let comparisonImageBusy = false;
@@ -1496,6 +1555,7 @@
 
     function applyComparisonCollection(record) {
       comparisonParticipants = [];
+      comparisonImageSelectedIndexes.clear();
       nextParticipantId = 1;
       appendComparisonSchedules(record.members || []);
       elements.compareCollectionName.value = record.name || "";
@@ -1635,10 +1695,113 @@
       if (elements.compareImageStatus) elements.compareImageStatus.textContent = message;
     }
 
+    function currentComparisonImageMode() {
+      const mode = elements.compareImageMode?.value;
+      return ["overlap", "all", "selected"].includes(mode) ? mode : "overlap";
+    }
+
+    function comparisonEveryoneCellCount() {
+      if (!comparisonRoster.length) return 0;
+      return comparisonCells.filter((cell) => cell.count === comparisonRoster.length).length;
+    }
+
+    function syncComparisonImageSelectionPresentation() {
+      const mode = currentComparisonImageMode();
+      const isSelecting = mode === "selected";
+      const selectedCount = comparisonImageSelectedIndexes.size;
+      if (elements.compareImageSelectedCount) {
+        elements.compareImageSelectedCount.textContent = String(selectedCount);
+      }
+      if (elements.compareImageSelectionStatus) {
+        elements.compareImageSelectionStatus.hidden = !isSelecting;
+      }
+      if (elements.compareImageSelectionClear) {
+        elements.compareImageSelectionClear.disabled = comparisonImageBusy || selectedCount === 0;
+      }
+      if (elements.compareGrid) {
+        if (isSelecting) elements.compareGrid.classList.add("is-image-selecting");
+        else elements.compareGrid.classList.remove("is-image-selecting");
+        if (isSelecting) elements.compareGrid.setAttribute("aria-multiselectable", "true");
+        else elements.compareGrid.removeAttribute("aria-multiselectable");
+        elements.compareGrid.dataset.imageMode = mode;
+      }
+
+      comparisonCellElements.forEach((cell, index) => {
+        if (!cell) return;
+        const isSelected = comparisonImageSelectedIndexes.has(index);
+        if (isSelected) cell.classList.add("is-image-selected");
+        else cell.classList.remove("is-image-selected");
+        cell.setAttribute("aria-selected", String(isSelecting && isSelected));
+        const baseLabel = cell.dataset.baseAriaLabel || cell.getAttribute("aria-label") || "시간 칸";
+        cell.dataset.baseAriaLabel = baseLabel;
+        cell.setAttribute(
+          "aria-label",
+          isSelecting
+            ? `${baseLabel}, 이미지 ${isSelected ? "선택됨, 선택 해제" : "선택에 추가"}`
+            : baseLabel,
+        );
+      });
+    }
+
     function syncComparisonImageControls(compatibleCount = comparisonView().compatible.length) {
-      const disabled = comparisonImageBusy || compatibleCount === 0;
+      const needsSelection = currentComparisonImageMode() === "selected";
+      const disabled = comparisonImageBusy
+        || compatibleCount === 0
+        || (needsSelection && comparisonImageSelectedIndexes.size === 0);
       if (elements.compareImageButton) elements.compareImageButton.disabled = disabled;
       if (elements.comparePngButton) elements.comparePngButton.disabled = disabled;
+      if (elements.compareImageMode) elements.compareImageMode.disabled = comparisonImageBusy;
+      if (elements.compareImageSelectionClear) {
+        elements.compareImageSelectionClear.disabled = comparisonImageBusy
+          || comparisonImageSelectedIndexes.size === 0;
+      }
+    }
+
+    function describeComparisonImageScope(excludedCount = comparisonView().excluded.length) {
+      const mode = currentComparisonImageMode();
+      const compatibleCount = comparisonRoster.length;
+      const exclusionNote = excludedCount ? ` 다른 시간대 ${excludedCount}명은 이미지 집계에서 제외돼요.` : "";
+      let help = "겹치는 인원 현황을 모두 이미지에 표시해요.";
+      let status = compatibleCount
+        ? `현재 ${compatibleCount}명의 전체 취합 결과를 이미지로 복사하거나 저장할 수 있어요.${exclusionNote}`
+        : "취합할 일정을 추가하면 결과를 이미지로 내보낼 수 있어요.";
+
+      if (mode === "all") {
+        const everyoneCells = comparisonEveryoneCellCount();
+        help = "모두 가능한 시간만 진하게 남기고 다른 칸의 숫자는 숨겨요.";
+        status = compatibleCount
+          ? `${compatibleCount}명 전원이 가능한 ${everyoneCells}칸만 이미지에 표시해요.${exclusionNote}`
+          : "취합할 일정을 추가하면 전원 가능한 시간을 이미지로 내보낼 수 있어요.";
+      } else if (mode === "selected") {
+        const selectedCount = comparisonImageSelectedIndexes.size;
+        help = selectedCount
+          ? `표에서 고른 ${selectedCount}칸만 이미지에 표시해요. 칸을 다시 누르면 선택이 풀려요.`
+          : "아래 표에서 이미지에 넣을 시간 칸을 눌러 선택해 주세요.";
+        status = selectedCount
+          ? `직접 고른 ${selectedCount}칸만 이미지로 복사하거나 저장해요.${exclusionNote}`
+          : "직접 선택 모드예요. 아래 표에서 이미지에 넣을 시간 칸을 하나 이상 골라 주세요.";
+      }
+
+      if (elements.compareImageScopeHelp) elements.compareImageScopeHelp.textContent = help;
+      setComparisonImageStatus(status);
+    }
+
+    function toggleComparisonImageSelection(index) {
+      if (currentComparisonImageMode() !== "selected" || !comparisonCells[index]) return false;
+      if (comparisonImageSelectedIndexes.has(index)) comparisonImageSelectedIndexes.delete(index);
+      else comparisonImageSelectedIndexes.add(index);
+      syncComparisonImageSelectionPresentation();
+      syncComparisonImageControls(comparisonRoster.length);
+      describeComparisonImageScope();
+      return true;
+    }
+
+    function clearComparisonImageSelection() {
+      if (!comparisonImageSelectedIndexes.size) return;
+      comparisonImageSelectedIndexes.clear();
+      syncComparisonImageSelectionPresentation();
+      syncComparisonImageControls(comparisonRoster.length);
+      describeComparisonImageScope();
     }
 
     function comparisonImageFilename() {
@@ -1660,6 +1823,9 @@
         startHour: currentComparisonStartHour(),
         startDay: currentComparisonStartDay(),
         excluded,
+      }, {
+        mode: currentComparisonImageMode(),
+        selectedIndexes: Array.from(comparisonImageSelectedIndexes),
       }).then(canvasToBlob);
     }
 
@@ -1809,7 +1975,6 @@
       if (comparisonActiveIndex !== null) {
         const previous = comparisonCellElements[comparisonActiveIndex];
         previous?.classList.remove("is-active");
-        previous?.setAttribute("aria-selected", "false");
       }
       comparisonActiveIndex = null;
       elements.compareDetail.replaceChildren();
@@ -1830,11 +1995,9 @@
 
       if (comparisonActiveIndex !== null && comparisonActiveIndex !== index) {
         comparisonCellElements[comparisonActiveIndex]?.classList.remove("is-active");
-        comparisonCellElements[comparisonActiveIndex]?.setAttribute("aria-selected", "false");
       }
       comparisonActiveIndex = index;
       element.classList.add("is-active");
-      element.setAttribute("aria-selected", "true");
 
       const startHour = currentComparisonStartHour();
       const timelineHour = cell.hour < startHour ? cell.hour + HOURS : cell.hour;
@@ -1937,10 +2100,8 @@
           button.dataset.level = String(level);
           button.setAttribute("role", "gridcell");
           button.setAttribute("aria-selected", "false");
-          button.setAttribute(
-            "aria-label",
-            `${DAYS[day].full} ${startLabel}부터 ${endLabel}까지, ${roster.length}명 중 ${cell.count}명 가능, 자세히 보기`,
-          );
+          button.dataset.baseAriaLabel = `${DAYS[day].full} ${startLabel}부터 ${endLabel}까지, ${roster.length}명 중 ${cell.count}명 가능, 자세히 보기`;
+          button.setAttribute("aria-label", button.dataset.baseAriaLabel);
           button.title = names.length
             ? `${DAYS[day].short} ${startLabel}–${endLabel}\n${cell.count}명: ${names.join(", ")}`
             : `${DAYS[day].short} ${startLabel}–${endLabel}\n가능한 사람 없음`;
@@ -1977,6 +2138,7 @@
       comparisonActiveIndex = null;
       comparisonRovingIndex = slotIndex(startHour, startDay);
       createComparisonGrid(aggregate, compatible);
+      syncComparisonImageSelectionPresentation();
       resetComparisonDetail();
       elements.compareGridScroller.scrollTop = 0;
       elements.compareMaxCount.textContent = String(aggregate.maxCount);
@@ -1997,9 +2159,7 @@
       syncComparisonCollectionControls();
       syncComparisonImageControls(compatible.length);
       if (!comparisonImageBusy) {
-        setComparisonImageStatus(compatible.length
-          ? `현재 ${compatible.length}명의 취합 결과를 이미지로 복사하거나 저장할 수 있어요.${excluded.length ? ` 다른 시간대 ${excluded.length}명은 이미지 집계에서도 제외돼요.` : ""}`
-          : "취합할 일정을 추가하면 결과를 이미지로 내보낼 수 있어요.");
+        describeComparisonImageScope(excluded.length);
       }
     }
 
@@ -2034,6 +2194,7 @@
       else if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
         setComparisonRovingFocus(index, false);
+        toggleComparisonImageSelection(index);
         showComparisonDetail(index);
         return;
       } else if (event.key === "Escape") {
@@ -2115,6 +2276,9 @@
 
     function initComparisonApp() {
       if (!elements.compareGrid) return;
+      if (elements.compareImageMode && !["overlap", "all", "selected"].includes(elements.compareImageMode.value)) {
+        elements.compareImageMode.value = "overlap";
+      }
       const comparisonApi = savedComparisonsApi();
       const hasInitialCollection = Boolean(
         (comparisonApi && (window.location.hash || "").startsWith(`#${comparisonApi.SHARE_PARAMETER || "g"}=`))
@@ -2141,6 +2305,7 @@
         }
       });
       elements.compareStartHour.addEventListener("change", () => {
+        comparisonImageSelectedIndexes.clear();
         renderComparison();
         markComparisonCollectionDirty();
         setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
@@ -2152,6 +2317,7 @@
       });
       elements.compareClear.addEventListener("click", () => {
         comparisonParticipants = [];
+        comparisonImageSelectedIndexes.clear();
         renderComparison();
         markComparisonCollectionDirty();
         setComparisonInputStatus("추가한 일정을 모두 비웠어요.", "success");
@@ -2162,6 +2328,7 @@
         const participantId = Number(remove.dataset.participantId);
         const participant = comparisonParticipants.find((item) => item.id === participantId);
         comparisonParticipants = comparisonParticipants.filter((item) => item.id !== participantId);
+        if (!comparisonParticipants.length) comparisonImageSelectedIndexes.clear();
         renderComparison();
         markComparisonCollectionDirty();
         setComparisonInputStatus(`${participant?.title || "일정"} 일정을 제거했어요.`, "success");
@@ -2175,6 +2342,12 @@
         if (record) showToast(`${record.name} 취합표를 저장했어요`);
       });
       elements.compareCollectionShare?.addEventListener("click", copyCurrentComparisonCollection);
+      elements.compareImageMode?.addEventListener("change", () => {
+        syncComparisonImageSelectionPresentation();
+        syncComparisonImageControls(comparisonRoster.length);
+        describeComparisonImageScope();
+      });
+      elements.compareImageSelectionClear?.addEventListener("click", clearComparisonImageSelection);
       elements.compareImageButton?.addEventListener("click", copyComparisonImage);
       elements.comparePngButton?.addEventListener("click", saveComparisonPng);
       window.addEventListener?.("hashchange", () => {
@@ -2196,6 +2369,7 @@
         if (!cell) return;
         const index = Number(cell.dataset.index);
         setComparisonRovingFocus(index, false);
+        toggleComparisonImageSelection(index);
         showComparisonDetail(index);
       });
       elements.compareGrid.addEventListener("keydown", handleComparisonKeydown);

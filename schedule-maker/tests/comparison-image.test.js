@@ -105,6 +105,16 @@ function renderedTexts(harness) {
     .map((call) => call.text);
 }
 
+function renderedGridTexts(harness) {
+  return harness.calls
+    .filter((call) => {
+      if (call.method !== "fillText") return false;
+      const [x, y] = call.args;
+      return x >= 124 && y >= 267 && y < 987;
+    })
+    .map((call) => call.text);
+}
+
 test("취합 이미지 렌더러를 공개 API로 제공하고 배율에 맞는 canvas를 만든다", async () => {
   assert.equal(typeof schedule.renderComparisonImage, "function");
   const members = [participant("쵸하", [schedule.slotIndex(20, 0)])];
@@ -190,11 +200,78 @@ test("취합 이미지 렌더러는 잘못된 참여 일정 데이터를 거절�
   );
 });
 
+test("취합 이미지 표시 모드는 전체 현황·전원 가능·직접 선택 칸을 구분한다", async () => {
+  const everyoneIndex = schedule.slotIndex(20, 0);
+  const onePersonIndex = schedule.slotIndex(21, 1);
+  const nobodyIndex = schedule.slotIndex(22, 2);
+  const members = [
+    participant("첫째", [everyoneIndex, onePersonIndex]),
+    participant("둘째", [everyoneIndex]),
+  ];
+
+  const overlap = createCanvasHarness();
+  await withDocument(overlap.document, () => schedule.renderComparisonImage(
+    members,
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "overlap" },
+  ));
+  const all = createCanvasHarness();
+  await withDocument(all.document, () => schedule.renderComparisonImage(
+    members,
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "all" },
+  ));
+  const selected = createCanvasHarness();
+  await withDocument(selected.document, () => schedule.renderComparisonImage(
+    members,
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "selected", selectedIndexes: [onePersonIndex, nobodyIndex] },
+  ));
+
+  const overlapCells = renderedGridTexts(overlap);
+  const allCells = renderedGridTexts(all);
+  const selectedCells = renderedGridTexts(selected);
+  assert.equal(overlapCells.filter((text) => text === "2명").length, 1);
+  assert.equal(overlapCells.filter((text) => text === "1명").length, 1);
+  assert.equal(allCells.filter((text) => text === "2명").length, 1);
+  assert.equal(allCells.filter((text) => text === "1명").length, 0, "전원 가능 모드는 일부만 가능한 칸을 숨겨야 합니다");
+  assert.equal(selectedCells.filter((text) => text === "2명").length, 0);
+  assert.equal(selectedCells.filter((text) => text === "1명").length, 1, "직접 고른 칸만 이미지에 남아야 합니다");
+  assert.equal(selectedCells.filter((text) => text === "0명").length, 1, "가능한 사람이 없는 칸도 직접 골랐다면 표시해야 합니다");
+});
+
+test("직접 선택 이미지 모드는 한 칸도 고르지 않으면 명확한 오류를 낸다", async () => {
+  const harness = createCanvasHarness();
+  const members = [participant("참여자", [schedule.slotIndex(20, 0)])];
+
+  await assert.rejects(
+    withDocument(harness.document, () => schedule.renderComparisonImage(
+      members,
+      { startHour: 8, startDay: 0 },
+      { mode: "selected", selectedIndexes: [] },
+    )),
+    /선택.*(?:시간|칸)|(?:시간|칸).*선택/,
+  );
+});
+
 test("취합 페이지에 이미지 복사·PNG 저장 버튼과 결과 상태 영역이 있다", () => {
   const html = fs.readFileSync(path.join(__dirname, "../compare.html"), "utf8");
-  for (const id of ["compareImageButton", "compareImageLabel", "comparePngButton", "compareImageStatus"]) {
+  for (const id of [
+    "compareImageMode", "compareImageSelectedCount", "compareImageSelectionClearButton",
+    "compareImageButton", "compareImageLabel", "comparePngButton", "compareImageStatus",
+  ]) {
     assert.match(html, new RegExp(`\\bid=["']${id}["']`), `${id} 요소가 필요합니다`);
   }
+  const modeSelect = html.match(/<select\b[^>]*\bid=["']compareImageMode["'][^>]*>[\s\S]*?<\/select>/i)?.[0];
+  assert.ok(modeSelect, "이미지 표시 범위를 고르는 select가 필요합니다");
+  assert.match(modeSelect, /<option\b(?=[^>]*\bvalue=["']overlap["'])[^>]*>[^<]*전체[^<]*<\/option>/i);
+  assert.match(modeSelect, /<option\b(?=[^>]*\bvalue=["']all["'])[^>]*>[^<]*전원[^<]*(?:가능)?[^<]*<\/option>/i);
+  assert.match(modeSelect, /<option\b(?=[^>]*\bvalue=["']selected["'])[^>]*>[^<]*(?:직접|선택)[^<]*<\/option>/i);
+  const selectionClearButton = html.match(
+    /<button\b[^>]*\bid=["']compareImageSelectionClearButton["'][^>]*>/i,
+  )?.[0];
+  assert.ok(selectionClearButton);
+  assert.match(selectionClearButton, /\bdisabled\b/i);
   const copyButton = html.match(/<button\b[^>]*\bid=["']compareImageButton["'][^>]*>/i)?.[0];
   const pngButton = html.match(/<button\b[^>]*\bid=["']comparePngButton["'][^>]*>/i)?.[0];
   assert.ok(copyButton);
@@ -248,7 +325,11 @@ class FakeElement {
   scrollIntoView() {}
   remove() { this.removed = true; }
   click() { this.clicked = true; }
-  closest() { return null; }
+  closest(selector) {
+    if (selector === ".compare-cell" && this.className.split(/\s+/).includes("compare-cell")) return this;
+    if (selector === "[data-participant-id]" && this.dataset.participantId !== undefined) return this;
+    return null;
+  }
   cloneNode() {
     const clone = new FakeElement("", this.tagName);
     clone.value = this.value;
@@ -263,6 +344,8 @@ const COMPARE_PAGE_IDS = [
   "compareClearButton", "compareTimezoneStatus", "compareMaxCount", "compareSummaryText",
   "compareGrid", "compareGridScroller", "compareDetail", "compareCollectionNameInput",
   "compareSaveCollectionButton", "compareCopyCollectionLinkButton", "compareCollectionSaveStatus",
+  "compareImageMode", "compareImageSelectedCount", "compareImageSelectionClearButton",
+  "compareImageSelectionStatus", "compareImageScopeHelp",
   "compareImageButton", "compareImageLabel", "comparePngButton", "compareImageStatus", "toast",
 ];
 
@@ -272,6 +355,7 @@ function runComparisonPage(options = {}) {
   const imageWrites = [];
   const downloads = [];
   const createdCanvases = [];
+  const createdCanvasHarnesses = [];
   const timers = [];
   const body = new FakeElement("body", "body");
   const document = {
@@ -291,6 +375,7 @@ function runComparisonPage(options = {}) {
       if (tagName === "canvas") {
         const harness = createCanvasHarness();
         createdCanvases.push(harness.canvas);
+        createdCanvasHarnesses.push(harness);
         return harness.canvas;
       }
       const element = new FakeElement("", tagName);
@@ -366,7 +451,7 @@ function runComparisonPage(options = {}) {
   };
   context.globalThis = context;
   vm.runInNewContext(source, context, { filename: "schedule-maker/app.js" });
-  return { elements, imageWrites, downloads, createdCanvases, timers, location };
+  return { elements, imageWrites, downloads, createdCanvases, createdCanvasHarnesses, timers, location };
 }
 
 function addOneComparisonSchedule(page) {
@@ -378,6 +463,41 @@ function addOneComparisonSchedule(page) {
     { title: "휴이스", timezone: "Asia/Seoul", startHour: 8, startDay: 0 },
   );
   page.elements.get("compareAddButton").listeners.get("click")();
+}
+
+function addComparisonSchedule(page, title, indexes) {
+  const slots = schedule.createSlots();
+  indexes.forEach((index) => schedule.setSelected(slots, index, true));
+  page.elements.get("compareLinksInput").value = schedule.makeShareUrl(
+    "https://example.test/schedule-maker/",
+    slots,
+    { title, timezone: "Asia/Seoul", startHour: 8, startDay: 0 },
+  );
+  page.elements.get("compareAddButton").listeners.get("click")();
+}
+
+function findComparisonCell(page, index) {
+  const targetIndex = String(index);
+  const queue = [...page.elements.get("compareGrid").children];
+  while (queue.length) {
+    const current = queue.shift();
+    if (current?.dataset?.index === targetIndex) return current;
+    if (Array.isArray(current?.children)) queue.push(...current.children);
+  }
+  return null;
+}
+
+function chooseImageMode(page, mode) {
+  const control = page.elements.get("compareImageMode");
+  control.value = mode;
+  control.listeners.get("change")?.({ target: control });
+}
+
+function clickComparisonCell(page, index) {
+  const cell = findComparisonCell(page, index);
+  assert.ok(cell, `${index}번 취합 칸을 찾아야 합니다`);
+  page.elements.get("compareGrid").listeners.get("click")({ target: cell });
+  return cell;
 }
 
 test("취합 일정이 생기면 이미지 버튼을 활성화하고 PNG를 클립보드에 복사한다", async () => {
@@ -421,4 +541,58 @@ test("취합 PNG 저장 버튼은 고해상도 이미지를 바로 내려받는�
   assert.equal(page.downloads.length, 1);
   assert.match(page.downloads[0].filename, /\.png$/i);
   assert.match(page.elements.get("compareImageStatus").textContent, /저장/);
+});
+
+test("직접 선택 모드는 취합표에서 고른 칸 수를 표시하고 선택을 한 번에 지운다", () => {
+  const page = runComparisonPage();
+  const chosenIndex = schedule.slotIndex(21, 4);
+  addComparisonSchedule(page, "첫째", [chosenIndex]);
+  addComparisonSchedule(page, "둘째", [chosenIndex]);
+
+  chooseImageMode(page, "selected");
+  assert.equal(page.elements.get("compareGrid").getAttribute("aria-multiselectable"), "true");
+  assert.equal(page.elements.get("compareImageButton").disabled, true);
+  assert.equal(page.elements.get("comparePngButton").disabled, true);
+  assert.match(page.elements.get("compareImageStatus").textContent, /선택|고르/);
+
+  const cell = clickComparisonCell(page, chosenIndex);
+  assert.match(page.elements.get("compareImageSelectedCount").textContent, /1/);
+  assert.equal(page.elements.get("compareImageSelectionClearButton").disabled, false);
+  assert.equal(page.elements.get("compareImageButton").disabled, false);
+  assert.equal(page.elements.get("comparePngButton").disabled, false);
+  assert.ok(
+    cell.classList.contains("is-image-selected") || cell.getAttribute("aria-pressed") === "true",
+    "이미지에 넣을 칸은 화면에서도 선택 상태를 보여야 합니다",
+  );
+
+  page.elements.get("compareImageSelectionClearButton").listeners.get("click")();
+  assert.match(page.elements.get("compareImageSelectedCount").textContent, /0/);
+  assert.equal(page.elements.get("compareImageSelectionClearButton").disabled, true);
+  assert.equal(page.elements.get("compareImageButton").disabled, true);
+  assert.equal(page.elements.get("comparePngButton").disabled, true);
+
+  chooseImageMode(page, "overlap");
+  assert.equal(page.elements.get("compareGrid").getAttribute("aria-multiselectable"), null);
+});
+
+test("이미지 복사와 PNG 저장은 같은 직접 선택 필터와 선택 칸을 사용한다", async () => {
+  const page = runComparisonPage();
+  const everyoneIndex = schedule.slotIndex(20, 0);
+  const onePersonIndex = schedule.slotIndex(21, 1);
+  addComparisonSchedule(page, "첫째", [everyoneIndex, onePersonIndex]);
+  addComparisonSchedule(page, "둘째", [everyoneIndex]);
+
+  chooseImageMode(page, "selected");
+  clickComparisonCell(page, onePersonIndex);
+  await page.elements.get("compareImageButton").listeners.get("click")();
+  await page.elements.get("comparePngButton").listeners.get("click")();
+
+  assert.equal(page.imageWrites.length, 1);
+  assert.equal(page.downloads.length, 1);
+  assert.equal(page.createdCanvasHarnesses.length, 2);
+  const copiedGrid = renderedGridTexts(page.createdCanvasHarnesses[0]);
+  const savedGrid = renderedGridTexts(page.createdCanvasHarnesses[1]);
+  assert.deepEqual(savedGrid, copiedGrid, "복사와 저장이 서로 다른 표시 범위를 만들면 안 됩니다");
+  assert.equal(copiedGrid.filter((text) => text === "1명").length, 1);
+  assert.equal(copiedGrid.filter((text) => text === "2명").length, 0);
 });
