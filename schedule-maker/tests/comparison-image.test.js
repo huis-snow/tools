@@ -110,9 +110,40 @@ function renderedGridTexts(harness) {
     .filter((call) => {
       if (call.method !== "fillText") return false;
       const [x, y] = call.args;
-      return x >= 124 && y >= 267 && y < 987;
+      return x >= 124 && x < 1004 && y >= 267 && y < 987;
     })
     .map((call) => call.text);
+}
+
+function renderedTimeLabels(harness) {
+  return harness.calls
+    .filter((call) => {
+      if (call.method !== "fillText") return false;
+      const [x, y] = call.args;
+      return x === 80 && y >= 267;
+    })
+    .map((call) => call.text);
+}
+
+function renderedMidnightLines(harness) {
+  return harness.calls.filter((call) => (
+    call.method === "fillRect"
+      && call.fillStyle === "#f36c3f"
+      && call.args[0] === 36
+      && call.args[2] === 968
+      && call.args[3] === 2
+  ));
+}
+
+async function fullDayComparisonImageHeight() {
+  const harness = createCanvasHarness();
+  await withDocument(harness.document, () => schedule.renderComparisonImage(
+    [participant("전체 높이 기준", [schedule.slotIndex(8, 0), schedule.slotIndex(7, 0)])],
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "overlap" },
+  ));
+  assert.equal(renderedTimeLabels(harness).length, 24, "첫 행과 마지막 행이 차 있으면 24시간을 모두 유지해야 합니다");
+  return harness.canvas.height;
 }
 
 test("취합 이미지 렌더러를 공개 API로 제공하고 배율에 맞는 canvas를 만든다", async () => {
@@ -252,6 +283,136 @@ test("직접 선택 이미지 모드는 한 칸도 고르지 않으면 명확한
     )),
     /선택.*(?:시간|칸)|(?:시간|칸).*선택/,
   );
+});
+
+test("전체 현황 이미지는 가능한 시간이 있는 첫 행부터 마지막 행까지만 남긴다", async () => {
+  const compact = createCanvasHarness();
+  await withDocument(compact.document, () => schedule.renderComparisonImage(
+    [participant("띄엄띄엄 가능", [schedule.slotIndex(10, 0), schedule.slotIndex(12, 1)])],
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "overlap" },
+  ));
+
+  assert.ok(
+    compact.canvas.height < await fullDayComparisonImageHeight(),
+    "위아래 빈 시간대만큼 이미지 높이가 줄어야 합니다",
+  );
+  assert.deepEqual(
+    renderedTimeLabels(compact),
+    ["10:00", "11:00", "12:00"],
+    "첫 가능 시간과 마지막 가능 시간 사이의 빈 행은 맥락을 위해 유지해야 합니다",
+  );
+  assert.equal(renderedGridTexts(compact).filter((text) => text === "1명").length, 2);
+});
+
+test("전원 가능 이미지는 일부만 가능한 행을 자르기 범위에서 제외한다", async () => {
+  const partialIndex = schedule.slotIndex(9, 2);
+  const everyoneFirst = schedule.slotIndex(14, 0);
+  const everyoneLast = schedule.slotIndex(16, 6);
+  const members = [
+    participant("첫째", [partialIndex, everyoneFirst, everyoneLast]),
+    participant("둘째", [everyoneFirst, everyoneLast]),
+  ];
+  const harness = createCanvasHarness();
+
+  await withDocument(harness.document, () => schedule.renderComparisonImage(
+    members,
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "all" },
+  ));
+
+  assert.ok(harness.canvas.height < await fullDayComparisonImageHeight());
+  assert.deepEqual(
+    renderedTimeLabels(harness),
+    ["14:00", "15:00", "16:00"],
+    "일부 인원만 가능한 09시는 전원 가능 이미지의 시작 행이 되면 안 됩니다",
+  );
+  assert.equal(renderedGridTexts(harness).filter((text) => text === "2명").length, 2);
+  assert.equal(renderedGridTexts(harness).filter((text) => text === "1명").length, 0);
+});
+
+test("직접 선택 이미지는 선택한 첫 행과 마지막 행 사이만 남기고 익일 표기를 보존한다", async () => {
+  const selectedFirst = schedule.slotIndex(23, 0);
+  const selectedLast = schedule.slotIndex(2, 1);
+  const unselectedAvailability = schedule.slotIndex(5, 2);
+  const harness = createCanvasHarness();
+
+  await withDocument(harness.document, () => schedule.renderComparisonImage(
+    [participant("참여자", [selectedFirst, unselectedAvailability])],
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "selected", selectedIndexes: [selectedFirst, selectedLast] },
+  ));
+
+  assert.ok(harness.canvas.height < await fullDayComparisonImageHeight());
+  assert.deepEqual(
+    renderedTimeLabels(harness),
+    ["23:00", "익일 00:00", "익일 01:00", "익일 02:00"],
+    "선택하지 않은 05시는 범위를 늘리지 않고, 자정 사이의 빈 행은 유지해야 합니다",
+  );
+  const cellTexts = renderedGridTexts(harness);
+  assert.equal(cellTexts.filter((text) => text === "1명").length, 1);
+  assert.equal(cellTexts.filter((text) => text === "0명").length, 1);
+});
+
+test("축소된 이미지의 자정선은 익일 00시 행 바로 위로 보정된다", async () => {
+  const selectedFirst = schedule.slotIndex(23, 0);
+  const selectedLast = schedule.slotIndex(2, 1);
+  const harness = createCanvasHarness();
+
+  await withDocument(harness.document, () => schedule.renderComparisonImage(
+    [participant("참여자", [selectedFirst])],
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "selected", selectedIndexes: [selectedFirst, selectedLast] },
+  ));
+
+  const midnightLines = renderedMidnightLines(harness);
+  const midnightLabel = harness.calls.find((call) => (
+    call.method === "fillText" && call.text === "익일 00:00" && call.args[0] === 80
+  ));
+  assert.ok(midnightLabel, "축소 범위에 익일 00시 행이 있어야 합니다");
+  assert.equal(midnightLines.length, 1, "자정 강조선은 한 번만 그려야 합니다");
+  assert.equal(
+    midnightLines[0].args[1],
+    midnightLabel.args[1] - 15,
+    "자정 강조선은 원래 24시간 좌표가 아니라 축소된 00시 행 상단에 있어야 합니다",
+  );
+});
+
+test("축소 범위가 익일 00시부터 시작하면 헤더 경계에 자정선을 겹쳐 그리지 않는다", async () => {
+  const midnightIndex = schedule.slotIndex(0, 0);
+  const harness = createCanvasHarness();
+
+  await withDocument(harness.document, () => schedule.renderComparisonImage(
+    [participant("참여자", [midnightIndex])],
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "selected", selectedIndexes: [midnightIndex] },
+  ));
+
+  assert.deepEqual(renderedTimeLabels(harness), ["익일 00:00"]);
+  assert.deepEqual(
+    renderedMidnightLines(harness),
+    [],
+    "00시가 첫 행이면 기존 헤더 경계선만으로 충분하므로 별도 강조선을 그리면 안 됩니다",
+  );
+});
+
+test("전원 가능한 행이 하나도 없으면 시간 행 없이 헤더와 0칸 안내만 남긴다", async () => {
+  const members = [
+    participant("첫째", [schedule.slotIndex(10, 0)]),
+    participant("둘째", [schedule.slotIndex(11, 0)]),
+  ];
+  const harness = createCanvasHarness();
+
+  await withDocument(harness.document, () => schedule.renderComparisonImage(
+    members,
+    { startHour: 8, startDay: 0 },
+    { scale: 1, mode: "all" },
+  ));
+
+  assert.deepEqual(renderedTimeLabels(harness), [], "일치하지 않는 임의의 시간 행을 남기면 안 됩니다");
+  assert.match(renderedTexts(harness).join("\n"), /전원 가능\s*0칸/);
+  assert.ok(harness.canvas.height > 0, "요일 헤더와 결과 안내를 담을 캔버스는 유지해야 합니다");
+  assert.ok(harness.canvas.height < await fullDayComparisonImageHeight());
 });
 
 test("취합 페이지에 이미지 복사·PNG 저장 버튼과 결과 상태 영역이 있다", () => {

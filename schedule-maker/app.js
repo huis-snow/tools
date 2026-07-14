@@ -519,6 +519,22 @@
       ? aggregate.cells.filter((cell) => cell.count === aggregate.maxCount).length
       : 0;
     const everyoneCells = aggregate.cells.filter((cell) => cell.count === roster.length).length;
+    const imageHourOrder = displayHours(startHour);
+    const isCellInImageScope = (cell) => mode === "overlap"
+      ? cell.count > 0
+      : mode === "all"
+        ? cell.count === roster.length
+        : selectedIndexes.has(cell.index);
+    const relevantRowOffsets = imageHourOrder
+      .map((hour, rowOffset) => dayOrder.some((day) => (
+        isCellInImageScope(aggregate.cells[slotIndex(hour, day)])
+      )) ? rowOffset : -1)
+      .filter((rowOffset) => rowOffset >= 0);
+    const firstRowOffset = relevantRowOffsets[0] ?? 0;
+    const lastRowOffset = relevantRowOffsets[relevantRowOffsets.length - 1] ?? -1;
+    const imageHours = relevantRowOffsets.length
+      ? imageHourOrder.slice(firstRowOffset, lastRowOffset + 1)
+      : [];
 
     const scale = options.scale || 2;
     const width = 1040;
@@ -527,7 +543,7 @@
     const gridWidth = 880;
     const headerHeight = 45;
     const rowHeight = 30;
-    const gridHeight = headerHeight + HOURS * rowHeight;
+    const gridHeight = headerHeight + imageHours.length * rowHeight;
     const height = gridY + gridHeight + 92;
     const fontFamily = '"Schedule D2Coding", "D2Coding", monospace';
     const overlapAlphas = [0, 0.14, 0.24, 0.34, 0.44, 0.54, 0.66, 0.8, 1];
@@ -613,9 +629,10 @@
       context.fillText(DAYS[day].short, (left + right) / 2, gridY + headerHeight / 2);
     });
 
-    displayHours(startHour).forEach((hour, rowOffset) => {
-      const top = gridY + headerHeight + rowOffset * rowHeight;
-      context.fillStyle = rowOffset % 2 ? "#f7f8ef" : "#fffdf5";
+    imageHours.forEach((hour, croppedRowOffset) => {
+      const sourceRowOffset = firstRowOffset + croppedRowOffset;
+      const top = gridY + headerHeight + croppedRowOffset * rowHeight;
+      context.fillStyle = sourceRowOffset % 2 ? "#f7f8ef" : "#fffdf5";
       context.fillRect(36, top, width - 72, rowHeight);
       context.font = `400 ${hour < startHour ? 9 : 10}px ${fontFamily}`;
       context.fillStyle = "#60736c";
@@ -625,9 +642,7 @@
       dayOrder.forEach((day, columnIndex) => {
         const cell = aggregate.cells[slotIndex(hour, day)];
         const level = overlapColorLevel(cell.count);
-        const isVisible = mode === "overlap"
-          || (mode === "all" && cell.count === roster.length)
-          || (mode === "selected" && selectedIndexes.has(cell.index));
+        const isVisible = mode === "overlap" || isCellInImageScope(cell);
         const left = gridX + Math.round((columnIndex * gridWidth) / DAYS.length);
         const right = gridX + Math.round(((columnIndex + 1) * gridWidth) / DAYS.length);
         if (isVisible && (level > 0 || mode === "selected")) {
@@ -661,8 +676,8 @@
     });
 
     context.fillStyle = "#9aaba1";
-    for (let hour = 0; hour <= HOURS; hour += 1) {
-      const y = gridY + headerHeight + hour * rowHeight;
+    for (let rowOffset = 0; rowOffset <= imageHours.length; rowOffset += 1) {
+      const y = gridY + headerHeight + rowOffset * rowHeight;
       context.fillRect(36, y, width - 72, 1);
     }
     context.fillRect(gridX - 1, gridY, 1, gridHeight);
@@ -670,11 +685,14 @@
       const x = gridX + Math.round((day * gridWidth) / DAYS.length);
       context.fillRect(x, gridY, 1, gridHeight);
     }
-    if (startHour !== 0) {
+    if (startHour !== 0 && imageHours.length) {
       const midnightOffset = HOURS - startHour;
-      const midnightY = gridY + headerHeight + midnightOffset * rowHeight;
-      context.fillStyle = "#f36c3f";
-      context.fillRect(36, midnightY, width - 72, 2);
+      const croppedMidnightOffset = midnightOffset - firstRowOffset;
+      if (croppedMidnightOffset > 0 && croppedMidnightOffset < imageHours.length) {
+        const midnightY = gridY + headerHeight + croppedMidnightOffset * rowHeight;
+        context.fillStyle = "#f36c3f";
+        context.fillRect(36, midnightY, width - 72, 2);
+      }
     }
 
     const footerY = gridY + gridHeight + 42;
