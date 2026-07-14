@@ -828,6 +828,7 @@
       const shareHash = window.location.hash;
       if (shareHash && !anchorHashes.has(shareHash)) {
         activeSavedScheduleId = null;
+        let redirectingToSavedList = false;
         try {
           const shared = parseShareHash(shareHash);
           if (shared) {
@@ -837,9 +838,15 @@
             elements.startHour.value = String(shared.startHour);
             elements.startDay.value = String(shared.startDay);
             try {
-              savedSchedulesApi()?.saveSchedule(window.localStorage, shared, { source: "shared" });
+              const savedRecord = savedSchedulesApi()?.saveSchedule(window.localStorage, shared, { source: "shared" });
+              if (savedRecord) {
+                redirectingToSavedList = true;
+                window.location.replace("./saved.html#saved-schedules");
+                return true;
+              }
             } catch (_error) {
               // 저장 공간을 사용할 수 없어도 공유 일정 자체는 계속 열 수 있다.
+              redirectingToSavedList = false;
             }
             initialMessage = "공유받은 일정표를 불러왔어요. 수정해도 원본은 바뀌지 않아요.";
           }
@@ -847,9 +854,9 @@
           slots = createSlots();
           initialMessage = "공유 링크가 손상되어 빈 일정표로 열었어요.";
         } finally {
-          cleanWriterLocation({ removeSavedAction: true });
+          if (!redirectingToSavedList) cleanWriterLocation({ removeSavedAction: true });
         }
-        return;
+        return false;
       }
 
       const query = new URLSearchParams(window.location.search);
@@ -887,6 +894,7 @@
       } catch (_error) {
         slots = createSlots();
       }
+      return false;
     }
 
     function daySelectionState(day) {
@@ -2047,7 +2055,7 @@
         window.location.replace("./compare.html");
         return true;
       }
-      loadInitialState();
+      if (loadInitialState()) return true;
       rovingIndex = slotIndex(currentStartHour(), currentStartDay());
       createGrid();
       renderAll();
@@ -2193,8 +2201,8 @@
       elements.compareGrid.addEventListener("keydown", handleComparisonKeydown);
     }
 
-    const redirectedFromLegacyComparison = initScheduleApp();
-    if (!redirectedFromLegacyComparison) initComparisonApp();
+    const redirectedFromScheduleApp = initScheduleApp();
+    if (!redirectedFromScheduleApp) initComparisonApp();
   }
 
   const api = {
