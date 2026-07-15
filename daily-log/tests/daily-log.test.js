@@ -5,6 +5,7 @@ const test = require("node:test");
 const {
   STATE_VERSION,
   STORAGE_KEY,
+  RECOVERY_KEY,
   IMPORT_SIZE_LIMIT,
   parseDateKey,
   toDateKey,
@@ -209,7 +210,7 @@ test("브라우저 부팅 저장소는 보관함 준비와 이전을 마친 뒤 
     assert.deepEqual(calls, [], "ready 전에는 마이그레이션하지 않는다");
     releaseReady();
     assert.equal(await pending, vaultStorage);
-    assert.deepEqual(calls, [{ keys: [STORAGE_KEY], options: { removeSource: true } }]);
+    assert.deepEqual(calls, [{ keys: [STORAGE_KEY, RECOVERY_KEY], options: { removeSource: true } }]);
 
     globalThis.SmallToolsVault = { ready: Promise.reject(new Error("IndexedDB unavailable")) };
     assert.equal(await prepareBrowserStorage(), fallback, "코어 실패 시 localStorage를 유지한다");
@@ -326,9 +327,29 @@ function createDom(storedState = null) {
   const storage = {
     getItem(key) { return values.get(key) ?? null; },
     setItem(key, value) { values.set(key, value); },
+    removeItem(key) { values.delete(key); },
   };
   return { doc, elements, conditions, storage, values };
 }
+
+test("손상된 하루 기록은 원문을 격리하고 자동 저장을 잠근 뒤 명시적 초기화로만 해제한다", async () => {
+  const env = createDom();
+  env.values.set(STORAGE_KEY, "{broken-daily-log");
+  const app = initDailyLogApp(env.doc, { storage: env.storage, now: () => fixedNow, debounceMs: 10_000 });
+
+  assert.equal(env.values.get(RECOVERY_KEY), "{broken-daily-log");
+  assert.equal(env.values.get(STORAGE_KEY), "{broken-daily-log");
+  assert.match(env.elements.get("saveStatus").textContent, /복구 필요/);
+
+  env.elements.get("memoInput").value = "빈 상태에서 쓴 메모";
+  await env.elements.get("memoInput").dispatch("change");
+  assert.equal(env.values.get(STORAGE_KEY), "{broken-daily-log", "자동 저장이 손상 원문을 덮으면 안 된다");
+
+  await env.elements.get("saveStatus").click();
+  assert.equal(env.values.get(RECOVERY_KEY), undefined);
+  assert.deepEqual(JSON.parse(env.values.get(STORAGE_KEY)).records, {});
+  app.destroy();
+});
 
 test("DOM 초기화는 오늘을 선택하고 월요일 시작 42일 달력과 빈 통계를 그린다", () => {
   const env = createDom();
@@ -444,6 +465,27 @@ test("날짜 초기화 저장 실패는 성공 문구로 덮지 않고 메모리
   assert.equal(env.elements.get("toast").textContent, "브라우저에 자동 저장하지 못했어요");
   assert.equal(JSON.parse(env.values.get(STORAGE_KEY)).records["2026-07-14"].memo, "평온한 하루", "실패한 저장소는 바뀌지 않는다");
   app.destroy();
+});
+
+test("위험 작업 전 복원 지점 생성이 실패하면 하루 기록 삭제를 중단한다", async () => {
+  const originalVault = globalThis.SmallToolsVault;
+  const state = createEmptyState();
+  upsertRecord(state, "2026-07-14", fullRecord(), fixedNow);
+  const env = createDom(state);
+  globalThis.SmallToolsVault = {
+    async createRecoveryPoint() { throw new Error("snapshot failed"); },
+  };
+  try {
+    const app = initDailyLogApp(env.doc, { storage: env.storage, now: () => fixedNow });
+    await env.elements.get("clearDayButton").click();
+    assert.equal(app.getState().records["2026-07-14"].memo, "평온한 하루");
+    assert.equal(JSON.parse(env.values.get(STORAGE_KEY)).records["2026-07-14"].memo, "평온한 하루");
+    assert.match(env.elements.get("toast").textContent, /작업을 취소/);
+    app.destroy();
+  } finally {
+    if (originalVault === undefined) delete globalThis.SmallToolsVault;
+    else globalThis.SmallToolsVault = originalVault;
+  }
 });
 
 test("백업 가져오기는 파일 크기를 먼저 확인하고 저장 실패 시 기존 상태를 복원한다", async () => {

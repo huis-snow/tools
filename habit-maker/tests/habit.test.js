@@ -5,6 +5,7 @@ const test = require("node:test");
 const {
   STATE_VERSION,
   STORAGE_KEY,
+  RECOVERY_KEY,
   parseLocalDate,
   formatLocalDate,
   localToday,
@@ -21,6 +22,8 @@ const {
   validateState,
   serializeState,
   importState,
+  loadStoredState,
+  resetCorruptState,
   getLogAmount,
   setLogAmount,
   addHabit,
@@ -59,13 +62,35 @@ test("브라우저 부팅은 기존 습관 키를 보관함으로 옮긴 뒤 공
   };
   try {
     assert.equal(await prepareBrowserStorage(), vaultStorage);
-    assert.deepEqual(calls, [{ keys: [STORAGE_KEY], options: { removeSource: true } }]);
+    assert.deepEqual(calls, [{ keys: [STORAGE_KEY, RECOVERY_KEY], options: { removeSource: true } }]);
   } finally {
     if (originalVault === undefined) delete globalThis.SmallToolsVault;
     else globalThis.SmallToolsVault = originalVault;
     if (originalLocalStorage === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = originalLocalStorage;
   }
+});
+
+test("손상된 습관 기록은 최초 원문을 격리하고 명시적 초기화 전까지 복구 잠금을 유지한다", () => {
+  const values = new Map([[STORAGE_KEY, "{broken-habits"]]);
+  const storage = {
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); },
+  };
+
+  assert.throws(() => loadStoredState(storage), /JSON/);
+  assert.equal(values.get(RECOVERY_KEY), "{broken-habits");
+  assert.equal(values.get(STORAGE_KEY), "{broken-habits");
+
+  values.set(STORAGE_KEY, "{another-broken-value");
+  assert.throws(() => loadStoredState(storage));
+  assert.equal(values.get(RECOVERY_KEY), "{broken-habits", "최초 복구 원본을 덮으면 안 된다");
+
+  const reset = resetCorruptState(storage, new Date(2026, 6, 13, 12));
+  assert.deepEqual(reset.habits, []);
+  assert.equal(values.has(RECOVERY_KEY), false);
+  assert.deepEqual(loadStoredState(storage, new Date(2026, 6, 13, 12)), reset);
 });
 
 test("로컬 날짜 문자열은 UTC 변환 없이 왕복한다", () => {

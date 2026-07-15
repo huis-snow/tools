@@ -11,6 +11,7 @@ const {
   STATE_VERSION,
   STORAGE_KEY,
   LEGACY_STORAGE_KEY,
+  RECOVERY_KEY,
   normalizeJobRole,
   normalizeRole,
   createEmptyState,
@@ -35,6 +36,8 @@ const {
   formatRaidText,
   renderRaidImage,
   prepareBrowserStorage,
+  resetCorruptState,
+  quarantineCorruptState,
 } = raid;
 
 const SEAT_ROLES = [
@@ -64,7 +67,7 @@ test("브라우저 부팅은 공대표 v2와 이전 v1 키를 함께 보관함�
   try {
     assert.equal(await prepareBrowserStorage(), vaultStorage);
     assert.deepEqual(calls, [{
-      keys: [STORAGE_KEY, LEGACY_STORAGE_KEY],
+      keys: [STORAGE_KEY, LEGACY_STORAGE_KEY, RECOVERY_KEY],
       options: { removeSource: true },
     }]);
   } finally {
@@ -73,6 +76,25 @@ test("브라우저 부팅은 공대표 v2와 이전 v1 키를 함께 보관함�
     if (originalLocalStorage === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = originalLocalStorage;
   }
+});
+
+test("손상된 공대표 원문은 별도 복구 키에 한 번만 보관하고 명시적 초기화로 해제한다", () => {
+  const values = new Map([[STORAGE_KEY, "{broken-raid"]]);
+  const storage = {
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); },
+  };
+
+  assert.equal(quarantineCorruptState(storage, values.get(STORAGE_KEY)), true);
+  quarantineCorruptState(storage, "later-broken-value");
+  assert.equal(values.get(RECOVERY_KEY), "{broken-raid");
+  assert.equal(values.get(STORAGE_KEY), "{broken-raid");
+
+  const reset = resetCorruptState(storage);
+  assert.deepEqual(reset, createEmptyState());
+  assert.equal(values.has(RECOVERY_KEY), false);
+  assert.deepEqual(importState(values.get(STORAGE_KEY)), createEmptyState());
 });
 
 function job(name, role) {

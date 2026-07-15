@@ -3,6 +3,7 @@
 
   const STATE_VERSION = 1;
   const STORAGE_KEY = "small-tools:daily-log:v1";
+  const RECOVERY_KEY = `${STORAGE_KEY}:recovery`;
   const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
   const MEAL_KEYS = ["breakfast", "lunch", "dinner", "snack"];
   const MEAL_LABELS = {
@@ -247,7 +248,44 @@
     }
   }
 
-  async function prepareBrowserStorage(keys = [STORAGE_KEY]) {
+  function recoveryValue(storage) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.getItem !== "function") return null;
+    try {
+      return target.getItem(RECOVERY_KEY);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function quarantineCorruptState(storage, raw) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.getItem !== "function" || typeof target.setItem !== "function") return false;
+    try {
+      if (target.getItem(RECOVERY_KEY) === null) target.setItem(RECOVERY_KEY, String(raw));
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function markCorruptStateError(error, fallbackMessage) {
+    const target = error instanceof Error ? error : new Error(fallbackMessage);
+    target.code = "CORRUPT_STORAGE";
+    return target;
+  }
+
+  function clearRecoveryState(storage) {
+    const target = resolveStorage(storage);
+    if (!target) return;
+    try {
+      target.removeItem?.(RECOVERY_KEY);
+    } catch (_error) {
+      // A valid repaired document remains usable even if stale recovery cleanup fails.
+    }
+  }
+
+  async function prepareBrowserStorage(keys = [STORAGE_KEY, RECOVERY_KEY]) {
     const fallback = resolveStorage();
     const vault = root.SmallToolsVault;
     if (!vault) return fallback;
@@ -268,7 +306,20 @@
     const target = resolveStorage(storage);
     if (!target || typeof target.getItem !== "function") return createEmptyState();
     const stored = target.getItem(STORAGE_KEY);
-    return stored ? importState(stored, now) : createEmptyState();
+    if (stored === null) {
+      if (recoveryValue(target) !== null) {
+        throw markCorruptStateError(null, "복구가 필요한 하루 기록 데이터가 있습니다.");
+      }
+      return createEmptyState();
+    }
+    try {
+      const state = importState(stored, now);
+      clearRecoveryState(target);
+      return state;
+    } catch (error) {
+      quarantineCorruptState(target, stored);
+      throw markCorruptStateError(error, "저장된 하루 기록 데이터가 손상되었습니다.");
+    }
   }
 
   function saveState(value, storage) {
@@ -277,6 +328,13 @@
     if (!target || typeof target.setItem !== "function") throw new Error("브라우저 저장소를 사용할 수 없습니다.");
     target.setItem(STORAGE_KEY, JSON.stringify(normalized));
     return normalized;
+  }
+
+  function resetCorruptState(storage) {
+    const target = resolveStorage(storage);
+    const state = saveState(createEmptyState(), target);
+    clearRecoveryState(target);
+    return state;
   }
 
   function getRecord(state, date) {
@@ -399,11 +457,13 @@
     const today = () => localToday(getNow());
     let state;
     let storageLoadFailed = false;
+    let recoveryLocked = false;
     try {
       state = loadState(storage, getNow());
-    } catch (_error) {
+    } catch (error) {
       state = createEmptyState();
       storageLoadFailed = true;
+      recoveryLocked = error?.code === "CORRUPT_STORAGE";
     }
     let selectedDate = today();
     let currentMonth = selectedDate.slice(0, 7);
@@ -421,9 +481,38 @@
       toastTimer = root.setTimeout?.(() => elements.toast.classList?.remove("show"), 2_000) ?? null;
     }
 
-    function persistState() {
+    async function createRecoveryPoint(label) {
+      if (typeof root.SmallToolsVault?.createRecoveryPoint !== "function") return true;
+      try {
+        await root.SmallToolsVault.createRecoveryPoint(label);
+        return true;
+      } catch (_error) {
+        showToast("복원 지점을 만들지 못해 작업을 취소했어요");
+        return false;
+      }
+    }
+
+    function showRecoveryWarning() {
+      setSaveStatus("저장 데이터 복구 필요 · 눌러 초기화");
+      if (elements.saveStatus) {
+        elements.saveStatus.title = "손상된 원본은 복구용으로 보관했습니다. JSON 백업을 불러오거나 눌러서 빈 기록으로 초기화하세요.";
+        elements.saveStatus.setAttribute?.("role", "button");
+        elements.saveStatus.setAttribute?.("tabindex", "0");
+      }
+      showToast("저장 데이터가 손상되어 자동 저장을 멈췄어요. 백업을 불러오거나 저장 상태를 눌러 초기화해 주세요.");
+    }
+
+    function persistState({ repair = false } = {}) {
+      if (recoveryLocked && !repair) {
+        showRecoveryWarning();
+        return false;
+      }
       try {
         state = saveState(state, storage);
+        if (repair) {
+          clearRecoveryState(storage);
+          recoveryLocked = false;
+        }
         return true;
       } catch (_error) {
         showToast("브라우저에 자동 저장하지 못했어요");
@@ -612,7 +701,7 @@
         const saved = persistState();
         const generation = ++saveGeneration;
         if (!saved) {
-          setSaveStatus("저장 실패");
+          setSaveStatus(recoveryLocked ? "저장 데이터 복구 필요 · 눌러 초기화" : "저장 실패");
         } else if (storage === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
           setSaveStatus("저장 중…");
           Promise.resolve(root.SmallToolsVault.flush()).then(() => {
@@ -628,7 +717,7 @@
         renderSelectedSummary();
         renderStats();
       } catch (error) {
-        setSaveStatus("저장 실패");
+        setSaveStatus(recoveryLocked ? "저장 데이터 복구 필요 · 눌러 초기화" : "저장 실패");
         showToast(error.message || "기록을 저장하지 못했어요");
       }
     }
@@ -705,16 +794,17 @@
       currentMonth = selectedDate.slice(0, 7);
       render();
     });
-    elements.clearDay?.addEventListener?.("click", () => {
+    elements.clearDay?.addEventListener?.("click", async () => {
       flushEditorSave();
       const current = getRecord(state, selectedDate);
       if (isEmptyRecord(current)) return;
       if (typeof root.confirm === "function" && !root.confirm("이 날짜의 식사·음주·컨디션·메모 기록을 모두 지울까요?")) return;
+      if (!await createRecoveryPoint(`${selectedDate} 하루 기록 삭제 전`)) return;
       deleteRecord(state, selectedDate);
       const saved = persistState();
       render();
       if (!saved) {
-        setSaveStatus("저장 실패");
+        setSaveStatus(recoveryLocked ? "저장 데이터 복구 필요 · 눌러 초기화" : "저장 실패");
         return;
       }
       setSaveStatus("기록을 지웠어요");
@@ -751,13 +841,14 @@
         }
         const imported = importState(await file.text(), getNow());
         if (typeof root.confirm === "function" && !root.confirm("현재 하루 기록을 백업 파일의 내용으로 바꿀까요?")) return;
+        if (!await createRecoveryPoint("하루 기록 JSON 불러오기 전")) return;
         const previousState = state;
         state = imported;
-        const saved = persistState();
+        const saved = persistState({ repair: recoveryLocked });
         if (!saved) {
           state = previousState;
           render();
-          setSaveStatus("저장 실패");
+          setSaveStatus(recoveryLocked ? "저장 데이터 복구 필요 · 눌러 초기화" : "저장 실패");
           return;
         }
         render();
@@ -768,6 +859,33 @@
       } finally {
         elements.importInput.value = "";
       }
+    });
+
+    async function resetRecoveryData() {
+      if (!recoveryLocked) return;
+      if (typeof root.confirm === "function" && !root.confirm(
+        "읽지 못한 원본은 복구용으로 따로 보관되어 있습니다. 현재 저장 데이터를 빈 하루 기록으로 초기화할까요?",
+      )) return;
+      if (!await createRecoveryPoint("하루 기록 손상 데이터 초기화 전")) return;
+      try {
+        state = resetCorruptState(storage);
+        recoveryLocked = false;
+        selectedDate = today();
+        currentMonth = selectedDate.slice(0, 7);
+        render();
+        setSaveStatus("빈 기록으로 초기화했어요");
+        showToast("손상된 저장 데이터를 초기화했어요");
+      } catch (_error) {
+        setSaveStatus("초기화 실패");
+        showToast("저장 데이터를 초기화하지 못했어요");
+      }
+    }
+
+    elements.saveStatus?.addEventListener?.("click", resetRecoveryData);
+    elements.saveStatus?.addEventListener?.("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault?.();
+      resetRecoveryData();
     });
 
     const storageListener = (event) => {
@@ -781,7 +899,15 @@
           root.clearTimeout?.(saveTimer);
           saveTimer = null;
         }
-        state = incomingValue ? importState(incomingValue, getNow()) : createEmptyState();
+        if (incomingValue === null && recoveryLocked) {
+          showRecoveryWarning();
+          return;
+        }
+        state = incomingValue !== null ? importState(incomingValue, getNow()) : createEmptyState();
+        if (incomingValue !== null) {
+          clearRecoveryState(storage);
+          recoveryLocked = false;
+        }
         if (pendingDraft) {
           upsertRecord(state, selectedDate, pendingDraft, getNow());
           const saved = persistState();
@@ -794,7 +920,20 @@
         render();
         showToast(incomingValue ? "다른 탭에서 바뀐 기록을 불러왔어요" : "다른 탭에서 기록을 비웠어요");
       } catch (_error) {
-        showToast("다른 탭의 기록을 불러오지 못했어요");
+        let incomingValue;
+        try {
+          incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
+        } catch (_storageError) {
+          showToast("다른 탭의 기록을 읽지 못했어요");
+          return;
+        }
+        if (incomingValue !== null && incomingValue !== undefined) {
+          quarantineCorruptState(storage, incomingValue);
+          recoveryLocked = true;
+          showRecoveryWarning();
+        } else {
+          showToast("다른 탭의 기록을 불러오지 못했어요");
+        }
       }
     };
     root.addEventListener?.("storage", storageListener);
@@ -824,13 +963,17 @@
     };
     activeApps?.set(doc, controller);
     render();
-    if (storageLoadFailed) showToast("저장된 기록을 읽지 못해 빈 기록으로 열었어요");
+    if (storageLoadFailed) {
+      if (recoveryLocked) showRecoveryWarning();
+      else showToast("브라우저 저장소를 읽지 못해 빈 기록으로 열었어요");
+    }
     return controller;
   }
 
   const api = {
     STATE_VERSION,
     STORAGE_KEY,
+    RECOVERY_KEY,
     IMPORT_SIZE_LIMIT,
     WEEKDAY_LABELS,
     MEAL_KEYS,
@@ -853,6 +996,8 @@
     validateState,
     loadState,
     saveState,
+    resetCorruptState,
+    quarantineCorruptState,
     getRecord,
     upsertRecord,
     deleteRecord,

@@ -1,0 +1,118 @@
+.vault-header-tools {
+  min-width: 0;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.vault-save-status {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(38, 37, 34, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+  color: inherit;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.vault-save-status:hover {
+  border-color: currentColor;
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.vault-save-status:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.vault-save-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #587268;
+  box-shadow: 0 0 0 3px rgba(88, 114, 104, 0.13);
+}
+
+.vault-save-status[data-state="pending"] .vault-save-status-dot {
+  background: #a66d24;
+  box-shadow: 0 0 0 3px rgba(166, 109, 36, 0.14);
+  animation: vault-status-pulse 900ms ease-in-out infinite alternate;
+}
+
+.vault-save-status[data-state="warning"] .vault-save-status-dot {
+  background: #b17422;
+  box-shadow: 0 0 0 3px rgba(177, 116, 34, 0.14);
+}
+
+.vault-save-status[data-state="error"] .vault-save-status-dot {
+  background: #b84a45;
+  box-shadow: 0 0 0 3px rgba(184, 74, 69, 0.14);
+}
+
+.vault-save-status[data-state="synced"] .vault-save-status-dot {
+  background: #34705b;
+  box-shadow: 0 0 0 3px rgba(52, 112, 91, 0.14);
+}
+
+@keyframes vault-status-pulse {
+  to { opacity: 0.45; }
+}
+
+@media (max-width: 900px) {
+  .vault-header-tools {
+    gap: 7px;
+  }
+
+  .vault-save-status {
+    width: 29px;
+    height: 29px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .vault-save-status-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 680px) {
+  .vault-save-status {
+    position: fixed;
+    z-index: 45;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: 38px;
+    height: 38px;
+    border-color: rgba(38, 37, 34, 0.28);
+    background: rgba(255, 253, 247, 0.96);
+    box-shadow: 0 8px 22px rgba(38, 37, 34, 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-save-status,
+  .vault-save-status-dot {
+    transition: none;
+    animation: none !important;
+  }
+}

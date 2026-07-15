@@ -7,6 +7,8 @@ const test = require("node:test");
 const vm = require("node:vm");
 const {
   DEFAULT_TITLE,
+  DRAFT_KEY,
+  DRAFT_RECOVERY_KEY,
   MAX_OVERLAP_LEVEL,
   DAYS,
   HOURS,
@@ -48,7 +50,14 @@ test("브라우저 부팅은 일정 저장 키를 보관함으로 옮기고 실�
     };
     assert.equal(await prepareBrowserStorage(), vaultStorage);
     assert.deepEqual(calls, [{
-      keys: ["eonjepyo-saved-schedules-v1", "eonjepyo-saved-comparisons-v1", "eonjepyo-draft"],
+      keys: [
+        "eonjepyo-saved-schedules-v1",
+        "eonjepyo-saved-schedules-v1:recovery",
+        "eonjepyo-saved-comparisons-v1",
+        "eonjepyo-saved-comparisons-v1:recovery",
+        DRAFT_KEY,
+        DRAFT_RECOVERY_KEY,
+      ],
       options: { removeSource: true },
     }]);
 
@@ -674,8 +683,21 @@ test("작성 전용 DOM은 취합 요소 없이 독립 초기화된다", () => {
   assert.equal(timeLabels.length, 24);
   assert.ok(timeLabels.includes("익일 00:00"));
   assert.ok(timeLabels.every((label) => !label.includes("~")), "시간 행에는 반복되는 끝시간을 표시하지 않습니다");
-  assert.equal(result.storageReads, 1);
+  assert.equal(result.storageReads, 2, "초안과 남아 있는 복구 잠금을 각각 확인합니다");
   assert.equal(typeof result.api.aggregateSchedules, "function");
+});
+
+test("손상된 작성 초안은 원문을 격리하고 초기화 전 자동 저장으로 덮지 않는다", () => {
+  const raw = "#v=1&s=broken";
+  const result = runWithPageDom(WRITER_PAGE_IDS, "#top", {
+    pathname: "/schedule-maker/",
+    storage: { [DRAFT_KEY]: raw },
+  });
+
+  assert.equal(result.storage.get(DRAFT_KEY), raw);
+  assert.equal(result.storage.get(DRAFT_RECOVERY_KEY), raw);
+  assert.equal(result.storageWrites.some(([key]) => key === DRAFT_KEY), false);
+  assert.match(result.elements.get("toast").textContent, /초기화/);
 });
 
 test("취합 전용 DOM은 작성 요소 없이 초기화되고 페이지 hash를 공유 일정으로 읽지 않는다", () => {

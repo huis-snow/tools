@@ -157,6 +157,7 @@ footer {
 .vault-text-button:focus-visible,
 .vault-local-button:focus-visible,
 .vault-close-button:focus-visible,
+.vault-recovery summary:focus-visible,
 .vault-portable summary:focus-visible {
   outline: 3px solid rgba(243, 107, 61, 0.35);
   outline-offset: 3px;
@@ -522,6 +523,7 @@ footer {
   justify-content: flex-end;
 }
 
+.vault-recovery,
 .vault-portable {
   margin-top: 13px;
   padding: 12px 14px;
@@ -529,6 +531,7 @@ footer {
   background: #f4f1e8;
 }
 
+.vault-recovery summary,
 .vault-portable summary {
   width: fit-content;
   color: var(--ink);
@@ -537,11 +540,80 @@ footer {
   cursor: pointer;
 }
 
+.vault-recovery > p,
 .vault-portable > p {
   margin: 9px 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.vault-recovery-count {
+  display: inline-grid;
+  min-width: 20px;
+  min-height: 20px;
+  margin-left: 5px;
+  place-items: center;
+  border: 1px solid #acb5af;
+  border-radius: 999px;
+  background: var(--paper-light);
+  color: #5f6d67;
+  font: 700 10px var(--mono);
+  vertical-align: middle;
+}
+
+.vault-recovery-empty[hidden] {
+  display: none;
+}
+
+.vault-recovery-list {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vault-recovery-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid #d0d0c7;
+  background: rgba(255, 253, 246, 0.72);
+}
+
+.vault-recovery-info {
+  min-width: 0;
+}
+
+.vault-recovery-reason {
+  display: block;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-recovery-meta {
+  display: block;
+  margin-top: 3px;
+  color: #75827c;
+  font: 10px/1.45 var(--mono);
+}
+
+.vault-recovery-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vault-recovery-actions .vault-text-button {
+  font-size: 11px;
 }
 
 .vault-portable label {
@@ -1487,6 +1559,15 @@ footer > a:last-child {
   .vault-portable-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .vault-recovery-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .vault-recovery-actions {
+    justify-content: flex-end;
   }
 }
 

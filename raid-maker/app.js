@@ -4,6 +4,7 @@
   const STATE_VERSION = 2;
   const STORAGE_KEY = "small-tools:raid-maker:v2";
   const LEGACY_STORAGE_KEY = "small-tools:raid-maker:v1";
+  const RECOVERY_KEY = `${STORAGE_KEY}:recovery`;
   const MAX_MEMBERS = 120;
   const COMPOSITION_ID = "ff14-standard-8";
   const STATUSES = Object.freeze({
@@ -729,7 +730,46 @@
     }
   }
 
-  async function prepareBrowserStorage(keys = [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
+  function recoveryValue(storage) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.getItem !== "function") return null;
+    try {
+      return target.getItem(RECOVERY_KEY);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function quarantineCorruptState(storage, raw) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.getItem !== "function" || typeof target.setItem !== "function") return false;
+    try {
+      if (target.getItem(RECOVERY_KEY) === null) target.setItem(RECOVERY_KEY, String(raw));
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function clearRecoveryState(storage) {
+    const target = resolveStorage(storage);
+    try {
+      target?.removeItem?.(RECOVERY_KEY);
+    } catch (_error) {
+      // A valid primary document is still preferable to replacing it with an empty state.
+    }
+  }
+
+  function resetCorruptState(storage) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.setItem !== "function") throw new Error("브라우저 저장소를 사용할 수 없습니다.");
+    const state = createEmptyState();
+    target.setItem(STORAGE_KEY, serializeState(state));
+    clearRecoveryState(target);
+    return state;
+  }
+
+  async function prepareBrowserStorage(keys = [STORAGE_KEY, LEGACY_STORAGE_KEY, RECOVERY_KEY]) {
     const fallback = resolveStorage();
     const vault = root.SmallToolsVault;
     if (!vault) return fallback;
@@ -788,34 +828,66 @@
     let imageBusy = false;
     let toastTimer = 0;
     let migratedLegacy = false;
+    let recoveryLocked = false;
 
     function loadState() {
+      let saved = null;
       try {
-        const saved = storage?.getItem(STORAGE_KEY);
-        if (saved) return importState(saved);
+        saved = storage?.getItem(STORAGE_KEY);
       } catch (_error) {
         // 저장소가 막힌 환경에서도 현재 탭에서는 계속 사용할 수 있다.
       }
+      if (saved !== null) {
+        try {
+          const restored = importState(saved);
+          clearRecoveryState(storage);
+          return restored;
+        } catch (_error) {
+          quarantineCorruptState(storage, saved);
+          recoveryLocked = true;
+          return createEmptyState();
+        }
+      }
+      if (recoveryValue(storage) !== null) {
+        recoveryLocked = true;
+        return createEmptyState();
+      }
+
+      let legacy = null;
       try {
-        const legacy = storage?.getItem(LEGACY_STORAGE_KEY);
-        if (!legacy) return createEmptyState();
+        legacy = storage?.getItem(LEGACY_STORAGE_KEY);
+        if (legacy === null) return createEmptyState();
         const parsed = JSON.parse(legacy);
         migratedLegacy = !isLegacyExample(parsed) && Array.isArray(parsed.members) && parsed.members.length > 0;
         return migrateV1(parsed);
       } catch (_error) {
+        if (legacy !== null) {
+          quarantineCorruptState(storage, legacy);
+          recoveryLocked = true;
+        }
         return createEmptyState();
       }
     }
 
-    function persistState() {
+    function persistState({ repair = false } = {}) {
+      if (recoveryLocked && !repair) {
+        showRecoveryWarning();
+        return false;
+      }
       try {
         if (!storage || typeof storage.setItem !== "function") throw new Error("브라우저 저장소를 사용할 수 없습니다.");
         storage.setItem(STORAGE_KEY, serializeState(state));
+        if (repair) {
+          clearRecoveryState(storage);
+          recoveryLocked = false;
+        }
         if (storage === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
           Promise.resolve(root.SmallToolsVault.flush()).catch(() => showToast("브라우저에 자동 저장하지 못했어요."));
         }
+        return true;
       } catch (_error) {
         // private mode/storage quota failures should not break the editor.
+        return false;
       }
     }
 
@@ -829,6 +901,24 @@
       elements.toast.textContent = message;
       elements.toast.classList.add("show");
       toastTimer = root.setTimeout(() => elements.toast.classList.remove("show"), 2600);
+    }
+
+    async function createRecoveryPoint(label) {
+      if (typeof root.SmallToolsVault?.createRecoveryPoint !== "function") return true;
+      try {
+        await root.SmallToolsVault.createRecoveryPoint(label);
+        return true;
+      } catch (_error) {
+        showToast("복원 지점을 만들지 못해 작업을 취소했어요.");
+        announce("복원 지점 생성 실패. 작업 취소.");
+        return false;
+      }
+    }
+
+    function showRecoveryWarning() {
+      elements.reset.title = "손상된 원본은 복구용으로 보관했습니다. 이 버튼으로 공대표를 초기화할 수 있습니다.";
+      showToast("저장된 공대표가 손상되어 자동 저장을 멈췄어요. 전체 초기화로 새로 시작해 주세요.");
+      announce("저장된 공대표 손상. 자동 저장 중지. 전체 초기화가 필요합니다.");
     }
 
     function roleLabel(role) {
@@ -1061,6 +1151,12 @@
     function renderStatus(summary) {
       elements.compositionStatus.classList.toggle("is-complete", summary.ready);
       elements.compositionStatus.dataset.state = summary.ready ? "complete" : "incomplete";
+      if (recoveryLocked) {
+        elements.compositionStatus.classList.remove("is-complete");
+        elements.compositionStatus.dataset.state = "error";
+        elements.compositionStatus.textContent = "저장된 공대표가 손상되어 자동 저장을 멈췄어요. 손상 원본은 복구용으로 보관했습니다. ‘전체 초기화’로 새로 시작해 주세요.";
+        return;
+      }
       if (!state.members.length) {
         elements.compositionStatus.textContent = "공대원을 추가하면 주직·부직에 맞는 자리와 남은 역할을 알려드려요.";
       } else if (summary.ready) {
@@ -1307,7 +1403,7 @@
       }
     });
 
-    elements.memberList.addEventListener("click", (event) => {
+    elements.memberList.addEventListener("click", async (event) => {
       const card = event.target.closest("[data-member-id]");
       const action = event.target.closest("[data-action]")?.dataset.action;
       if (!card || !action || action === "status") return;
@@ -1318,6 +1414,7 @@
       if (action === "move") chooseMember(memberId, true);
       if (action === "remove") {
         if (!root.confirm(`${member.name}님을 명단에서 삭제할까요?`)) return;
+        if (!await createRecoveryPoint(`${member.name} 공대원 삭제 전`)) return;
         removeMember(state, memberId);
         if (editingMemberId === memberId) resetMemberForm();
         if (selectedMemberId === memberId) selectedMemberId = null;
@@ -1415,20 +1512,32 @@
       showToast(message);
       announce(message);
     });
-    elements.clearAssignments.addEventListener("click", () => {
+    elements.clearAssignments.addEventListener("click", async () => {
+      if (!await createRecoveryPoint("공대 배치 초기화 전")) return;
       if (!clearAssignments(state)) return;
       selectedMemberId = null;
       render();
       showToast("공대원 명단은 두고 배치만 비웠어요.");
       announce("공대 배치 초기화 완료");
     });
-    elements.reset.addEventListener("click", () => {
+    elements.reset.addEventListener("click", async () => {
       const hasContent = state.members.length || state.title || state.eventTime || Object.keys(state.assignments).length;
-      if (hasContent && !root.confirm("공대 정보, 명단, 배치를 모두 지울까요?")) return;
+      const question = recoveryLocked
+        ? "읽지 못한 원본은 복구용으로 따로 보관되어 있습니다. 공대표 저장 데이터를 빈 상태로 초기화할까요?"
+        : "공대 정보, 명단, 배치를 모두 지울까요?";
+      if ((hasContent || recoveryLocked) && !root.confirm(question)) return;
+      if (!await createRecoveryPoint("공대표 전체 초기화 전")) return;
+      const previousState = state;
       state = createEmptyState();
+      if (!persistState({ repair: recoveryLocked })) {
+        state = previousState;
+        render({ persist: false });
+        showToast("공대표 저장 데이터를 초기화하지 못했어요.");
+        return;
+      }
       selectedMemberId = null;
       resetMemberForm();
-      render();
+      render({ persist: false });
       showToast("공대표를 완전히 비웠어요.");
       announce("공대표 전체 초기화 완료");
     });
@@ -1481,21 +1590,35 @@
       if (event.key !== STORAGE_KEY && event.key !== null) return;
       try {
         const incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
-        state = incomingValue ? importState(incomingValue) : createEmptyState();
+        if (incomingValue === null && recoveryLocked) {
+          showRecoveryWarning();
+          return;
+        }
+        state = incomingValue !== null ? importState(incomingValue) : createEmptyState();
+        if (incomingValue !== null) {
+          clearRecoveryState(storage);
+          recoveryLocked = false;
+        }
         selectedMemberId = null;
         editingMemberId = null;
         resetMemberForm();
         render({ persist: false });
         showToast(incomingValue ? "다른 탭에서 바뀐 공대표를 불러왔어요." : "다른 탭에서 공대표를 비웠어요.");
       } catch (_error) {
-        // 다른 탭의 손상된 값은 현재 작업을 덮어쓰지 않는다.
+        const incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
+        if (incomingValue !== null && incomingValue !== undefined) quarantineCorruptState(storage, incomingValue);
+        recoveryLocked = true;
+        render({ persist: false });
+        showRecoveryWarning();
       }
     });
 
     state = loadState();
     resetMemberForm();
     render();
-    if (migratedLegacy) {
+    if (recoveryLocked) {
+      showRecoveryWarning();
+    } else if (migratedLegacy) {
       const removeLegacyState = () => {
         try { storage?.removeItem?.(LEGACY_STORAGE_KEY); } catch (_error) { /* keep the migrated v2 state */ }
       };
@@ -1513,6 +1636,7 @@
     STATE_VERSION,
     STORAGE_KEY,
     LEGACY_STORAGE_KEY,
+    RECOVERY_KEY,
     COMPOSITION_ID,
     STATUSES,
     JOB_ROLES,
@@ -1539,6 +1663,8 @@
     normalizeState,
     serializeState,
     importState,
+    resetCorruptState,
+    quarantineCorruptState,
     formatRaidText,
     renderRaidImage,
     canvasToBlob,

@@ -3,6 +3,7 @@
 
   const STATE_VERSION = 1;
   const STORAGE_KEY = "small-tools:habit-maker:v1";
+  const RECOVERY_KEY = `${STORAGE_KEY}:recovery`;
   const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
   const HABIT_TYPES = new Set(["check", "quantity"]);
   const DEFAULT_COLORS = ["#ef8354", "#4f7cac", "#57a773", "#8b6fc0", "#e0a93b", "#d45d79"];
@@ -581,7 +582,72 @@
     }
   }
 
-  async function prepareBrowserStorage(keys = [STORAGE_KEY]) {
+  function recoveryValue(storage) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.getItem !== "function") return null;
+    try {
+      return target.getItem(RECOVERY_KEY);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function quarantineCorruptState(storage, raw) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.getItem !== "function" || typeof target.setItem !== "function") return false;
+    try {
+      if (target.getItem(RECOVERY_KEY) === null) target.setItem(RECOVERY_KEY, String(raw));
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function markCorruptStateError(error, fallbackMessage) {
+    const target = error instanceof Error ? error : new Error(fallbackMessage);
+    target.code = "CORRUPT_STORAGE";
+    return target;
+  }
+
+  function clearRecoveryState(storage) {
+    const target = resolveStorage(storage);
+    try {
+      target?.removeItem?.(RECOVERY_KEY);
+    } catch (_error) {
+      // A valid repaired document remains usable even if stale recovery cleanup fails.
+    }
+  }
+
+  function loadStoredState(storage, now = new Date()) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.getItem !== "function") return createDefaultState(now);
+    const raw = target.getItem(STORAGE_KEY);
+    if (raw === null) {
+      if (recoveryValue(target) !== null) {
+        throw markCorruptStateError(null, "복구가 필요한 습관 기록 데이터가 있습니다.");
+      }
+      return createDefaultState(now);
+    }
+    try {
+      const state = importState(raw, now);
+      clearRecoveryState(target);
+      return state;
+    } catch (error) {
+      quarantineCorruptState(target, raw);
+      throw markCorruptStateError(error, "저장된 습관 기록 데이터가 손상되었습니다.");
+    }
+  }
+
+  function resetCorruptState(storage, now = new Date()) {
+    const target = resolveStorage(storage);
+    if (!target || typeof target.setItem !== "function") throw new Error("브라우저 저장소를 사용할 수 없습니다.");
+    const state = createEmptyState(now);
+    target.setItem(STORAGE_KEY, serializeState(state));
+    clearRecoveryState(target);
+    return state;
+  }
+
+  async function prepareBrowserStorage(keys = [STORAGE_KEY, RECOVERY_KEY]) {
     const fallback = resolveStorage();
     const vault = root.SmallToolsVault;
     if (!vault) return fallback;
@@ -642,11 +708,12 @@
 
     let state;
     let storageLoadFailed = false;
+    let recoveryLocked = false;
     try {
-      const stored = storage?.getItem(STORAGE_KEY);
-      state = stored ? importState(stored) : createDefaultState();
-    } catch (_error) {
+      state = loadStoredState(storage);
+    } catch (error) {
       storageLoadFailed = true;
+      recoveryLocked = error?.code === "CORRUPT_STORAGE";
       state = createDefaultState();
     }
     let toastTimer;
@@ -660,15 +727,44 @@
       toastTimer = setTimeout(() => elements.toast.classList.remove("show"), 1800);
     }
 
-    function save() {
+    async function createRecoveryPoint(label) {
+      if (typeof root.SmallToolsVault?.createRecoveryPoint !== "function") return true;
+      try {
+        await root.SmallToolsVault.createRecoveryPoint(label);
+        return true;
+      } catch (_error) {
+        showToast("복원 지점을 만들지 못해 작업을 취소했어요");
+        return false;
+      }
+    }
+
+    function showRecoveryWarning() {
+      if (elements.reset) {
+        elements.reset.title = "손상된 원본은 복구용으로 보관했습니다. JSON 백업을 불러오거나 이 버튼으로 초기화하세요.";
+        elements.reset.setAttribute?.("aria-label", "손상된 습관 저장 데이터 초기화");
+      }
+      showToast("저장 데이터가 손상되어 자동 저장을 멈췄어요. 백업을 불러오거나 전체 초기화를 눌러 주세요.");
+    }
+
+    function save({ repair = false } = {}) {
+      if (recoveryLocked && !repair) {
+        showRecoveryWarning();
+        return false;
+      }
       try {
         if (!storage || typeof storage.setItem !== "function") throw new Error("브라우저 저장소를 사용할 수 없습니다.");
         storage.setItem(STORAGE_KEY, serializeState(state));
+        if (repair) {
+          clearRecoveryState(storage);
+          recoveryLocked = false;
+        }
         if (storage === root.SmallToolsVault?.storage && typeof root.SmallToolsVault.flush === "function") {
           Promise.resolve(root.SmallToolsVault.flush()).catch(() => showToast("브라우저에 자동 저장하지 못했어요"));
         }
+        return true;
       } catch (_error) {
         showToast("브라우저에 자동 저장하지 못했어요");
+        return false;
       }
     }
 
@@ -851,6 +947,13 @@
       const date = state.settings.selectedDate;
       if (elements.selectedDateLabel) elements.selectedDateLabel.textContent = formatDateLabel(date);
       elements.dayRecords.replaceChildren();
+      if (recoveryLocked) {
+        const warning = document.createElement("p");
+        warning.className = "empty-records";
+        warning.setAttribute("role", "alert");
+        warning.textContent = "저장된 기록이 손상되어 자동 저장을 멈췄어요. JSON 백업을 불러오거나 전체 초기화로 새로 시작해 주세요.";
+        elements.dayRecords.append(warning);
+      }
       if (!state.habits.length) {
         const empty = document.createElement("p");
         empty.className = "empty-records";
@@ -1009,9 +1112,11 @@
         showToast(error.message || "습관을 저장하지 못했어요");
       }
     });
-    elements.deleteHabit?.addEventListener("click", () => {
+    elements.deleteHabit?.addEventListener("click", async () => {
       const id = elements.habitId?.value;
       if (!id || !confirm("이 습관과 모든 기록을 삭제할까요?")) return;
+      const habit = state.habits.find((candidate) => candidate.id === id);
+      if (!await createRecoveryPoint(`${habit?.name || "습관"} 삭제 전`)) return;
       removeHabit(state, id);
       closeHabitModal();
       render();
@@ -1032,9 +1137,15 @@
       try {
         const imported = importState(await file.text());
         if (!confirm("현재 습관과 기록을 백업 파일의 내용으로 바꿀까요?")) return;
+        if (!await createRecoveryPoint("습관 기록 JSON 불러오기 전")) return;
+        const previousState = state;
         state = imported;
+        if (!save({ repair: recoveryLocked })) {
+          state = previousState;
+          render();
+          return;
+        }
         render();
-        save();
         showToast("습관과 기록을 불러왔어요");
       } catch (error) {
         showToast(error.message || "JSON을 불러오지 못했어요");
@@ -1042,11 +1153,20 @@
         elements.importFile.value = "";
       }
     });
-    elements.reset?.addEventListener("click", () => {
-      if (!confirm("모든 습관과 기록을 초기화할까요?")) return;
+    elements.reset?.addEventListener("click", async () => {
+      const question = recoveryLocked
+        ? "읽지 못한 원본은 복구용으로 따로 보관되어 있습니다. 습관 저장 데이터를 빈 상태로 초기화할까요?"
+        : "모든 습관과 기록을 초기화할까요?";
+      if (!confirm(question)) return;
+      if (!await createRecoveryPoint("습관 기록 전체 초기화 전")) return;
+      const previousState = state;
       state = createEmptyState();
+      if (!save({ repair: recoveryLocked })) {
+        state = previousState;
+        render();
+        return;
+      }
       render();
-      save();
       showToast("모든 습관과 기록을 비웠어요");
     });
     elements.png?.addEventListener("click", async () => {
@@ -1067,11 +1187,33 @@
       if (event.key !== STORAGE_KEY && event.key !== null) return;
       try {
         const incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
-        state = incomingValue ? importState(incomingValue) : createDefaultState();
+        if (incomingValue === null && recoveryLocked) {
+          showRecoveryWarning();
+          return;
+        }
+        state = incomingValue !== null ? importState(incomingValue) : createDefaultState();
+        if (incomingValue !== null) {
+          clearRecoveryState(storage);
+          recoveryLocked = false;
+        }
         render();
         showToast(incomingValue ? "다른 탭에서 바뀐 기록을 불러왔어요" : "다른 탭에서 기록을 비웠어요");
       } catch (_error) {
-        showToast("다른 탭의 기록을 불러오지 못했어요");
+        let incomingValue;
+        try {
+          incomingValue = event.key === null ? storage?.getItem(STORAGE_KEY) : event.newValue;
+        } catch (_storageError) {
+          showToast("다른 탭의 기록을 읽지 못했어요");
+          return;
+        }
+        if (incomingValue !== null && incomingValue !== undefined) {
+          quarantineCorruptState(storage, incomingValue);
+          recoveryLocked = true;
+          render();
+          showRecoveryWarning();
+        } else {
+          showToast("다른 탭의 기록을 불러오지 못했어요");
+        }
       }
     });
     window.addEventListener("focus", refreshForNewDay);
@@ -1081,13 +1223,17 @@
     window.setInterval(refreshForNewDay, 60_000);
 
     render();
-    if (storageLoadFailed) showToast("저장된 기록을 읽지 못해 기본 상태로 열었어요");
+    if (storageLoadFailed) {
+      if (recoveryLocked) showRecoveryWarning();
+      else showToast("브라우저 저장소를 읽지 못해 기본 상태로 열었어요");
+    }
     else save();
   }
 
   const api = {
     STATE_VERSION,
     STORAGE_KEY,
+    RECOVERY_KEY,
     WEEKDAY_LABELS,
     parseLocalDate,
     formatLocalDate,
@@ -1109,6 +1255,9 @@
     validateState,
     serializeState,
     importState,
+    loadStoredState,
+    resetCorruptState,
+    quarantineCorruptState,
     getLogAmount,
     setLogAmount,
     addHabit,

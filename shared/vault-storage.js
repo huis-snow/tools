@@ -13,8 +13,10 @@
   const DB_VERSION = 1;
   const ENTRY_STORE = "entries";
   const META_STORE = "meta";
+  const RECOVERY_META_KEY = "recoveryPoints";
   const FALLBACK_ENTRY_PREFIX = "small-tools:vault:entry:";
   const FALLBACK_META_KEY = "small-tools:vault:meta:v1";
+  const FALLBACK_RECOVERY_KEY = "small-tools:vault:recovery:v1";
   const BROADCAST_NAME = "small-tools-vault-v1";
   const PORTABLE_PREFIX = "TOOLS1.";
   const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
@@ -22,6 +24,9 @@
   const MAX_ENTRIES = 20_000;
   const MAX_KEY_LENGTH = 2_000;
   const MAX_VALUE_LENGTH = 8 * 1024 * 1024;
+  const MAX_RECOVERY_POINTS = 5;
+  const MAX_RECOVERY_TOTAL_BYTES = 24 * 1024 * 1024;
+  const MAX_RECOVERY_REASON_LENGTH = 120;
   const DEFAULT_SYNC_INTERVAL = 30_000;
 
   function detectFileSystemAccessDisabledReason(environment = root) {
@@ -222,6 +227,67 @@
     return text;
   }
 
+  function normalizeRecoveryReason(value) {
+    const reason = String(value || "복원 지점").trim().replace(/\s+/g, " ");
+    return (reason || "복원 지점").slice(0, MAX_RECOVERY_REASON_LENGTH);
+  }
+
+  function recoveryPointBytes(document) {
+    return utf8Length(serializeVaultDocument(document));
+  }
+
+  function trimRecoveryPoints(points) {
+    const sorted = points.slice().sort((left, right) => {
+      return Date.parse(right.createdAt) - Date.parse(left.createdAt);
+    });
+    const kept = [];
+    let totalBytes = 0;
+    for (const point of sorted) {
+      if (kept.length >= MAX_RECOVERY_POINTS) break;
+      const bytes = Number(point.bytes) || recoveryPointBytes(point.document);
+      if (kept.length > 0 && totalBytes + bytes > MAX_RECOVERY_TOTAL_BYTES) continue;
+      kept.push({ ...point, bytes });
+      totalBytes += bytes;
+    }
+    return kept;
+  }
+
+  async function validateStoredRecoveryPoint(value, environment = root) {
+    if (!isPlainObject(value)) throw new Error("복원 지점 형식이 올바르지 않습니다.");
+    if (typeof value.id !== "string" || !value.id || value.id.length > 200) {
+      throw new Error("복원 지점 식별자가 올바르지 않습니다.");
+    }
+    if (typeof value.createdAt !== "string" || Number.isNaN(Date.parse(value.createdAt))) {
+      throw new Error("복원 지점 시간이 올바르지 않습니다.");
+    }
+    const createdAt = new Date(value.createdAt).toISOString();
+    if (createdAt !== value.createdAt) throw new Error("복원 지점 시간은 ISO 형식이어야 합니다.");
+    const document = await validateVaultDocument(value.document, environment);
+    return {
+      id: value.id,
+      createdAt,
+      reason: normalizeRecoveryReason(value.reason),
+      bytes: recoveryPointBytes(document),
+      document,
+    };
+  }
+
+  async function createStoredRecoveryPoint(value, environment = root) {
+    const document = await createVaultDocument({
+      vaultId: value.vaultId,
+      revision: value.revision,
+      updatedAt: value.updatedAt,
+      entries: value.entries,
+    }, environment);
+    return {
+      id: value.id,
+      createdAt: value.createdAt,
+      reason: normalizeRecoveryReason(value.reason),
+      bytes: recoveryPointBytes(document),
+      document,
+    };
+  }
+
   function bytesToBase64Url(bytes) {
     if (typeof Buffer !== "undefined") return Buffer.from(bytes).toString("base64url");
     let binary = "";
@@ -375,7 +441,9 @@
       keys.forEach((key, index) => entries.set(String(key), String(values[index])));
       const meta = Object.create(null);
       metaKeys.forEach((key, index) => { meta[key] = metaValues[index]; });
-      return { entries, meta };
+      const recoveryPoints = Array.isArray(meta[RECOVERY_META_KEY]) ? meta[RECOVERY_META_KEY] : [];
+      delete meta[RECOVERY_META_KEY];
+      return { entries, meta, recoveryPoints };
     }
 
     function writeMeta(store, meta) {
@@ -413,6 +481,15 @@
       await completed;
     }
 
+    async function replaceRecoveryPoints(points) {
+      const transaction = database.transaction(META_STORE, "readwrite");
+      const completed = transactionDone(transaction);
+      const store = transaction.objectStore(META_STORE);
+      if (points.length) store.put(points, RECOVERY_META_KEY);
+      else store.delete(RECOVERY_META_KEY);
+      await completed;
+    }
+
     async function ensureVaultId(proposed) {
       const transaction = database.transaction(META_STORE, "readwrite");
       const completed = transactionDone(transaction);
@@ -424,7 +501,16 @@
       return value;
     }
 
-    return { mode: "indexeddb", supported: true, load, applyMutation, replaceAll, setMeta, ensureVaultId };
+    return {
+      mode: "indexeddb",
+      supported: true,
+      load,
+      applyMutation,
+      replaceAll,
+      setMeta,
+      ensureVaultId,
+      replaceRecoveryPoints,
+    };
   }
 
   function storageWorks(storage) {
@@ -464,7 +550,14 @@
       } catch (_error) {
         // Corrupt metadata must not make otherwise readable entries unusable.
       }
-      return { entries, meta };
+      let recoveryPoints = [];
+      try {
+        const stored = JSON.parse(storage.getItem(FALLBACK_RECOVERY_KEY) || "null");
+        if (Array.isArray(stored)) recoveryPoints = stored;
+      } catch (_error) {
+        // Corrupt recovery metadata is ignored without hiding the working copy.
+      }
+      return { entries, meta, recoveryPoints };
     }
 
     function saveMeta(meta) {
@@ -516,6 +609,11 @@
       saveMeta(meta);
     }
 
+    async function replaceRecoveryPoints(points) {
+      if (!points.length) storage.removeItem(FALLBACK_RECOVERY_KEY);
+      else storage.setItem(FALLBACK_RECOVERY_KEY, JSON.stringify(points));
+    }
+
     async function ensureVaultId(proposed) {
       let meta = Object.create(null);
       try {
@@ -533,20 +631,36 @@
       for (let index = 0; index < storage.length; index += 1) keys.push(storage.key(index));
       keys.filter((key) => key?.startsWith(FALLBACK_ENTRY_PREFIX)).forEach((key) => storage.removeItem(key));
       storage.removeItem(FALLBACK_META_KEY);
+      storage.removeItem(FALLBACK_RECOVERY_KEY);
     }
 
     return {
-      mode: "localstorage", supported: true, load, applyMutation, replaceAll, setMeta, ensureVaultId, clearPersistence,
+      mode: "localstorage",
+      supported: true,
+      load,
+      applyMutation,
+      replaceAll,
+      setMeta,
+      ensureVaultId,
+      replaceRecoveryPoints,
+      clearPersistence,
     };
   }
 
   function createMemoryBackend() {
     const entries = new Map();
     let meta = Object.create(null);
+    let recoveryPoints = [];
     return {
       mode: "localstorage",
       supported: false,
-      async load() { return { entries: new Map(entries), meta: { ...meta } }; },
+      async load() {
+        return {
+          entries: new Map(entries),
+          meta: { ...meta },
+          recoveryPoints: recoveryPoints.slice(),
+        };
+      },
       async applyMutation(operation, nextMeta) {
         if (operation.type === "set") entries.set(operation.key, operation.value);
         else if (operation.type === "remove") entries.delete(operation.key);
@@ -559,6 +673,7 @@
         meta = { ...nextMeta };
       },
       async setMeta(nextMeta) { meta = { ...nextMeta }; },
+      async replaceRecoveryPoints(nextPoints) { recoveryPoints = nextPoints.slice(); },
       async ensureVaultId(proposed) {
         if (typeof meta.vaultId === "string" && meta.vaultId) return meta.vaultId;
         meta.vaultId = proposed;
@@ -581,6 +696,7 @@
     const fallbackMeta = fallbackData.meta || {};
     return {
       entries,
+      recoveryPoints: Array.isArray(fallbackData.recoveryPoints) ? fallbackData.recoveryPoints : [],
       meta: {
         ...primaryMeta,
         vaultId: fallbackMeta.vaultId || primaryMeta.vaultId || randomId(environment),
@@ -611,6 +727,7 @@
     let initialized = false;
     let writeQueue = Promise.resolve();
     let fileSaveQueue = Promise.resolve();
+    let recoveryQueue = Promise.resolve();
     let broadcastChannel = null;
     let autoSyncTimer = null;
     let vaultId = randomId(environment);
@@ -627,6 +744,8 @@
     let lastError = null;
     let pendingWriteError = null;
     let needsFullPersistence = false;
+    let recoveryPoints = [];
+    let pendingRequiredRecovery = null;
 
     const fileSystemAccessDisabledReason = detectFileSystemAccessDisabledReason(environment);
     const fileSystemAccessSupported = typeof valueFromEnvironment("showOpenFilePicker") === "function"
@@ -677,6 +796,7 @@
         permission: fileHandle ? filePermission : (fileSystemAccessSupported ? "prompt" : "unsupported"),
         entryCount: memory.size,
         bytes: calculateBytes(),
+        recoveryPointCount: recoveryPoints.length,
         vaultId,
         requiresFileReselection: false,
         ...(fileSystemAccessDisabledReason ? { fileSystemAccessDisabledReason } : {}),
@@ -736,16 +856,103 @@
       }
     }
 
-    function queueBackendMutation(operation) {
+    function captureRecoveryState(reason, options = {}) {
+      if (memory.size === 0 && options.allowEmpty !== true) return null;
+      return {
+        id: randomId(environment),
+        createdAt: nowIso(environment),
+        reason: normalizeRecoveryReason(reason),
+        vaultId,
+        revision,
+        updatedAt,
+        entries: entriesFromMap(memory),
+      };
+    }
+
+    function summarizeRecoveryPoint(point) {
+      return {
+        id: point.id,
+        createdAt: point.createdAt,
+        reason: point.reason,
+        vaultId: point.document.vaultId,
+        revision: point.document.revision,
+        updatedAt: point.document.updatedAt,
+        entryCount: Object.keys(point.document.entries).length,
+        bytes: point.bytes,
+      };
+    }
+
+    function enqueueRecoveryOperation(operation) {
+      const task = recoveryQueue.catch(() => {}).then(operation);
+      recoveryQueue = task;
+      task.catch(() => {});
+      return task;
+    }
+
+    function isQuotaFailure(error) {
+      return error?.name === "QuotaExceededError"
+        || /quota|용량|공간/i.test(String(error?.message || ""));
+    }
+
+    function recoveryPersistenceError(error) {
+      const wrapped = new Error(
+        isQuotaFailure(error)
+          ? "복원 지점을 저장할 브라우저 공간이 부족해 작업본을 바꾸지 않았습니다. 먼저 JSON 백업을 받아 주세요."
+          : "복원 지점을 저장하지 못해 작업본을 바꾸지 않았습니다.",
+      );
+      wrapped.name = isQuotaFailure(error) ? "QuotaExceededError" : "VaultRecoveryError";
+      wrapped.code = "VAULT_RECOVERY_FAILED";
+      wrapped.cause = error;
+      return wrapped;
+    }
+
+    async function persistCapturedRecoveryPoint(captured) {
+      if (!captured) return null;
+      return enqueueRecoveryOperation(async () => {
+        const point = await createStoredRecoveryPoint(captured, environment);
+        let candidate = trimRecoveryPoints([
+          point,
+          ...recoveryPoints.filter((item) => item.id !== point.id),
+        ]);
+        while (true) {
+          try {
+            await backend.replaceRecoveryPoints(candidate);
+            recoveryPoints = candidate;
+            postBroadcast({ type: "recovery-changed" });
+            notify({ type: "recovery-created", recoveryPoint: summarizeRecoveryPoint(point) });
+            return summarizeRecoveryPoint(point);
+          } catch (error) {
+            if (isQuotaFailure(error) && candidate.length > 1) {
+              candidate = candidate.slice(0, -1);
+              continue;
+            }
+            throw recoveryPersistenceError(error);
+          }
+        }
+      });
+    }
+
+    async function persistPendingRequiredRecovery() {
+      if (!pendingRequiredRecovery) return null;
+      const captured = pendingRequiredRecovery;
+      const point = await persistCapturedRecoveryPoint(captured);
+      if (pendingRequiredRecovery?.id === captured.id) pendingRequiredRecovery = null;
+      return point;
+    }
+
+    function queueBackendMutation(operation, options = {}) {
       const snapshot = mutationMetadataSnapshot();
+      if (options.requiredRecovery) pendingRequiredRecovery = options.requiredRecovery;
       // A failed write is reported by flush(), but must not permanently poison
       // the queue and prevent every later edit from being attempted.
       writeQueue = writeQueue.catch(() => {}).then(async () => {
         if (needsFullPersistence) {
+          await persistPendingRequiredRecovery();
           await backend.replaceAll(new Map(memory), mutationMetadataSnapshot());
           needsFullPersistence = false;
           return;
         }
+        await persistPendingRequiredRecovery();
         await backend.applyMutation(operation, snapshot);
       }).catch((error) => {
         lastError = error;
@@ -770,13 +977,16 @@
       if (operation.type === "set" && oldValue === operation.value) return false;
       if (operation.type === "remove" && oldValue === null) return false;
       if (operation.type === "clear" && memory.size === 0) return false;
+      const requiredRecovery = operation.type === "clear"
+        ? captureRecoveryState(options.recoveryReason || "전체 작업본 비우기 전")
+        : null;
       applyToMemory(operation);
       revision += 1;
       updatedAt = nowIso(environment);
       dirty = true;
       const event = { ...operation, oldValue, revision, updatedAt };
       if (!initialized) preReadyOperations.push(operation);
-      else queueBackendMutation(operation);
+      else queueBackendMutation(operation, { requiredRecovery });
       if (options.broadcast !== false) postBroadcast({ type: "mutation", event });
       notify({ type: "mutation", event });
       return true;
@@ -904,6 +1114,17 @@
               }
             } catch (_error) { /* keep dirty when an exact snapshot cannot be proven */ }
             notify({ type: "remote-file-saved" });
+          } else if (message.type === "recovery-changed") {
+            try {
+              const loaded = await backend.load();
+              const next = [];
+              for (const point of Array.isArray(loaded.recoveryPoints) ? loaded.recoveryPoints : []) {
+                try { next.push(await validateStoredRecoveryPoint(point, environment)); }
+                catch (_error) { /* ignore a corrupt recovery point */ }
+              }
+              recoveryPoints = trimRecoveryPoints(next);
+              notify({ type: "remote-recovery-changed" });
+            } catch (_error) { /* the working copy remains usable */ }
           }
         };
       } catch (_error) {
@@ -939,6 +1160,14 @@
               // journal. Replacing it wholesale preserves deletions, clear(),
               // and imports whose file-sync dirty flag is intentionally false.
               await backend.replaceAll(recovered.entries, recovered.meta);
+              const fallbackRecoveryIds = new Set(
+                (recovered.recoveryPoints || []).map((point) => point?.id).filter(Boolean),
+              );
+              recovered.recoveryPoints = [
+                ...(recovered.recoveryPoints || []),
+                ...(loaded.recoveryPoints || []).filter((point) => !fallbackRecoveryIds.has(point?.id)),
+              ];
+              await backend.replaceRecoveryPoints(recovered.recoveryPoints);
               loaded = recovered;
               await fallbackBackend.clearPersistence();
             }
@@ -968,6 +1197,18 @@
           loaded.meta = { ...(loaded.meta || {}), vaultId: ensuredId };
         }
       }
+
+      const rawRecoveryPoints = Array.isArray(loaded.recoveryPoints) ? loaded.recoveryPoints : [];
+      const validRecoveryPoints = [];
+      for (const point of rawRecoveryPoints) {
+        try {
+          validRecoveryPoints.push(await validateStoredRecoveryPoint(point, environment));
+        } catch (_error) {
+          // A broken recovery point must never prevent the working copy from opening.
+        }
+      }
+      recoveryPoints = trimRecoveryPoints(validRecoveryPoints);
+      const recoveryNeedsCleanup = recoveryPoints.length !== rawRecoveryPoints.length;
 
       const pending = preReadyOperations.splice(0);
       memory.clear();
@@ -1011,6 +1252,10 @@
         if (shouldForgetUnsafeStoredHandle) {
           await backend.setMeta({ fileHandle: null, connectionId: null });
         }
+        if (recoveryNeedsCleanup) {
+          try { await backend.replaceRecoveryPoints(recoveryPoints); }
+          catch (_error) { /* invalid points stay hidden even if cleanup cannot be persisted */ }
+        }
       } catch (error) {
         if (backend.mode === "indexeddb") {
           const fallback = await loadFallbackBackend();
@@ -1024,9 +1269,11 @@
         // in-memory backend still keeps the page usable for export.
         try {
           await backend.replaceAll(memory, metadataSnapshot());
+          await backend.replaceRecoveryPoints(recoveryPoints);
         } catch (_fallbackError) {
           backend = createMemoryBackend();
           await backend.replaceAll(memory, metadataSnapshot());
+          await backend.replaceRecoveryPoints(recoveryPoints);
         }
       }
       installBroadcastChannel();
@@ -1060,7 +1307,7 @@
         const snapshot = new Map(memory);
         const meta = mutationMetadataSnapshot();
         needsFullPersistence = false;
-        const recovery = backend.replaceAll(snapshot, meta).catch((error) => {
+        const recovery = persistPendingRequiredRecovery().then(() => backend.replaceAll(snapshot, meta)).catch((error) => {
           lastError = error;
           pendingWriteError = error;
           needsFullPersistence = true;
@@ -1089,6 +1336,10 @@
     async function replaceWithDocument(document, options = {}) {
       const validated = await validateVaultDocument(document, environment);
       await flush();
+      if (options.skipRecoverySnapshot !== true) {
+        const recoveryState = captureRecoveryState(options.recoveryReason || "보관함 교체 전");
+        await persistCapturedRecoveryPoint(recoveryState);
+      }
       const nextEntries = new Map(Object.entries(validated.entries));
       const next = {
         vaultId: validated.vaultId,
@@ -1138,6 +1389,7 @@
         if (error.rollbackError) {
           const safeMemoryBackend = createMemoryBackend();
           await safeMemoryBackend.replaceAll(new Map(memory), metadataSnapshot());
+          await safeMemoryBackend.replaceRecoveryPoints(recoveryPoints);
           backend = safeMemoryBackend;
           needsFullPersistence = false;
         } else {
@@ -1369,6 +1621,7 @@
             disconnect: true,
             recentFileName: imported.name,
             lastSyncAt: nowIso(environment),
+            recoveryReason: "JSON 보관함 불러오기 전",
           });
           notify({ type: "file-imported" });
           return getStatus();
@@ -1392,6 +1645,7 @@
           lastFileHash: rawHash,
           lastFileRevision: document.revision,
           lastSyncAt: nowIso(environment),
+          recoveryReason: "보관함 파일 열기 전",
         });
         return getStatus();
       });
@@ -1433,7 +1687,10 @@
             lastFileHash = rawHash;
             lastFileRevision = document.revision;
             lastSyncAt = nowIso(environment);
-            await replaceWithDocument(document, { dirty: false });
+            await replaceWithDocument(document, {
+              dirty: false,
+              recoveryReason: "파일에서 작업본 갱신 전",
+            });
           }
           await persistMetadata();
           lastError = null;
@@ -1572,8 +1829,62 @@
 
     async function importPortableText(text) {
       const document = await decodePortableText(text, environment);
-      await replaceWithDocument(document, { dirty: true, disconnect: true });
+      await replaceWithDocument(document, {
+        dirty: true,
+        disconnect: true,
+        recoveryReason: "휴대용 텍스트 불러오기 전",
+      });
       return getStatus();
+    }
+
+    async function createRecoveryPoint(reason = "수동 복원 지점") {
+      await ready;
+      await flush();
+      const label = isPlainObject(reason) ? (reason.reason || reason.label) : reason;
+      return persistCapturedRecoveryPoint(captureRecoveryState(label || "수동 복원 지점"));
+    }
+
+    async function listRecoveryPoints() {
+      await ready;
+      await recoveryQueue.catch(() => {});
+      return recoveryPoints.map(summarizeRecoveryPoint);
+    }
+
+    async function deleteRecoveryPoint(id) {
+      await ready;
+      const normalizedId = String(id || "");
+      return enqueueRecoveryOperation(async () => {
+        const next = recoveryPoints.filter((point) => point.id !== normalizedId);
+        if (next.length === recoveryPoints.length) return false;
+        try {
+          await backend.replaceRecoveryPoints(next);
+        } catch (error) {
+          throw recoveryPersistenceError(error);
+        }
+        recoveryPoints = next;
+        postBroadcast({ type: "recovery-changed" });
+        notify({ type: "recovery-deleted", recoveryPointId: normalizedId });
+        return true;
+      });
+    }
+
+    async function restoreRecoveryPoint(id) {
+      await ready;
+      const normalizedId = String(id || "");
+      return enqueueFileOperation(async () => {
+        const target = recoveryPoints.find((point) => point.id === normalizedId);
+        if (!target) throw new Error("선택한 복원 지점을 찾을 수 없습니다.");
+        await flush();
+        await persistCapturedRecoveryPoint(captureRecoveryState("복원 지점 되돌리기 전", { allowEmpty: true }));
+        await replaceWithDocument(target.document, {
+          dirty: true,
+          disconnect: true,
+          skipRecoverySnapshot: true,
+        });
+        postBroadcast({ type: "recovery-changed" });
+        notify({ type: "recovery-restored", recoveryPoint: summarizeRecoveryPoint(target) });
+        return { status: getStatus(), recoveryPoint: summarizeRecoveryPoint(target) };
+      });
     }
 
     function startAutoSync(options = {}) {
@@ -1616,6 +1927,10 @@
       downloadBackup,
       exportPortableText,
       importPortableText,
+      createRecoveryPoint,
+      listRecoveryPoints,
+      restoreRecoveryPoint,
+      deleteRecoveryPoint,
       flush,
       startAutoSync,
       stopAutoSync,

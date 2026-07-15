@@ -2045,6 +2045,50 @@ footer > a:last-child {
   border: 0;
 }
 
+.saved-list-status.is-recovery {
+  position: static;
+  width: auto;
+  height: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 16px;
+  padding: 14px 16px;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  border: 1px solid #c88965;
+  background: #fff5eb;
+  color: #6f3d2a;
+  font-size: var(--text-ui, 13px);
+  line-height: 1.6;
+}
+
+.saved-list-status.is-recovery > span {
+  flex: 1 1 100%;
+}
+
+.saved-list-status.is-recovery button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.saved-list-status.is-recovery button:hover {
+  background: rgba(111, 61, 42, 0.08);
+}
+
+.saved-list-status.is-recovery button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 @media (max-width: 900px) {
   .hero {
     gap: 45px;

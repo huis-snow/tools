@@ -26,6 +26,7 @@ class FakeLocalStorage {
     this.values = new Map();
     this.failEntryWrites = false;
     this.failEntryContaining = "";
+    this.maxBytes = Infinity;
   }
 
   get length() { return this.values.size; }
@@ -43,12 +44,27 @@ class FakeLocalStorage {
       || (this.failEntryContaining && normalized.includes(this.failEntryContaining))) {
       throw new Error("가상 디스크 쓰기 실패");
     }
-    this.values.set(normalized, String(value));
+    const normalizedValue = String(value);
+    const prospective = new Map(this.values);
+    prospective.set(normalized, normalizedValue);
+    const bytes = Array.from(prospective, ([itemKey, itemValue]) => itemKey.length + itemValue.length)
+      .reduce((total, length) => total + length, 0);
+    if (bytes > this.maxBytes) {
+      const error = new Error("가상 저장소 quota 초과");
+      error.name = "QuotaExceededError";
+      throw error;
+    }
+    this.values.set(normalized, normalizedValue);
   }
 
   removeItem(key) { this.values.delete(String(key)); }
 
   clear() { this.values.clear(); }
+
+  usedBytes() {
+    return Array.from(this.values, ([key, value]) => key.length + value.length)
+      .reduce((total, length) => total + length, 0);
+  }
 }
 
 class FakeFileHandle {
@@ -245,6 +261,7 @@ test("StorageLike는 즉시 메모리에 반영하고 fallback 저장소에 영�
     permission: "unsupported",
     entryCount: 0,
     bytes: 0,
+    recoveryPointCount: 0,
     vaultId: service.getStatus().vaultId,
     requiresFileReselection: false,
   });
@@ -816,6 +833,164 @@ test("휴대용 텍스트 import도 검증 후에만 전체 작업본을 교체�
   assert.equal(service.getStatus().revision, 8);
   assert.equal(service.getStatus().dirty, true);
   assert.equal(service.getStatus().connected, false);
+});
+
+test("전체 작업본을 비우기 전에 별도 복원 지점을 만들고 JSON 항목에는 섞지 않는다", async () => {
+  const localStorage = new FakeLocalStorage();
+  const service = createFallbackService(localStorage);
+  await service.ready;
+  service.storage.setItem("daily-log", "지우기 전 하루 기록");
+  service.storage.setItem("habit-maker", "지우기 전 습관 기록");
+  await service.flush();
+
+  service.storage.clear();
+  assert.equal(service.storage.length, 0);
+  await service.flush();
+  const points = await service.listRecoveryPoints();
+  assert.equal(points.length, 1);
+  assert.equal(points[0].reason, "전체 작업본 비우기 전");
+  assert.equal(points[0].entryCount, 2);
+  assert.equal(service.getStatus().recoveryPointCount, 1);
+
+  const backup = await service.downloadBackup();
+  assert.deepEqual({ ...backup.document.entries }, {});
+  assert.equal(Object.keys(backup.document.entries).some((key) => /recovery|복원/i.test(key)), false);
+
+  const restored = await service.restoreRecoveryPoint(points[0].id);
+  assert.equal(restored.status.entryCount, 2);
+  assert.equal(service.storage.getItem("daily-log"), "지우기 전 하루 기록");
+  assert.equal(service.storage.getItem("habit-maker"), "지우기 전 습관 기록");
+  const emptyPoint = (await service.listRecoveryPoints())
+    .find((point) => point.reason === "복원 지점 되돌리기 전" && point.entryCount === 0);
+  assert.ok(emptyPoint);
+  await service.restoreRecoveryPoint(emptyPoint.id);
+  assert.equal(service.storage.length, 0);
+});
+
+test("복원은 현재 상태도 새 복원 지점에 보존해 다시 되돌릴 수 있다", async () => {
+  const service = createFallbackService();
+  await service.ready;
+  service.storage.setItem("note", "상태 A");
+  await service.flush();
+  const pointA = await service.createRecoveryPoint("한글 상태 A");
+  service.storage.setItem("note", "상태 B");
+  await service.flush();
+
+  await service.restoreRecoveryPoint(pointA.id);
+  assert.equal(service.storage.getItem("note"), "상태 A");
+  const afterFirstRestore = await service.listRecoveryPoints();
+  const pointB = afterFirstRestore.find((point) => point.reason === "복원 지점 되돌리기 전");
+  assert.ok(pointB);
+
+  await service.restoreRecoveryPoint(pointB.id);
+  assert.equal(service.storage.getItem("note"), "상태 B");
+  assert.ok((await service.listRecoveryPoints()).length <= 5);
+});
+
+test("복원 지점은 최근 5개만 유지되고 브라우저를 다시 열어도 남는다", async () => {
+  const localStorage = new FakeLocalStorage();
+  let tick = 0;
+  const now = () => new Date(Date.parse(UPDATED_AT) + tick++ * 1_000);
+  const service = createFallbackService(localStorage, { now });
+  await service.ready;
+  for (let index = 1; index <= 7; index += 1) {
+    service.storage.setItem("note", `상태 ${index}`);
+    await service.flush();
+    await service.createRecoveryPoint(`복원 ${index}`);
+  }
+  assert.deepEqual(
+    (await service.listRecoveryPoints()).map((point) => point.reason),
+    ["복원 7", "복원 6", "복원 5", "복원 4", "복원 3"],
+  );
+
+  const reloaded = createFallbackService(localStorage);
+  await reloaded.ready;
+  assert.deepEqual(
+    (await reloaded.listRecoveryPoints()).map((point) => point.reason),
+    ["복원 7", "복원 6", "복원 5", "복원 4", "복원 3"],
+  );
+  assert.equal(reloaded.getStatus().recoveryPointCount, 5);
+});
+
+test("저장 공간이 빠듯하면 가장 오래된 복원 지점을 먼저 줄인다", async () => {
+  const localStorage = new FakeLocalStorage();
+  const service = createFallbackService(localStorage);
+  await service.ready;
+  service.storage.setItem("note", "A".repeat(20_000));
+  await service.flush();
+  await service.createRecoveryPoint("첫 번째");
+  service.storage.setItem("note", "B".repeat(20_000));
+  await service.flush();
+  localStorage.maxBytes = localStorage.usedBytes() + 100;
+
+  await service.createRecoveryPoint("두 번째");
+  const points = await service.listRecoveryPoints();
+  assert.equal(points.length, 1);
+  assert.equal(points[0].reason, "두 번째");
+});
+
+test("복원 지점 저장 실패 시 import를 중단하고 현재 작업본을 보존한다", async () => {
+  const localStorage = new FakeLocalStorage();
+  const service = createFallbackService(localStorage);
+  await service.ready;
+  service.storage.setItem("old", "보존할 현재 작업본");
+  await service.flush();
+  const replacement = await documentWith({ fresh: "들어오면 안 되는 값" }, { revision: 22 });
+  localStorage.failEntryContaining = "vault:recovery";
+
+  await assert.rejects(
+    service.openVaultFile({ text: serializeVaultDocument(replacement), fileName: "fresh.json" }),
+    (error) => error.code === "VAULT_RECOVERY_FAILED",
+  );
+  assert.equal(service.storage.getItem("old"), "보존할 현재 작업본");
+  assert.equal(service.storage.getItem("fresh"), null);
+  assert.equal((await service.listRecoveryPoints()).length, 0);
+});
+
+test("전체 비우기의 복원 지점 쓰기가 실패하면 durable 작업본을 먼저 지우지 않는다", async () => {
+  const localStorage = new FakeLocalStorage();
+  const service = createFallbackService(localStorage);
+  await service.ready;
+  service.storage.setItem("old", "디스크에 남아야 하는 값");
+  await service.flush();
+  localStorage.failEntryContaining = "vault:recovery";
+  service.storage.clear();
+  await assert.rejects(service.flush(), (error) => error.code === "VAULT_RECOVERY_FAILED");
+
+  const beforeRetry = createFallbackService(localStorage);
+  await beforeRetry.ready;
+  assert.equal(beforeRetry.storage.getItem("old"), "디스크에 남아야 하는 값");
+
+  localStorage.failEntryContaining = "";
+  await service.flush();
+  assert.equal(service.storage.length, 0);
+  assert.equal((await service.listRecoveryPoints())[0].reason, "전체 작업본 비우기 전");
+});
+
+test("IndexedDB의 복원 지점은 작업 항목과 분리되어 재로드·삭제된다", async () => {
+  const indexedDB = new FakeIndexedDB();
+  const environment = {
+    indexedDB,
+    localStorage: new FakeLocalStorage(),
+    window: null,
+    BroadcastChannel: null,
+    autoStart: false,
+  };
+  const first = createVaultService(environment);
+  await first.ready;
+  first.storage.setItem("note", "IDB 복원 내용");
+  await first.flush();
+  const point = await first.createRecoveryPoint("IDB 복원 지점");
+  assert.equal(indexedDB.stores.entries.has(point.id), false);
+  assert.equal(Array.isArray(indexedDB.stores.meta.get("recoveryPoints")), true);
+
+  const reloaded = createVaultService(environment);
+  await reloaded.ready;
+  assert.equal(reloaded.getStatus().mode, "indexeddb");
+  assert.equal((await reloaded.listRecoveryPoints())[0].reason, "IDB 복원 지점");
+  assert.equal(await reloaded.deleteRecoveryPoint(point.id), true);
+  assert.equal((await reloaded.listRecoveryPoints()).length, 0);
+  assert.equal(indexedDB.stores.meta.has("recoveryPoints"), false);
 });
 
 test("subscribe는 즉시 canonical status를 넘기고 이후 상태 변경도 알린다", async () => {

@@ -16,10 +16,15 @@
   const SHARE_VERSION = "1";
   const DEFAULT_TITLE = "우리의 가능한 시간";
   const MAX_OVERLAP_LEVEL = 8;
+  const DRAFT_KEY = "eonjepyo-draft";
+  const DRAFT_RECOVERY_KEY = `${DRAFT_KEY}:recovery`;
   const PERSISTED_STORAGE_KEYS = [
     "eonjepyo-saved-schedules-v1",
+    "eonjepyo-saved-schedules-v1:recovery",
     "eonjepyo-saved-comparisons-v1",
-    "eonjepyo-draft",
+    "eonjepyo-saved-comparisons-v1:recovery",
+    DRAFT_KEY,
+    DRAFT_RECOVERY_KEY,
   ];
   let selectedPersistentStorage = null;
 
@@ -33,6 +38,31 @@
 
   function persistentStorage() {
     return selectedPersistentStorage || fallbackStorage();
+  }
+
+  function draftRecoveryValue() {
+    try {
+      return persistentStorage()?.getItem?.(DRAFT_RECOVERY_KEY) ?? null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function quarantineDraft(raw) {
+    try {
+      const storage = persistentStorage();
+      if (storage?.getItem?.(DRAFT_RECOVERY_KEY) === null) storage.setItem(DRAFT_RECOVERY_KEY, String(raw));
+    } catch (_error) {
+      // Keep the unread primary draft untouched when a separate copy cannot be written.
+    }
+  }
+
+  function clearDraftRecovery() {
+    try {
+      persistentStorage()?.removeItem?.(DRAFT_RECOVERY_KEY);
+    } catch (_error) {
+      // A valid repaired draft remains usable even if recovery cleanup is unavailable.
+    }
   }
 
   async function prepareBrowserStorage(keys = PERSISTED_STORAGE_KEYS) {
@@ -839,6 +869,7 @@
     let dragging = null;
     let toastTimer;
     let initialMessage = "";
+    let draftRecoveryLocked = false;
     let activeSavedScheduleId = null;
     let comparisonParticipants = [];
     let nextParticipantId = 1;
@@ -1008,11 +1039,21 @@
         }
       }
 
+      let draft = null;
+      let draftRead = false;
       try {
-        const draft = persistentStorage().getItem("eonjepyo-draft");
-        if (!draft) return;
+        draft = persistentStorage().getItem(DRAFT_KEY);
+        draftRead = true;
+        if (draft === null) {
+          if (draftRecoveryValue() !== null) {
+            draftRecoveryLocked = true;
+            initialMessage = "지난 초안이 손상되어 자동 저장을 멈췄어요. ‘초기화’를 눌러 새로 시작해 주세요.";
+          }
+          return;
+        }
         const restored = parseShareHash(draft);
-        if (!restored) return;
+        if (!restored) throw new Error("저장된 초안 데이터가 없습니다.");
+        clearDraftRecovery();
         slots = restored.slots;
         elements.title.value = restored.title === DEFAULT_TITLE ? "" : restored.title;
         elements.timezone.value = restored.timezone;
@@ -1021,6 +1062,13 @@
         if (countSelected(slots)) initialMessage = "지난번에 칠하던 일정표를 불러왔어요.";
       } catch (_error) {
         slots = createSlots();
+        if (draftRead && draft !== null) {
+          quarantineDraft(draft);
+          draftRecoveryLocked = true;
+          initialMessage = "지난 초안이 손상되어 자동 저장을 멈췄어요. 손상 원본은 복구용으로 보관했으며 ‘초기화’를 눌러 새로 시작할 수 있어요.";
+        } else {
+          initialMessage = "브라우저 저장소에서 지난 초안을 읽지 못해 빈 일정표로 열었어요.";
+        }
       }
       return false;
     }
@@ -1087,10 +1135,31 @@
       elements.clear.disabled = selected === 0;
     }
 
-    function saveDraft() {
+    function showDraftRecoveryWarning() {
+      if (elements.reset) {
+        elements.reset.title = "손상된 초안 원본은 복구용으로 보관했습니다. 눌러서 빈 일정표로 초기화하세요.";
+        elements.reset.setAttribute?.("aria-label", "손상된 일정 초안을 빈 일정표로 초기화");
+      }
+      showToast("초안이 손상되어 자동 저장을 멈췄어요. ‘초기화’를 눌러 새로 시작해 주세요.");
+    }
+
+    function saveDraft({ repair = false } = {}) {
+      if (draftRecoveryLocked && !repair) {
+        showDraftRecoveryWarning();
+        return false;
+      }
       const hash = makeShareHash(slots, metadata());
       try {
-        persistentStorage().setItem("eonjepyo-draft", hash);
+        persistentStorage().setItem(DRAFT_KEY, hash);
+        if (repair) {
+          clearDraftRecovery();
+          draftRecoveryLocked = false;
+        }
+      } catch (_error) {
+        // Private browsing can disable localStorage; the current tab still keeps the state.
+        return false;
+      }
+      try {
         const explicitTitle = elements.title.value.trim();
         if (activeSavedScheduleId && explicitTitle) {
           savedSchedulesApi()?.saveSchedule(persistentStorage(), {
@@ -1100,8 +1169,9 @@
           }, { id: activeSavedScheduleId });
         }
       } catch (_error) {
-        // Private browsing can disable localStorage; the current tab still keeps the state.
+        // A damaged saved-list document must not prevent the independent draft from being kept.
       }
+      return true;
     }
 
     function announce(message) {
@@ -1237,14 +1307,18 @@
       elements.scroller.scrollTop = 0;
     }
 
-    function resetSchedule() {
+    async function resetSchedule() {
       const hasChanges = countSelected(slots) > 0 ||
         history.length > 0 ||
         elements.title.value.trim() !== "" ||
         elements.timezone.value.trim() !== detectedTimezone ||
         currentStartHour() !== 8 ||
         currentStartDay() !== 0;
-      if (hasChanges && !window.confirm("일정표 설정과 선택한 시간을 모두 초기화할까요?")) return;
+      const question = draftRecoveryLocked
+        ? "읽지 못한 초안 원본은 복구용으로 따로 보관되어 있습니다. 빈 일정표로 초기화할까요?"
+        : "일정표 설정과 선택한 시간을 모두 초기화할까요?";
+      if ((hasChanges || draftRecoveryLocked) && !window.confirm(question)) return;
+      if (!await createRecoveryPoint("일정 초안 전체 초기화 전")) return;
 
       slots = createSlots();
       activeSavedScheduleId = null;
@@ -1256,7 +1330,11 @@
       elements.startDay.value = "0";
       rovingIndex = slotIndex(8, 0);
       createGrid();
-      renderAll();
+      renderAll({ save: false });
+      if (!saveDraft({ repair: draftRecoveryLocked })) {
+        showToast("빈 일정표를 저장하지 못했어요");
+        return;
+      }
       elements.scroller.scrollTop = 0;
       announce("일정표를 처음 상태로 초기화했습니다.");
       showToast("빈 일정표로 초기화했어요");
@@ -1362,6 +1440,17 @@
       elements.toast.textContent = message;
       elements.toast.classList.add("show");
       toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), 2200);
+    }
+
+    async function createRecoveryPoint(label) {
+      if (typeof root.SmallToolsVault?.createRecoveryPoint !== "function") return true;
+      try {
+        await root.SmallToolsVault.createRecoveryPoint(label);
+        return true;
+      } catch (_error) {
+        showToast("복원 지점을 만들지 못해 작업을 취소했어요");
+        return false;
+      }
     }
 
     async function copyPlainText(text) {
@@ -2339,6 +2428,7 @@
       window.requestAnimationFrame(() => {
         elements.scroller.scrollTop = 0;
         if (initialMessage) showToast(initialMessage);
+        if (draftRecoveryLocked) showDraftRecoveryWarning();
       });
       return false;
     }
@@ -2456,6 +2546,8 @@
 
   const api = {
     DEFAULT_TITLE,
+    DRAFT_KEY,
+    DRAFT_RECOVERY_KEY,
     MAX_OVERLAP_LEVEL,
     DAYS,
     HOURS,

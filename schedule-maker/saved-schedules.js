@@ -3,6 +3,7 @@
 
   const STORAGE_VERSION = 1;
   const STORAGE_KEY = "eonjepyo-saved-schedules-v1";
+  const RECOVERY_KEY = `${STORAGE_KEY}:recovery`;
   const ACTION_KEY = "eonjepyo-saved-action-v1";
   const DRAFT_KEY = "eonjepyo-draft";
   const MAX_SAVED_SCHEDULES = 200;
@@ -26,6 +27,41 @@
       throw new TypeError("localStorage와 호환되는 저장소가 필요합니다.");
     }
     return storage;
+  }
+
+  function corruptStorageError() {
+    const error = new Error("저장한 일정 목록이 손상되었습니다. 원본을 복구용으로 보관했으며 초기화하기 전까지 저장하지 않습니다.");
+    error.code = "CORRUPT_STORAGE";
+    return error;
+  }
+
+  function getRecoveryDocument(storage) {
+    return assertStorage(storage).getItem(RECOVERY_KEY);
+  }
+
+  function quarantineDocument(storage, raw) {
+    const target = assertStorage(storage);
+    try {
+      if (target.getItem(RECOVERY_KEY) === null) target.setItem(RECOVERY_KEY, String(raw));
+    } catch (_error) {
+      // The original primary value is intentionally left untouched as a second recovery source.
+    }
+    return corruptStorageError();
+  }
+
+  function clearRecoveryDocument(storage) {
+    try {
+      assertStorage(storage).removeItem?.(RECOVERY_KEY);
+    } catch (_error) {
+      // A valid repaired document can still be used when recovery cleanup is unavailable.
+    }
+  }
+
+  function resetCorruptDocument(storage) {
+    const target = assertStorage(storage);
+    target.setItem(STORAGE_KEY, JSON.stringify({ version: STORAGE_VERSION, items: [] }));
+    clearRecoveryDocument(target);
+    return { version: STORAGE_VERSION, items: [] };
   }
 
   function timestamp(value) {
@@ -98,26 +134,29 @@
   }
 
   function readDocument(storage) {
-    assertStorage(storage);
-    let parsed;
-    try {
-      const raw = storage.getItem(STORAGE_KEY);
-      if (!raw) return { version: STORAGE_VERSION, items: [] };
-      parsed = JSON.parse(raw);
-    } catch (_error) {
+    const target = assertStorage(storage);
+    const raw = target.getItem(STORAGE_KEY);
+    if (raw === null) {
+      if (getRecoveryDocument(target) !== null) throw corruptStorageError();
       return { version: STORAGE_VERSION, items: [] };
     }
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (_error) {
+      throw quarantineDocument(target, raw);
+    }
     if (!parsed || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.items)) {
-      return { version: STORAGE_VERSION, items: [] };
+      throw quarantineDocument(target, raw);
     }
 
     const byId = new Map();
-    parsed.items.forEach((item) => {
+    for (const item of parsed.items) {
       const normalized = normalizeRecord(item);
-      if (!normalized) return;
+      if (!normalized) throw quarantineDocument(target, raw);
       const previous = byId.get(normalized.id);
       if (!previous || normalized.updatedAt >= previous.updatedAt) byId.set(normalized.id, normalized);
-    });
+    }
 
     const seenHashes = new Set();
     const items = Array.from(byId.values())
@@ -128,6 +167,7 @@
         return true;
       })
       .slice(0, MAX_SAVED_SCHEDULES);
+    clearRecoveryDocument(target);
     return { version: STORAGE_VERSION, items };
   }
 
@@ -291,6 +331,7 @@
   const api = {
     STORAGE_VERSION,
     STORAGE_KEY,
+    RECOVERY_KEY,
     ACTION_KEY,
     DRAFT_KEY,
     MAX_SAVED_SCHEDULES,
@@ -309,6 +350,9 @@
     queueSavedScheduleAction,
     consumeSavedScheduleAction,
     canonicalSchedule,
+    getRecoveryDocument,
+    resetCorruptDocument,
+    corruptStorageError,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;

@@ -31,6 +31,10 @@
     connectedTools: document.getElementById("vaultConnectedTools"),
     backupButton: document.getElementById("vaultBackupButton"),
     forgetButton: document.getElementById("vaultForgetButton"),
+    recovery: document.getElementById("vaultRecovery"),
+    recoveryCount: document.getElementById("vaultRecoveryCount"),
+    recoveryEmpty: document.getElementById("vaultRecoveryEmpty"),
+    recoveryList: document.getElementById("vaultRecoveryList"),
     portableInput: document.getElementById("vaultPortableInput"),
     copyTextButton: document.getElementById("vaultCopyTextButton"),
     importTextButton: document.getElementById("vaultImportTextButton"),
@@ -134,6 +138,70 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  function renderRecoveryPoints(rawPoints) {
+    if (!elements.recoveryList || !elements.recoveryEmpty || !elements.recoveryCount) return;
+    const points = Array.isArray(rawPoints) ? rawPoints : [];
+    elements.recoveryCount.textContent = String(points.length);
+    elements.recoveryEmpty.hidden = points.length > 0;
+    elements.recoveryList.replaceChildren();
+
+    points.forEach((point) => {
+      const item = document.createElement("li");
+      item.className = "vault-recovery-item";
+
+      const info = document.createElement("div");
+      info.className = "vault-recovery-info";
+      const reason = document.createElement("strong");
+      reason.className = "vault-recovery-reason";
+      reason.textContent = point.reason || "복원 지점";
+      reason.title = reason.textContent;
+      const meta = document.createElement("span");
+      meta.className = "vault-recovery-meta";
+      const entryCount = Number(point.entryCount) || 0;
+      const size = formatBytes(point.bytes);
+      meta.textContent = `${formatDate(point.createdAt)} · r${Number(point.revision) || 0} · ${entryCount.toLocaleString("ko-KR")}개${size ? ` · ${size}` : ""}`;
+      info.append(reason, meta);
+
+      const actions = document.createElement("div");
+      actions.className = "vault-recovery-actions";
+      const restoreButton = document.createElement("button");
+      restoreButton.className = "vault-text-button";
+      restoreButton.type = "button";
+      restoreButton.dataset.recoveryAction = "restore";
+      restoreButton.dataset.recoveryId = point.id;
+      restoreButton.textContent = "복원";
+      restoreButton.setAttribute("aria-label", `${reason.textContent} 복원`);
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "vault-text-button vault-danger-button";
+      deleteButton.type = "button";
+      deleteButton.dataset.recoveryAction = "delete";
+      deleteButton.dataset.recoveryId = point.id;
+      deleteButton.textContent = "삭제";
+      deleteButton.setAttribute("aria-label", `${reason.textContent} 삭제`);
+      actions.append(restoreButton, deleteButton);
+      item.append(info, actions);
+      elements.recoveryList.appendChild(item);
+    });
+    setBusy(busy);
+  }
+
+  let recoveryRefreshToken = 0;
+  async function refreshRecoveryPoints() {
+    if (typeof api?.listRecoveryPoints !== "function") {
+      if (elements.recovery) elements.recovery.hidden = true;
+      return [];
+    }
+    const token = ++recoveryRefreshToken;
+    try {
+      const points = await api.listRecoveryPoints();
+      if (token === recoveryRefreshToken) renderRecoveryPoints(points);
+      return points;
+    } catch (error) {
+      if (token === recoveryRefreshToken) announce(describeError(error));
+      return [];
+    }
+  }
+
   function normalizeStatus(status) {
     const next = status && typeof status === "object" ? status : {};
     const fileName = getDisplayFileName(next);
@@ -165,6 +233,9 @@
       permission: typeof next.permission === "string" ? next.permission : next.connected ? "granted" : "prompt",
       entryCount: Number.isFinite(Number(next.entryCount)) ? Math.max(0, Number(next.entryCount)) : 0,
       bytes: Number.isFinite(Number(next.bytes)) ? Math.max(0, Number(next.bytes)) : 0,
+      recoveryPointCount: Number.isFinite(Number(next.recoveryPointCount))
+        ? Math.max(0, Number(next.recoveryPointCount))
+        : 0,
       vaultId: typeof next.vaultId === "string" ? next.vaultId : "",
       error: next.error || null,
     };
@@ -249,6 +320,7 @@
     elements.openButton.textContent = status.filePickerSupported ? "다른 파일 열기" : "보관함 파일 불러오기";
     elements.connectedTools.hidden = false;
     elements.forgetButton.hidden = !status.connected;
+    if (elements.recoveryCount) elements.recoveryCount.textContent = String(status.recoveryPointCount);
 
     if (status.fileSystemAccessDisabledReason === "whale-stored-handle-crash") {
       elements.browserNote.textContent =
@@ -283,7 +355,10 @@
   function setBusy(nextBusy) {
     busy = Boolean(nextBusy);
     elements.panel.classList.toggle("is-busy", busy);
-    for (const button of actionButtons) {
+    const recoveryButtons = elements.recoveryList
+      ? Array.from(elements.recoveryList.querySelectorAll("button"))
+      : [];
+    for (const button of [...actionButtons, ...recoveryButtons]) {
       button.disabled = busy;
     }
   }
@@ -448,6 +523,31 @@
         runAction(() => api.forgetFile(), "보관함 연결 정보를 지웠어요. 기기 작업본은 그대로 남아 있습니다.");
       }
     });
+    elements.recoveryList?.addEventListener("click", async (event) => {
+      const button = event.target.closest("button[data-recovery-action]");
+      if (!button || busy) return;
+      const recoveryId = button.dataset.recoveryId;
+      const item = button.closest(".vault-recovery-item");
+      const label = item?.querySelector(".vault-recovery-reason")?.textContent || "이 복원 지점";
+      if (button.dataset.recoveryAction === "restore") {
+        const confirmed = window.confirm(
+          `'${label}' 상태로 되돌릴까요? 현재 작업본도 먼저 새 복원 지점에 보관됩니다.`
+        );
+        if (!confirmed) {
+          announce("복원을 취소했어요.");
+          return;
+        }
+        await runAction(
+          () => api.restoreRecoveryPoint(recoveryId),
+          "선택한 상태로 복원했어요. 안전을 위해 파일 연결은 해제했으며, 복원 전 작업본도 되돌릴 수 있습니다.",
+        );
+        await refreshRecoveryPoints();
+      } else if (button.dataset.recoveryAction === "delete") {
+        if (!window.confirm(`'${label}' 복원 지점을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+        await runAction(() => api.deleteRecoveryPoint(recoveryId), "복원 지점을 삭제했어요.");
+        await refreshRecoveryPoints();
+      }
+    });
     elements.copyTextButton.addEventListener("click", copyPortableText);
     elements.importTextButton.addEventListener("click", () => {
       const portableText = elements.portableInput.value.trim();
@@ -464,7 +564,29 @@
     });
   }
 
+  function getVaultOpenRequest() {
+    const parameters = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    return {
+      requested: parameters.get("vault") === "open" || hash === "#vaultPanel" || hash === "#vault",
+      hasQueryRequest: parameters.get("vault") === "open",
+    };
+  }
+
+  function removeVaultOpenQuery() {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("vault") !== "open") return;
+      url.searchParams.delete("vault");
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      window.history.replaceState(window.history.state, "", next);
+    } catch (_error) {
+      // URL cleanup is cosmetic; opening the panel must still work without it.
+    }
+  }
+
   async function initialize() {
+    const openRequest = getVaultOpenRequest();
     bindEvents();
 
     if (!api || typeof api.getStatus !== "function") {
@@ -488,10 +610,24 @@
       }
 
       await refreshStatus();
+      await refreshRecoveryPoints();
+
+      if (openRequest.requested) {
+        showPanel({ focus: true });
+        if (openRequest.hasQueryRequest) removeVaultOpenQuery();
+      }
 
       if (typeof api.subscribe === "function") {
         api.subscribe((status, event) => {
           refreshStatus(status);
+          if (event && [
+            "recovery-created",
+            "recovery-deleted",
+            "recovery-restored",
+            "remote-recovery-changed",
+          ].includes(event.type)) {
+            refreshRecoveryPoints();
+          }
           if (event && (event.type === "error" || event.type === "conflict")) {
             announce(describeError(event.error));
           }

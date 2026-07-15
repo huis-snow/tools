@@ -67,6 +67,61 @@
     toastTimer = root.setTimeout(() => elements.toast.classList.remove("show"), 2200);
   }
 
+  async function createRecoveryPoint(label) {
+    if (typeof root.SmallToolsVault?.createRecoveryPoint !== "function") return true;
+    try {
+      await root.SmallToolsVault.createRecoveryPoint(label);
+      return true;
+    } catch (_error) {
+      showToast("복원 지점을 만들지 못해 작업을 취소했어요");
+      return false;
+    }
+  }
+
+  function downloadRecoveryDocument(api, label) {
+    try {
+      const raw = api.getRecoveryDocument(persistentStorage());
+      if (raw === null) throw new Error("복구용 원본이 없습니다.");
+      if (typeof root.Blob !== "function" || !root.URL?.createObjectURL) throw new Error("파일 저장을 지원하지 않습니다.");
+      const url = root.URL.createObjectURL(new root.Blob([raw], { type: "application/json;charset=utf-8" }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${label}-recovery-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      root.setTimeout(() => root.URL.revokeObjectURL(url), 1000);
+      showToast("복구용 원본을 파일로 저장했어요");
+    } catch (error) {
+      showToast(error.message || "복구용 원본을 저장하지 못했어요");
+    }
+  }
+
+  function renderRecoveryActions(status, api, label, rerender) {
+    status.classList.remove("sr-only");
+    status.classList.add("is-recovery");
+    status.replaceChildren();
+    const message = document.createElement("span");
+    message.textContent = `${label} 데이터가 손상되어 저장을 멈췄어요. 원본을 내려받은 뒤 초기화하거나 보관함 백업을 복원해 주세요. `;
+    const download = document.createElement("button");
+    download.type = "button";
+    download.textContent = "복구 원본 저장";
+    download.addEventListener("click", () => downloadRecoveryDocument(api, label));
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.textContent = "손상 목록 초기화";
+    reset.addEventListener("click", async () => {
+      if (!root.confirm(`${label}의 읽지 못한 원본을 빈 목록으로 초기화할까요? 복구 원본을 먼저 저장하는 것을 권장해요.`)) return;
+      if (!await createRecoveryPoint(`${label} 손상 목록 초기화 전`)) return;
+      try {
+        api.resetCorruptDocument(persistentStorage());
+        rerender();
+        showToast(`${label}을 빈 목록으로 초기화했어요`);
+      } catch (_error) {
+        showToast(`${label}을 초기화하지 못했어요`);
+      }
+    });
+    status.append(message, download, reset);
+  }
+
   function formatHour(hour) {
     return `${String(hour).padStart(2, "0")}:00`;
   }
@@ -208,19 +263,32 @@
   }
 
   function renderCollections({ announce = false } = {}) {
+    let loadError = null;
     try {
       collections = comparisonsApi.list(persistentStorage());
-    } catch (_error) {
+    } catch (error) {
       collections = [];
-      showToast("저장한 취합 일정 목록을 읽지 못했어요");
+      loadError = error;
+      showToast(error?.code === "CORRUPT_STORAGE" ? "저장한 취합 일정이 손상되어 저장을 멈췄어요" : "저장한 취합 일정 목록을 읽지 못했어요");
     }
 
     elements.collectionList.replaceChildren(...collections.map(createCollectionItem));
     elements.collectionCount.textContent = String(collections.length);
-    elements.collectionEmpty.hidden = collections.length !== 0;
-    elements.collectionStatus.textContent = collections.length
-      ? `${collections.length}개의 저장된 취합 일정이 있습니다.`
-      : "저장한 취합 일정이 없습니다.";
+    const collectionCorrupt = loadError?.code === "CORRUPT_STORAGE";
+    elements.collectionEmpty.hidden = collectionCorrupt || collections.length !== 0;
+    if (!collectionCorrupt) {
+      elements.collectionStatus.classList.remove("is-recovery");
+      elements.collectionStatus.classList.add("sr-only");
+    }
+    if (collectionCorrupt) {
+      renderRecoveryActions(elements.collectionStatus, comparisonsApi, "저장한 취합 일정", () => renderCollections({ announce: true }));
+    } else {
+      elements.collectionStatus.textContent = loadError
+        ? "저장한 취합 일정 목록을 읽지 못했습니다."
+        : collections.length
+          ? `${collections.length}개의 저장된 취합 일정이 있습니다.`
+          : "저장한 취합 일정이 없습니다.";
+    }
     if (announce) elements.collectionStatus.setAttribute("data-updated", String(Date.now()));
 
     const previousTarget = elements.addTarget.value;
@@ -244,11 +312,13 @@
   }
 
   function render({ announce = false } = {}) {
+    let loadError = null;
     try {
       records = savedApi.list(persistentStorage());
-    } catch (_error) {
+    } catch (error) {
       records = [];
-      showToast("저장한 일정 목록을 읽지 못했어요");
+      loadError = error;
+      showToast(error?.code === "CORRUPT_STORAGE" ? "저장한 일정이 손상되어 저장을 멈췄어요" : "저장한 일정 목록을 읽지 못했어요");
     }
 
     const existingIds = new Set(records.map((record) => record.id));
@@ -258,15 +328,26 @@
 
     elements.list.replaceChildren(...visibleRecords.map(createSavedItem));
     elements.count.textContent = String(records.length);
-    elements.empty.hidden = records.length !== 0;
-    elements.noResults.hidden = records.length === 0 || visibleRecords.length !== 0;
+    const scheduleCorrupt = loadError?.code === "CORRUPT_STORAGE";
+    elements.empty.hidden = scheduleCorrupt || records.length !== 0;
+    elements.noResults.hidden = scheduleCorrupt || records.length === 0 || visibleRecords.length !== 0;
+    if (!scheduleCorrupt) {
+      elements.status.classList.remove("is-recovery");
+      elements.status.classList.add("sr-only");
+    }
     syncSelectionControls();
 
-    elements.status.textContent = records.length === 0
-      ? "저장한 일정이 없습니다."
-      : query && visibleRecords.length === 0
-        ? "검색어와 일치하는 일정이 없습니다."
-        : `${records.length}개의 저장 일정 중 ${visibleRecords.length}개를 보여주고 있습니다.`;
+    if (scheduleCorrupt) {
+      renderRecoveryActions(elements.status, savedApi, "저장한 일정", () => render({ announce: true }));
+    } else {
+      elements.status.textContent = loadError
+        ? "저장한 일정 목록을 읽지 못했습니다."
+        : records.length === 0
+          ? "저장한 일정이 없습니다."
+          : query && visibleRecords.length === 0
+            ? "검색어와 일치하는 일정이 없습니다."
+            : `${records.length}개의 저장 일정 중 ${visibleRecords.length}개를 보여주고 있습니다.`;
+    }
     if (announce) elements.status.setAttribute("data-updated", String(Date.now()));
     if (renamingId) focusRenameInput(elements.list, "savedId", renamingId);
   }
@@ -310,9 +391,10 @@
     if (root.confirm(`'${record.title}' 일정을 삭제할까요?`)) confirmDelete();
   }
 
-  function confirmDelete() {
-    if (!deletingId) return;
+  async function confirmDelete() {
+    if (!deletingId) return false;
     const record = records.find((item) => item.id === deletingId);
+    if (!await createRecoveryPoint(`${record?.title || "저장 일정"} 삭제 전`)) return false;
     try {
       savedApi.remove(persistentStorage(), deletingId);
       selectedIds.delete(deletingId);
@@ -320,8 +402,10 @@
       showToast(`${record?.title || "일정"}을 저장 목록에서 삭제했어요`);
       deletingId = null;
       render({ announce: true });
+      return true;
     } catch (_error) {
       showToast("일정을 삭제하지 못했어요");
+      return false;
     }
   }
 
@@ -335,17 +419,20 @@
     if (root.confirm(`'${record.name}' 취합 일정을 삭제할까요?`)) confirmCollectionDelete();
   }
 
-  function confirmCollectionDelete() {
-    if (!deletingCollectionId) return;
+  async function confirmCollectionDelete() {
+    if (!deletingCollectionId) return false;
     const record = collections.find((item) => item.id === deletingCollectionId);
+    if (!await createRecoveryPoint(`${record?.name || "취합 일정"} 삭제 전`)) return false;
     try {
       comparisonsApi.remove(persistentStorage(), deletingCollectionId);
       if (renamingCollectionId === deletingCollectionId) renamingCollectionId = null;
       showToast(`${record?.name || "취합 일정"}을 보관함에서 삭제했어요`);
       deletingCollectionId = null;
       renderCollections({ announce: true });
+      return true;
     } catch (_error) {
       showToast("취합 일정을 삭제하지 못했어요");
+      return false;
     }
   }
 
@@ -522,17 +609,15 @@
     }
   });
 
-  elements.deleteConfirm.addEventListener("click", (event) => {
+  elements.deleteConfirm.addEventListener("click", async (event) => {
     event.preventDefault();
-    confirmDelete();
-    if (elements.deleteDialog.open) elements.deleteDialog.close("confirm");
+    if (await confirmDelete() && elements.deleteDialog.open) elements.deleteDialog.close("confirm");
   });
   elements.deleteDialog.addEventListener("close", () => { deletingId = null; });
 
-  elements.collectionDeleteConfirm.addEventListener("click", (event) => {
+  elements.collectionDeleteConfirm.addEventListener("click", async (event) => {
     event.preventDefault();
-    confirmCollectionDelete();
-    if (elements.collectionDeleteDialog.open) elements.collectionDeleteDialog.close("confirm");
+    if (await confirmCollectionDelete() && elements.collectionDeleteDialog.open) elements.collectionDeleteDialog.close("confirm");
   });
   elements.collectionDeleteDialog.addEventListener("close", () => { deletingCollectionId = null; });
 

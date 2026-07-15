@@ -6,9 +6,9 @@
     <meta name="description" content="설치 없이 브라우저에서 바로 사용하는 작고 유용한 웹 도구 모음" />
     <meta name="theme-color" content="#f4f1e8" />
     <title>작은 도구함</title>
-    <link rel="stylesheet" href="hub.css" />
-    <script src="./shared/vault-storage.js?v=20260715-safe-vault" defer></script>
-    <script src="./hub-vault.js?v=20260715-safe-vault" defer></script>
+    <link rel="stylesheet" href="hub.css?v=20260715-data-safety" />
+    <script src="./shared/vault-storage.js?v=20260715-data-safety" defer></script>
+    <script src="./hub-vault.js?v=20260715-data-safety" defer></script>
   </head>
   <body id="top">
     <a class="skip-link" href="#tools">도구 목록으로 바로가기</a>
@@ -105,6 +105,16 @@
                 연결 해제
               </button>
             </div>
+
+            <details class="vault-recovery" id="vaultRecovery">
+              <summary>
+                최근 복원 지점
+                <span class="vault-recovery-count" id="vaultRecoveryCount">0</span>
+              </summary>
+              <p>불러오기·초기화·삭제 전 상태를 이 브라우저에 최근 5개까지 보관합니다. JSON 백업에는 포함되지 않습니다.</p>
+              <p class="vault-recovery-empty" id="vaultRecoveryEmpty">아직 만들어진 복원 지점이 없습니다.</p>
+              <ol class="vault-recovery-list" id="vaultRecoveryList" aria-label="최근 복원 지점"></ol>
+            </details>
 
             <details class="vault-portable">
               <summary>휴대용 텍스트로 옮기기</summary>

@@ -19,6 +19,10 @@ class MemoryStorage {
   setItem(key, value) {
     this.values.set(key, String(value));
   }
+
+  removeItem(key) {
+    this.values.delete(key);
+  }
 }
 
 function member(title, indexes = [], options = {}) {
@@ -133,9 +137,21 @@ test("같은 공유 취합표를 다시 열면 보관함에 중복 항목을 만
   assert.equal(second.updatedAt, 200);
 });
 
-test("깨진 저장 문서와 손상된 공유 데이터는 안전하게 거절한다", () => {
-  const brokenStorage = new MemoryStorage({ [comparisons.STORAGE_KEY]: "{not-json" });
+test("깨진 저장 문서는 원문을 격리하고 초기화 전까지 취합표 변경을 막는다", () => {
+  const raw = "{not-json";
+  const brokenStorage = new MemoryStorage({ [comparisons.STORAGE_KEY]: raw });
+  assert.throws(() => comparisons.list(brokenStorage), (error) => error.code === "CORRUPT_STORAGE");
+  assert.equal(brokenStorage.getItem(comparisons.RECOVERY_KEY), raw);
+  assert.equal(brokenStorage.getItem(comparisons.STORAGE_KEY), raw);
+  assert.throws(() => comparisons.saveComparison(brokenStorage, group("덮으면 안 됨")), /손상/);
+  assert.equal(brokenStorage.getItem(comparisons.STORAGE_KEY), raw);
+
+  comparisons.resetCorruptDocument(brokenStorage);
+  assert.equal(brokenStorage.getItem(comparisons.RECOVERY_KEY), null);
   assert.deepEqual(comparisons.list(brokenStorage), []);
+});
+
+test("손상된 공유 데이터는 저장 문서와 구분해 안전하게 거절한다", () => {
   assert.throws(() => comparisons.parseShareHash("#g=%%%"), /형식/);
   assert.throws(() => comparisons.parseShareInput("https://example.test/compare.html"), /데이터/);
 });

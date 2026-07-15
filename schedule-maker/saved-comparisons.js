@@ -3,6 +3,7 @@
 
   const STORAGE_VERSION = 1;
   const STORAGE_KEY = "eonjepyo-saved-comparisons-v1";
+  const RECOVERY_KEY = `${STORAGE_KEY}:recovery`;
   const SHARE_VERSION = 1;
   const SHARE_PARAMETER = "g";
   const DEFAULT_NAME = "저장한 취합 일정";
@@ -33,6 +34,41 @@
       throw new TypeError("localStorage와 호환되는 저장소가 필요합니다.");
     }
     return storage;
+  }
+
+  function corruptStorageError() {
+    const error = new Error("저장한 취합 일정 목록이 손상되었습니다. 원본을 복구용으로 보관했으며 초기화하기 전까지 저장하지 않습니다.");
+    error.code = "CORRUPT_STORAGE";
+    return error;
+  }
+
+  function getRecoveryDocument(storage) {
+    return assertStorage(storage).getItem(RECOVERY_KEY);
+  }
+
+  function quarantineDocument(storage, raw) {
+    const target = assertStorage(storage);
+    try {
+      if (target.getItem(RECOVERY_KEY) === null) target.setItem(RECOVERY_KEY, String(raw));
+    } catch (_error) {
+      // Keep the primary value untouched when a separate recovery copy cannot be written.
+    }
+    return corruptStorageError();
+  }
+
+  function clearRecoveryDocument(storage) {
+    try {
+      assertStorage(storage).removeItem?.(RECOVERY_KEY);
+    } catch (_error) {
+      // A valid repaired document remains usable even if stale recovery cleanup fails.
+    }
+  }
+
+  function resetCorruptDocument(storage) {
+    const target = assertStorage(storage);
+    target.setItem(STORAGE_KEY, JSON.stringify({ version: STORAGE_VERSION, items: [] }));
+    clearRecoveryDocument(target);
+    return { version: STORAGE_VERSION, items: [] };
   }
 
   function unicodeSlice(value, maximum) {
@@ -375,27 +411,31 @@
   }
 
   function readDocument(storage) {
-    assertStorage(storage);
-    let parsed;
-    try {
-      const raw = storage.getItem(STORAGE_KEY);
-      if (!raw) return { version: STORAGE_VERSION, items: [] };
-      if (raw.length > MAX_STORAGE_LENGTH) return { version: STORAGE_VERSION, items: [] };
-      parsed = JSON.parse(raw);
-    } catch (_error) {
+    const target = assertStorage(storage);
+    const raw = target.getItem(STORAGE_KEY);
+    if (raw === null) {
+      if (getRecoveryDocument(target) !== null) throw corruptStorageError();
       return { version: STORAGE_VERSION, items: [] };
     }
+    let parsed;
+    try {
+      if (raw.length > MAX_STORAGE_LENGTH) throw new Error("too large");
+      parsed = JSON.parse(raw);
+    } catch (_error) {
+      throw quarantineDocument(target, raw);
+    }
     if (!parsed || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.items)) {
-      return { version: STORAGE_VERSION, items: [] };
+      throw quarantineDocument(target, raw);
     }
 
     const byId = new Map();
-    parsed.items.slice(0, MAX_SAVED_COMPARISONS * 2).forEach((value) => {
+    if (parsed.items.length > MAX_SAVED_COMPARISONS * 2) throw quarantineDocument(target, raw);
+    for (const value of parsed.items) {
       const record = normalizeRecord(value);
-      if (!record) return;
+      if (!record) throw quarantineDocument(target, raw);
       const previous = byId.get(record.id);
       if (!previous || record.updatedAt >= previous.updatedAt) byId.set(record.id, record);
-    });
+    }
 
     const seenGroups = new Set();
     const items = Array.from(byId.values())
@@ -407,6 +447,7 @@
         return true;
       })
       .slice(0, MAX_SAVED_COMPARISONS);
+    clearRecoveryDocument(target);
     return { version: STORAGE_VERSION, items };
   }
 
@@ -525,6 +566,7 @@
   const api = {
     STORAGE_VERSION,
     STORAGE_KEY,
+    RECOVERY_KEY,
     SHARE_VERSION,
     SHARE_PARAMETER,
     DEFAULT_NAME,
@@ -558,6 +600,9 @@
     makeShareUrl,
     parseShareHash,
     parseShareInput,
+    getRecoveryDocument,
+    resetCorruptDocument,
+    corruptStorageError,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
