@@ -81,6 +81,14 @@
     return value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("ko-KR");
   }
 
+  function mealKeysForStats(value = "all") {
+    if (value === "all") return [...MEAL_KEYS];
+    if (typeof value !== "string" || !MEAL_KEYS.includes(value)) {
+      throw new TypeError("식단 통계의 끼니 구분이 올바르지 않습니다.");
+    }
+    return [value];
+  }
+
   function weekdayIndex(value) {
     const date = typeof value === "string" ? parseDateKey(value) : value;
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new Error("올바르지 않은 날짜입니다.");
@@ -410,11 +418,12 @@
     };
   }
 
-  function calculateFoodStats(state, range) {
+  function calculateFoodStats(state, range, meal = "all") {
     if (!isPlainObject(range)) throw new TypeError("식단 통계 기간이 올바르지 않습니다.");
     const from = toDateKey(range.from);
     const to = toDateKey(range.to);
     if (from > to) throw new Error("식단 통계 시작일은 종료일보다 늦을 수 없습니다.");
+    const mealKeys = mealKeysForStats(meal);
 
     const normalized = normalizeState(state);
     const foods = new Map();
@@ -427,7 +436,7 @@
       .sort(([left], [right]) => left.localeCompare(right))
       .forEach(([_date, record]) => {
         const foodsOnDate = new Set();
-        MEAL_KEYS.forEach((mealKey) => {
+        mealKeys.forEach((mealKey) => {
           const items = splitMealItems(record.meals[mealKey]);
           if (items.length) mealCount += 1;
           items.forEach((name) => {
@@ -455,6 +464,7 @@
     return {
       from,
       to,
+      meal,
       foodDays,
       mealCount,
       itemCount,
@@ -463,14 +473,14 @@
     };
   }
 
-  function calculateWeeklyFoodStats(state, value) {
+  function calculateWeeklyFoodStats(state, value, meal = "all") {
     const { first, last } = weekBounds(value);
-    return calculateFoodStats(state, { from: first, to: last });
+    return calculateFoodStats(state, { from: first, to: last }, meal);
   }
 
-  function calculateMonthlyFoodStats(state, value) {
+  function calculateMonthlyFoodStats(state, value, meal = "all") {
     const { first, last } = monthBounds(value);
-    return calculateFoodStats(state, { from: first, to: last });
+    return calculateFoodStats(state, { from: first, to: last }, meal);
   }
 
   function formatMonthLabel(value) {
@@ -543,6 +553,11 @@
       averageCondition: byId("averageCondition"),
       mealStatsWeek: byId("mealStatsWeekButton"),
       mealStatsMonth: byId("mealStatsMonthButton"),
+      mealStatsAll: byId("mealStatsAllButton"),
+      mealStatsBreakfast: byId("mealStatsBreakfastButton"),
+      mealStatsLunch: byId("mealStatsLunchButton"),
+      mealStatsDinner: byId("mealStatsDinnerButton"),
+      mealStatsSnack: byId("mealStatsSnackButton"),
       mealStatsRange: byId("mealStatsRange"),
       mealStatsDays: byId("mealStatsDays"),
       mealStatsItems: byId("mealStatsItems"),
@@ -556,6 +571,13 @@
       conditionButtons: Array.from(doc.querySelectorAll?.("[data-condition]") || []),
     };
     if (!elements.monthLabel || !elements.calendar) return null;
+    const mealStatsMealButtons = [
+      ["all", elements.mealStatsAll],
+      ["breakfast", elements.mealStatsBreakfast],
+      ["lunch", elements.mealStatsLunch],
+      ["dinner", elements.mealStatsDinner],
+      ["snack", elements.mealStatsSnack],
+    ];
 
     const storage = resolveStorage(options.storage);
     const getNow = typeof options.now === "function" ? options.now : () => options.now || new Date();
@@ -578,6 +600,7 @@
     let destroyed = false;
     let saveGeneration = 0;
     let mealStatsPeriod = "week";
+    let mealStatsMeal = "all";
 
     function showToast(message) {
       if (!elements.toast) return;
@@ -688,24 +711,33 @@
 
     function renderMealStats() {
       const stats = mealStatsPeriod === "month"
-        ? calculateMonthlyFoodStats(state, currentMonth)
-        : calculateWeeklyFoodStats(state, selectedDate);
+        ? calculateMonthlyFoodStats(state, currentMonth, mealStatsMeal)
+        : calculateWeeklyFoodStats(state, selectedDate, mealStatsMeal);
+      const mealLabel = mealStatsMeal === "all" ? "전체 식사" : MEAL_LABELS[mealStatsMeal];
       if (elements.mealStatsRange) {
         elements.mealStatsRange.textContent = mealStatsPeriod === "month"
-          ? `월간 · ${formatMonthLabel(currentMonth)}`
-          : `주간 · ${formatDateRangeLabel(stats.from, stats.to)}`;
+          ? `월간 · ${formatMonthLabel(currentMonth)} · ${mealLabel}`
+          : `주간 · ${formatDateRangeLabel(stats.from, stats.to)} · ${mealLabel}`;
       }
       if (elements.mealStatsDays) elements.mealStatsDays.textContent = String(stats.foodDays);
       if (elements.mealStatsItems) elements.mealStatsItems.textContent = String(stats.itemCount);
       if (elements.mealStatsUniqueItems) elements.mealStatsUniqueItems.textContent = String(stats.uniqueItemCount);
       if (elements.mealStatsWeek) elements.mealStatsWeek.setAttribute?.("aria-pressed", String(mealStatsPeriod === "week"));
       if (elements.mealStatsMonth) elements.mealStatsMonth.setAttribute?.("aria-pressed", String(mealStatsPeriod === "month"));
+      mealStatsMealButtons.forEach(([value, button]) => {
+        button?.setAttribute?.("aria-pressed", String(mealStatsMeal === value));
+      });
       if (!elements.mealRanking) return;
 
       const ranking = stats.items.slice(0, FOOD_RANKING_LIMIT);
       elements.mealRanking.replaceChildren();
       elements.mealRanking.hidden = ranking.length === 0;
-      if (elements.mealStatsEmpty) elements.mealStatsEmpty.hidden = ranking.length !== 0;
+      if (elements.mealStatsEmpty) {
+        elements.mealStatsEmpty.hidden = ranking.length !== 0;
+        elements.mealStatsEmpty.textContent = mealStatsMeal === "all"
+          ? "이 기간에는 쉼표로 나눈 식단 기록이 없어요."
+          : `이 기간에는 ${mealLabel} 식단 기록이 없어요.`;
+      }
       const maximum = ranking[0]?.count || 1;
       ranking.forEach((food, index) => {
         const item = doc.createElement("li");
@@ -931,6 +963,12 @@
     elements.mealStatsMonth?.addEventListener?.("click", () => {
       mealStatsPeriod = "month";
       renderMealStats();
+    });
+    mealStatsMealButtons.forEach(([value, button]) => {
+      button?.addEventListener?.("click", () => {
+        mealStatsMeal = value;
+        renderMealStats();
+      });
     });
 
     elements.prevMonth?.addEventListener?.("click", () => {

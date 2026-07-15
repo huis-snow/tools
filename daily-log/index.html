@@ -162,6 +162,13 @@
                 <p class="meal-stats-range" id="mealStatsRange" aria-live="polite" aria-atomic="true">
                   선택한 날짜의 식단을 계산하고 있어요.
                 </p>
+                <div class="meal-stats-meal-filter" role="group" aria-label="식단 통계 끼니">
+                  <button id="mealStatsAllButton" type="button" aria-pressed="true">전체</button>
+                  <button id="mealStatsBreakfastButton" type="button" aria-pressed="false">아침</button>
+                  <button id="mealStatsLunchButton" type="button" aria-pressed="false">점심</button>
+                  <button id="mealStatsDinnerButton" type="button" aria-pressed="false">저녁</button>
+                  <button id="mealStatsSnackButton" type="button" aria-pressed="false">간식</button>
+                </div>
                 <div class="meal-stats-body">
                   <dl class="meal-stats-totals">
                     <div>
@@ -185,7 +192,7 @@
                     </p>
                   </div>
                 </div>
-                <p class="meal-stats-note">쉼표로 나눈 음식 이름을 기준으로 최대 5개까지 보여줘요.</p>
+                <p class="meal-stats-note">선택한 끼니에서 쉼표로 나눈 음식 이름을 기준으로 최대 5개까지 보여줘요.</p>
               </section>
             </article>
 
