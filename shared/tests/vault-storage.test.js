@@ -615,60 +615,95 @@ test("재연결 SecurityError는 권한 거부로 위조하지 않고 다시 시
   assert.equal(service.getStatus().connected, true);
 });
 
-test("Whale은 fresh save picker로 clean 보관함을 다시 연결하고 requestPermission을 호출하지 않는다", async () => {
+test("Whale 안전 모드는 파괴적인 save picker를 호출하지 않고 JSON 다운로드를 사용한다", async () => {
   const navigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Whale/4.38.386.14 Safari/537.36" };
   assert.equal(detectFileSystemAccessDisabledReason({ navigator }), "whale-stored-handle-crash");
-  let pickerCalls = 0;
-  let userActivation = true;
-  let selectedHandle = null;
+  const existingFile = new FakeFileHandle("절대 비우면 안 되는 기존 파일", "기존-보관함.json");
+  let openPickerCalls = 0;
+  let savePickerCalls = 0;
+  let permissionRequests = 0;
   const service = createFallbackService(undefined, {
     navigator,
-    showOpenFilePicker() { throw new Error("이 테스트에서는 open picker를 사용하지 않음"); },
-    showSaveFilePicker(options) {
-      pickerCalls += 1;
-      assert.equal(userActivation, true);
-      assert.equal(options.id, "huis-tools-vault");
-      return selectedHandle;
+    showOpenFilePicker() { openPickerCalls += 1; return [existingFile]; },
+    showSaveFilePicker() {
+      savePickerCalls += 1;
+      existingFile.content = "";
+      return existingFile;
     },
   });
   await service.ready;
-  service.storage.setItem("note", "웨일 기준 작업본");
+  service.storage.setItem("note", "웨일의 현재 작업본");
   await service.flush();
-  const restoredHandle = new FakeFileHandle("", "기존-보관함.json");
-  await service.createVaultFile({ handle: restoredHandle });
-  restoredHandle.permission = "prompt";
-  await service.openVaultFile({ handle: restoredHandle });
-
-  let permissionRequests = 0;
-  restoredHandle.requestPermission = () => {
+  existingFile.requestPermission = () => {
     permissionRequests += 1;
-    throw new Error("Whale에서는 호출하면 안 됨");
+    return Promise.resolve("granted");
   };
-  selectedHandle = new FakeFileHandle(restoredHandle.content, "다시-선택한-보관함.json");
-  selectedHandle.requestPermission = restoredHandle.requestPermission;
 
-  const before = service.getStatus();
-  assert.equal(before.fileSystemAccessSupported, true);
-  assert.equal(before.filePickerSupported, true);
-  assert.equal(before.storedHandleReconnectSupported, false);
-  assert.equal(before.requiresFileReselection, true);
-  const reconnecting = service.reconnectFile();
-  assert.equal(pickerCalls, 1, "picker는 await/queue보다 먼저 클릭 스택에서 열려야 함");
-  userActivation = false;
-  const status = await reconnecting;
-  assert.equal(status.connected, true);
-  assert.equal(status.permission, "granted");
+  const status = await service.createVaultFile({
+    handle: existingFile,
+    filename: "whale-safe-backup.json",
+  });
+  assert.equal(status.fileSystemAccessSupported, false);
+  assert.equal(status.filePickerSupported, false);
+  assert.equal(status.storedHandleReconnectSupported, false);
   assert.equal(status.requiresFileReselection, false);
-  assert.equal(status.fileName, "다시-선택한-보관함.json");
+  assert.equal(status.connected, false);
+  assert.equal(status.fileName, "whale-safe-backup.json");
+  await assert.rejects(service.reconnectFile(), /안전을 위해/);
+  const backup = await service.downloadBackup({ filename: "복구본.json" });
+  assert.equal((await parseVaultText(backup.text)).entries.note, "웨일의 현재 작업본");
+  assert.equal(existingFile.content, "절대 비우면 안 되는 기존 파일");
+  assert.equal(openPickerCalls, 0);
+  assert.equal(savePickerCalls, 0);
   assert.equal(permissionRequests, 0);
 });
 
-test("Whale은 IndexedDB persisted handle을 query만 하고 prompt면 fresh picker로 교체한다", async () => {
+test("Whale에 주입된 파일 handle도 읽기 전용 import로 처리하고 연결하지 않는다", async () => {
   const navigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Whale/4.38.386.14 Safari/537.36" };
+  const document = await documentWith({ note: "안전하게 불러온 외부 기록" });
+  const handle = new FakeFileHandle(serializeVaultDocument(document), "읽기전용-보관함.json");
+  const originalContent = handle.content;
+  let permissionQueries = 0;
+  let permissionRequests = 0;
+  let writableRequests = 0;
+  handle.queryPermission = () => {
+    permissionQueries += 1;
+    return Promise.resolve("granted");
+  };
+  handle.requestPermission = () => {
+    permissionRequests += 1;
+    return Promise.resolve("granted");
+  };
+  handle.createWritable = () => {
+    writableRequests += 1;
+    throw new Error("웨일 안전 모드에서 쓰기 handle을 열면 안 됨");
+  };
+  const service = createFallbackService(undefined, {
+    navigator,
+    showOpenFilePicker() { throw new Error("주입 handle을 직접 연결하면 안 됨"); },
+    showSaveFilePicker() { throw new Error("save picker를 열면 안 됨"); },
+  });
+  await service.ready;
+
+  const status = await service.openVaultFile({ handle });
+  assert.equal(status.connected, false);
+  assert.equal(status.permission, "unsupported");
+  assert.equal(status.fileName, "읽기전용-보관함.json");
+  assert.equal(service.storage.getItem("note"), "안전하게 불러온 외부 기록");
+  assert.equal(handle.content, originalContent);
+  assert.equal(permissionQueries, 0);
+  assert.equal(permissionRequests, 0);
+  assert.equal(writableRequests, 0);
+});
+
+test("Whale 페이지 이동 뒤 persisted handle을 무시하고 IndexedDB 작업본을 백업한다", async () => {
+  const chromeNavigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Safari/537.36" };
+  const whaleNavigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Whale/4.38.386.14 Safari/537.36" };
   const indexedDB = new FakeIndexedDB();
   const localStorage = new FakeLocalStorage();
-  let selectedHandle;
-  let pickerCalls = 0;
+  const persistedHandle = new FakeFileHandle("", "최근-보관함.json");
+  let openPickerCalls = 0;
+  let savePickerCalls = 0;
   let permissionQueries = 0;
   let permissionRequests = 0;
   const environment = {
@@ -677,168 +712,72 @@ test("Whale은 IndexedDB persisted handle을 query만 하고 prompt면 fresh pic
     window: null,
     BroadcastChannel: null,
     autoStart: false,
-    navigator,
-    showOpenFilePicker() {},
-    showSaveFilePicker() { pickerCalls += 1; return selectedHandle; },
+    showOpenFilePicker() { openPickerCalls += 1; return [persistedHandle]; },
+    showSaveFilePicker() {
+      savePickerCalls += 1;
+      persistedHandle.content = "";
+      return persistedHandle;
+    },
   };
 
-  const first = createVaultService(environment);
-  await first.ready;
-  first.storage.setItem("note", "IDB에 저장한 기준값");
-  await first.flush();
-  const persistedHandle = new FakeFileHandle("", "persisted.json");
-  await first.createVaultFile({ handle: persistedHandle });
+  // Model a handle persisted by the previous direct-file implementation, then
+  // open the same origin in Whale after the safe-mode hotfix.
+  const firstPage = createVaultService({ ...environment, navigator: chromeNavigator });
+  await firstPage.ready;
+  firstPage.storage.setItem("daily-log", "파일에 저장된 이전 기록");
+  await firstPage.flush();
+  await firstPage.createVaultFile({ handle: persistedHandle });
+  const fileBeforeNavigation = persistedHandle.content;
   persistedHandle.permission = "prompt";
   persistedHandle.queryPermission = () => {
     permissionQueries += 1;
-    return Promise.resolve(persistedHandle.permission);
+    return Promise.resolve("prompt");
   };
   persistedHandle.requestPermission = () => {
     permissionRequests += 1;
-    throw new Error("persisted Whale handle에는 호출하면 안 됨");
+    return Promise.resolve("granted");
   };
+  firstPage.storage.setItem("daily-log", "페이지 이동 뒤 쓴 최신 기록");
+  await firstPage.flush();
 
-  const restored = createVaultService(environment);
-  await restored.ready;
-  assert.ok(permissionQueries >= 1);
-  assert.equal(permissionRequests, 0);
-  assert.equal(restored.getStatus().connected, true);
-  assert.equal(restored.getStatus().permission, "prompt");
-  assert.equal(restored.getStatus().requiresFileReselection, true);
-
-  selectedHandle = new FakeFileHandle(persistedHandle.content, "fresh.json");
-  selectedHandle.requestPermission = persistedHandle.requestPermission;
-  await restored.reconnectFile();
-  assert.equal(pickerCalls, 1);
-  assert.equal(permissionRequests, 0);
-  assert.equal(restored.getStatus().permission, "granted");
-
-  // A fresh handle persisted during the same origin permission session is
-  // reusable after navigation/reload as long as queryPermission stays granted.
-  const navigated = createVaultService({
-    ...environment,
-    showSaveFilePicker() { throw new Error("granted persisted handle은 picker가 필요 없음"); },
-  });
-  await navigated.ready;
-  assert.equal(navigated.getStatus().permission, "granted");
-  navigated.storage.setItem("note", "페이지 이동 뒤 직접 저장");
-  await navigated.saveNow();
-  assert.equal((await parseVaultText(selectedHandle.content)).entries.note, "페이지 이동 뒤 직접 저장");
-  assert.equal(permissionRequests, 0);
-});
-
-test("Whale fresh 재선택은 dirty 작업본을 보존하고 자동 동기화한다", async () => {
-  const navigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Whale/4.38.386.14 Safari/537.36" };
-  let selectedHandle;
-  let autoSyncCallback;
-  let permissionRequests = 0;
-  const service = createFallbackService(undefined, {
-    navigator,
-    showOpenFilePicker() {},
-    showSaveFilePicker() { return selectedHandle; },
-    setInterval(callback) { autoSyncCallback = callback; return 1; },
-    clearInterval() {},
-  });
-  await service.ready;
-  service.storage.setItem("note", "파일 기준값");
-  await service.flush();
-  const restoredHandle = new FakeFileHandle("", "기존.json");
-  await service.createVaultFile({ handle: restoredHandle });
-  const baseline = restoredHandle.content;
-  restoredHandle.permission = "prompt";
-  await service.openVaultFile({ handle: restoredHandle });
-  service.storage.setItem("note", "아직 파일에 안 쓴 로컬 변경");
-  await service.flush();
-
-  selectedHandle = new FakeFileHandle(baseline, "기존.json");
-  for (const handle of [restoredHandle, selectedHandle]) {
-    handle.requestPermission = () => {
-      permissionRequests += 1;
-      throw new Error("Whale에서는 호출하면 안 됨");
-    };
-  }
-  const status = await service.reconnectFile();
+  const mainPage = createVaultService({ ...environment, navigator: whaleNavigator });
+  await mainPage.ready;
+  const status = mainPage.getStatus();
+  assert.equal(status.connected, false);
+  assert.equal(status.permission, "unsupported");
+  assert.equal(status.fileName, "최근-보관함.json");
   assert.equal(status.dirty, true);
-  assert.equal(service.storage.getItem("note"), "아직 파일에 안 쓴 로컬 변경");
-  assert.equal((await parseVaultText(selectedHandle.content)).entries.note, "파일 기준값");
+  assert.equal(status.requiresFileReselection, false);
+  assert.equal(mainPage.storage.getItem("daily-log"), "페이지 이동 뒤 쓴 최신 기록");
+  assert.equal(indexedDB.stores.meta.has("fileHandle"), false);
+  assert.equal(indexedDB.stores.meta.has("connectionId"), false);
 
-  service.startAutoSync({ interval: 1_000 });
-  await autoSyncCallback();
-  assert.equal((await parseVaultText(selectedHandle.content)).entries.note, "아직 파일에 안 쓴 로컬 변경");
-  assert.equal(service.getStatus().dirty, false);
+  await assert.rejects(mainPage.reconnectFile(), /안전을 위해/);
+  const backup = await mainPage.downloadBackup({ filename: "페이지-이동-복구.json" });
+  assert.equal((await parseVaultText(backup.text)).entries["daily-log"], "페이지 이동 뒤 쓴 최신 기록");
+  assert.equal(persistedHandle.content, fileBeforeNavigation);
+  assert.equal(openPickerCalls, 0);
+  assert.equal(savePickerCalls, 0);
+  assert.equal(permissionQueries, 0);
   assert.equal(permissionRequests, 0);
 });
 
-test("Whale fresh 재선택은 다른 vault·외부 변경·취소 시 연결과 작업본을 원자적으로 보존한다", async () => {
+test("Whale에서 비어 버린 JSON을 불러와도 IndexedDB 작업본을 교체하지 않는다", async () => {
   const navigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Whale/4.38.386.14 Safari/537.36" };
-  let selection;
   const service = createFallbackService(undefined, {
     navigator,
-    showOpenFilePicker() {},
-    showSaveFilePicker() {
-      if (selection instanceof Error) throw selection;
-      return selection;
-    },
+    showOpenFilePicker() { throw new Error("안전 모드에서는 직접 open picker를 사용하면 안 됨"); },
+    showSaveFilePicker() { throw new Error("안전 모드에서는 save picker를 사용하면 안 됨"); },
   });
   await service.ready;
-  service.storage.setItem("note", "파일 기준값");
+  service.storage.setItem("daily-log", "보존할 하루 기록");
   await service.flush();
-  const restoredHandle = new FakeFileHandle("", "원래.json");
-  await service.createVaultFile({ handle: restoredHandle });
-  restoredHandle.permission = "prompt";
-  await service.openVaultFile({ handle: restoredHandle });
-  service.storage.setItem("note", "보존할 로컬 변경");
-  await service.flush();
-  const before = service.getStatus();
-
-  const wrongVault = await documentWith({ note: "다른 보관함" }, { vaultId: "other-vault", revision: 20 });
-  selection = new FakeFileHandle(serializeVaultDocument(wrongVault), "다른.json");
-  await assert.rejects(service.reconnectFile(), (error) => error.code === "VAULT_FILE_CONFLICT");
-  assert.equal(service.storage.getItem("note"), "보존할 로컬 변경");
-  assert.equal(service.getStatus().fileName, before.fileName);
-  assert.equal(service.getStatus().dirty, true);
-
-  const changed = await documentWith(
-    { note: "외부에서 바뀜" },
-    { vaultId: before.vaultId, revision: before.revision + 10 },
+  await assert.rejects(
+    service.openVaultFile({ text: "", fileName: "0바이트-보관함.json" }),
+    /비어 있습니다/,
   );
-  selection = new FakeFileHandle(serializeVaultDocument(changed), "원래.json");
-  await assert.rejects(service.reconnectFile(), (error) => error.code === "VAULT_FILE_CONFLICT");
-  assert.equal(service.storage.getItem("note"), "보존할 로컬 변경");
-  assert.equal(service.getStatus().fileName, before.fileName);
-
-  const cancelled = new Error("사용자가 취소함");
-  cancelled.name = "AbortError";
-  selection = cancelled;
-  await assert.rejects(service.reconnectFile(), (error) => error.name === "AbortError");
-  assert.equal(service.storage.getItem("note"), "보존할 로컬 변경");
-  assert.equal(service.getStatus().fileName, before.fileName);
-});
-
-test("Whale은 granted handle을 재사용하고 권한이 사라져도 requestPermission하지 않는다", async () => {
-  const navigator = { userAgent: "Mozilla/5.0 Chrome/148.0.0.0 Whale/4.38.386.14 Safari/537.36" };
-  let pickerCalls = 0;
-  let permissionRequests = 0;
-  const service = createFallbackService(undefined, {
-    navigator,
-    showOpenFilePicker() {},
-    showSaveFilePicker() { pickerCalls += 1; throw new Error("granted 상태에서는 picker 불필요"); },
-  });
-  await service.ready;
-  service.storage.setItem("note", "직접 동기화");
-  await service.flush();
-  const handle = new FakeFileHandle();
-  handle.requestPermission = () => { permissionRequests += 1; return Promise.resolve("granted"); };
-  await service.createVaultFile({ handle });
-  await service.reconnectFile();
-  assert.equal(pickerCalls, 0);
-  assert.equal(permissionRequests, 0);
-
-  handle.permission = "prompt";
-  service.storage.setItem("note", "권한 회수 뒤 변경");
-  await assert.rejects(service.saveNow(), /쓰기 권한/);
-  assert.equal(permissionRequests, 0);
-  assert.equal(service.getStatus().requiresFileReselection, true);
+  assert.equal(service.storage.getItem("daily-log"), "보존할 하루 기록");
+  assert.equal(service.getStatus().connected, false);
 });
 
 test("파일 열기는 실제 readwrite permission을 조회해 prompt 상태를 보존한다", async () => {
