@@ -838,6 +838,194 @@ footer {
   color: var(--yellow-light);
 }
 
+.meal-stats {
+  margin-top: 23px;
+  padding-top: 22px;
+  border-top: 1px dashed var(--line-dark);
+}
+
+.meal-stats-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.meal-stats-heading > div:first-child > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 9px;
+}
+
+.meal-stats-heading h3 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.045em;
+}
+
+.meal-stats-period {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(58px, 1fr));
+  border: 1px solid var(--ink);
+  background: var(--cream);
+}
+
+.meal-stats-period button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 700 11px var(--sans);
+}
+
+.meal-stats-period button + button {
+  border-left: 1px solid var(--ink);
+}
+
+.meal-stats-period button[aria-pressed="true"] {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: inset 0 -3px var(--terracotta);
+}
+
+.meal-stats-range {
+  margin: 11px 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.meal-stats-body {
+  display: grid;
+  grid-template-columns: minmax(155px, 0.62fr) minmax(0, 1.38fr);
+  gap: 10px;
+}
+
+.meal-stats-totals {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.meal-stats-totals > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 11px;
+  border: 1px solid #b9c1c0;
+  background: #fbf8ef;
+}
+
+.meal-stats-totals dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.meal-stats-totals dd {
+  margin: 0;
+  font: 19px/1 var(--mono);
+  white-space: nowrap;
+}
+
+.meal-stats-totals dd b {
+  font-weight: 500;
+}
+
+.meal-stats-totals dd small {
+  margin-left: 3px;
+  color: var(--muted);
+  font: 10px var(--sans);
+}
+
+.meal-ranking-panel {
+  min-width: 0;
+  border: 1px solid #b9c1c0;
+  background: #fbf8ef;
+}
+
+.meal-ranking-panel h4 {
+  margin: 0;
+  padding: 11px 13px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.meal-ranking {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meal-ranking li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 8px;
+  padding: 8px 12px;
+}
+
+.meal-ranking li + li {
+  border-top: 1px solid rgba(200, 193, 182, 0.72);
+}
+
+.meal-rank-number {
+  color: var(--terracotta-dark);
+  font: 600 9px var(--mono);
+}
+
+.meal-ranking strong {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.meal-rank-count {
+  color: var(--muted);
+  font: 500 9px var(--mono);
+  white-space: nowrap;
+}
+
+.meal-rank-bar {
+  grid-column: 2 / -1;
+  height: 3px;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.meal-rank-bar::after {
+  content: "";
+  width: var(--meal-frequency, 0%);
+  height: 100%;
+  display: block;
+  background: var(--terracotta);
+}
+
+.meal-stats-empty {
+  min-height: 126px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 20px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.meal-stats-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
 .entry-card {
   background: #f9f5ec;
 }
@@ -1498,6 +1686,20 @@ footer > a:last-child {
     min-height: 98px;
   }
 
+  .meal-stats-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .meal-stats-totals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .meal-stats-totals > div {
+    min-height: 74px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .entry-form {
     display: block;
   }
@@ -1585,6 +1787,28 @@ footer > a:last-child {
   #monthLabel {
     padding-inline: 4px;
     font-size: 17px;
+  }
+
+  .meal-stats-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .meal-stats-period {
+    width: 100%;
+  }
+
+  .meal-stats-totals > div {
+    padding-inline: 8px;
+  }
+
+  .meal-stats-totals dt {
+    line-height: 1.35;
+  }
+
+  .meal-rank-count {
+    font-size: 8px;
   }
 
   .calendar-day {

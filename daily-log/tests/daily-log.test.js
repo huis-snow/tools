@@ -7,11 +7,14 @@ const {
   STORAGE_KEY,
   RECOVERY_KEY,
   IMPORT_SIZE_LIMIT,
+  splitMealItems,
+  foodKey,
   parseDateKey,
   toDateKey,
   localToday,
   addDays,
   weekdayIndex,
+  weekBounds,
   shiftMonth,
   buildCalendarDays,
   createEmptyRecord,
@@ -25,9 +28,13 @@ const {
   upsertRecord,
   deleteRecord,
   calculateMonthlyStats,
+  calculateFoodStats,
+  calculateWeeklyFoodStats,
+  calculateMonthlyFoodStats,
   exportState,
   importState,
   prepareBrowserStorage,
+  formatDateRangeLabel,
   initDailyLogApp,
 } = require("../app.js");
 
@@ -83,6 +90,25 @@ test("월요일 시작 달력은 항상 앞뒤 날짜를 포함한 6주 42칸이
   assert.equal(weekdayIndex("2026-07-13"), 0);
   assert.equal(weekdayIndex("2026-07-19"), 6);
   assert.equal(shiftMonth("2026-12", 1), "2027-01");
+});
+
+test("식단 문자열은 쉼표·전각 쉼표·줄바꿈으로 나누고 음식 이름을 같은 집계 키로 정리한다", () => {
+  assert.deepEqual(
+    splitMealItems("  밥, 김치， 달걀\n  Coffee  , ,"),
+    ["밥", "김치", "달걀", "Coffee"],
+  );
+  assert.deepEqual(splitMealItems("토스트"), ["토스트"]);
+  assert.deepEqual(splitMealItems(" , ， \n"), []);
+  assert.equal(foodKey(" Ｃoffee  "), "coffee");
+  assert.equal(foodKey("김치   찌개"), foodKey("김치 찌개"));
+  assert.throws(() => splitMealItems(["밥"]), /문자열/);
+});
+
+test("주간 범위는 선택한 날짜가 속한 월요일부터 일요일까지 계산한다", () => {
+  assert.deepEqual(weekBounds("2026-07-01"), { first: "2026-06-29", last: "2026-07-05" });
+  assert.deepEqual(weekBounds("2027-01-01"), { first: "2026-12-28", last: "2027-01-03" });
+  assert.equal(formatDateRangeLabel("2026-06-29", "2026-07-05"), "2026년 6월 29일–7월 5일");
+  assert.equal(formatDateRangeLabel("2026-12-28", "2027-01-03"), "2026년 12월 28일–2027년 1월 3일");
 });
 
 test("빈 기록 기본값과 텍스트·컨디션을 정규화한다", () => {
@@ -159,6 +185,45 @@ test("월간 통계는 기록일·식사 수·음주일·기록된 컨디션 평
     averageCondition: 4,
   });
   assert.equal(calculateMonthlyStats(createEmptyState(), "2026-07").averageCondition, null);
+});
+
+test("식단 통계는 기간별 음식 항목·기록일·빈도를 집계하고 대소문자 표기를 합친다", () => {
+  const state = createEmptyState();
+  upsertRecord(state, "2026-06-29", fullRecord({
+    meals: { breakfast: "밥, 김치", lunch: "", dinner: "", snack: "" }, condition: 0, memo: "",
+  }), fixedNow);
+  upsertRecord(state, "2026-07-01", fullRecord({
+    meals: { breakfast: "", lunch: "밥， 달걀", dinner: "", snack: "Coffee" }, condition: 0, memo: "",
+  }), fixedNow);
+  upsertRecord(state, "2026-07-05", fullRecord({
+    meals: { breakfast: "", lunch: "", dinner: " coffee , 김치", snack: "" }, condition: 0, memo: "",
+  }), fixedNow);
+  upsertRecord(state, "2026-07-06", fullRecord({
+    meals: { breakfast: "밥", lunch: "", dinner: "", snack: "" }, condition: 0, memo: "",
+  }), fixedNow);
+
+  const weekly = calculateWeeklyFoodStats(state, "2026-07-01");
+  assert.equal(weekly.from, "2026-06-29");
+  assert.equal(weekly.to, "2026-07-05");
+  assert.equal(weekly.foodDays, 3);
+  assert.equal(weekly.mealCount, 4);
+  assert.equal(weekly.itemCount, 7);
+  assert.equal(weekly.uniqueItemCount, 4);
+  assert.deepEqual(
+    weekly.items.find((item) => foodKey(item.name) === "coffee"),
+    { name: "Coffee", count: 2, dayCount: 2 },
+  );
+
+  const monthly = calculateMonthlyFoodStats(state, "2026-07");
+  assert.equal(monthly.foodDays, 3);
+  assert.equal(monthly.mealCount, 4);
+  assert.equal(monthly.itemCount, 6);
+  assert.equal(monthly.uniqueItemCount, 4);
+  assert.equal(monthly.items.find((item) => item.name === "밥").count, 2);
+  assert.throws(
+    () => calculateFoodStats(state, { from: "2026-07-02", to: "2026-07-01" }),
+    /시작일/,
+  );
 });
 
 test("JSON 백업은 왕복되고 버전·날짜·필드 타입을 검증한다", () => {
@@ -298,7 +363,9 @@ function createDom(storedState = null) {
     "selectedDateLabel", "selectedDateSummary", "breakfastInput", "lunchInput", "dinnerInput",
     "snackInput", "alcoholDrankInput", "alcoholDetails", "alcoholTypeInput", "alcoholAmountInput",
     "alcoholNoteInput", "memoInput", "saveStatus", "clearDayButton", "loggedDaysCount", "mealCount",
-    "drinkingDaysCount", "averageCondition", "exportButton", "importButton", "importInput", "toast",
+    "drinkingDaysCount", "averageCondition", "mealStatsWeekButton", "mealStatsMonthButton", "mealStatsRange",
+    "mealStatsDays", "mealStatsItems", "mealStatsUniqueItems", "mealRanking", "mealStatsEmpty",
+    "exportButton", "importButton", "importInput", "toast",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement("div", id)]));
   ["breakfastInput", "lunchInput", "dinnerInput", "snackInput", "alcoholTypeInput", "alcoholAmountInput"]
@@ -371,6 +438,11 @@ test("DOM 초기화는 오늘을 선택하고 월요일 시작 42일 달력과 �
   assert.equal(todayButton.getAttribute("aria-current"), "date");
   assert.equal(env.elements.get("loggedDaysCount").textContent, "0");
   assert.equal(env.elements.get("averageCondition").textContent, "-");
+  assert.equal(env.elements.get("mealStatsRange").textContent, "주간 · 2026년 7월 13일–19일");
+  assert.equal(env.elements.get("mealStatsItems").textContent, "0");
+  assert.equal(env.elements.get("mealStatsUniqueItems").textContent, "0");
+  assert.equal(env.elements.get("mealRanking").hidden, true);
+  assert.equal(env.elements.get("mealStatsEmpty").hidden, false);
   app.destroy();
 });
 
@@ -378,15 +450,27 @@ test("입력 변경은 선택 날짜에 즉시 저장하고 달력·통계를 �
   const env = createDom();
   const app = initDailyLogApp(env.doc, { storage: env.storage, now: () => fixedNow, debounceMs: 10_000 });
   const breakfast = env.elements.get("breakfastInput");
-  breakfast.value = "김치볶음밥";
+  breakfast.value = "김치볶음밥, 계란";
   await breakfast.dispatch("input");
   await breakfast.dispatch("change");
 
   let stored = JSON.parse(env.values.get(STORAGE_KEY));
-  assert.equal(stored.records["2026-07-14"].meals.breakfast, "김치볶음밥");
+  assert.equal(stored.records["2026-07-14"].meals.breakfast, "김치볶음밥, 계란");
   assert.equal(env.elements.get("saveStatus").textContent, "자동 저장됨");
   assert.equal(env.elements.get("loggedDaysCount").textContent, "1");
   assert.equal(env.elements.get("mealCount").textContent, "1");
+  assert.equal(env.elements.get("mealStatsDays").textContent, "1");
+  assert.equal(env.elements.get("mealStatsItems").textContent, "2");
+  assert.equal(env.elements.get("mealStatsUniqueItems").textContent, "2");
+  assert.equal(env.elements.get("mealRanking").children.length, 2);
+  assert.deepEqual(
+    env.elements.get("mealRanking").children.map((item) => item.children[1].textContent).sort(),
+    ["계란", "김치볶음밥"],
+  );
+  await env.elements.get("mealStatsMonthButton").click();
+  assert.equal(env.elements.get("mealStatsMonthButton").getAttribute("aria-pressed"), "true");
+  assert.equal(env.elements.get("mealStatsWeekButton").getAttribute("aria-pressed"), "false");
+  assert.equal(env.elements.get("mealStatsRange").textContent, "월간 · 2026년 7월");
   let selectedDay = env.elements.get("calendarGrid").children.find((child) => child.dataset?.date === "2026-07-14");
   assert.equal(selectedDay.classList.contains("has-record"), true);
 

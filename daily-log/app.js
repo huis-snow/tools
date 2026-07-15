@@ -20,6 +20,7 @@
     memo: 10_000,
   };
   const IMPORT_SIZE_LIMIT = 5_000_000;
+  const FOOD_RANKING_LIMIT = 5;
   const activeApps = typeof WeakMap === "function" ? new WeakMap() : null;
 
   function pad2(value) {
@@ -66,10 +67,30 @@
     return toDateKey(date);
   }
 
+  function splitMealItems(value) {
+    if (value === undefined || value === null || value === "") return [];
+    if (typeof value !== "string") throw new TypeError("식사 기록은 문자열이어야 합니다.");
+    return value
+      .split(/[,，\n]+/u)
+      .map((item) => item.trim().replace(/\s+/gu, " "))
+      .filter(Boolean);
+  }
+
+  function foodKey(value) {
+    if (typeof value !== "string") throw new TypeError("음식 이름은 문자열이어야 합니다.");
+    return value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("ko-KR");
+  }
+
   function weekdayIndex(value) {
     const date = typeof value === "string" ? parseDateKey(value) : value;
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new Error("올바르지 않은 날짜입니다.");
     return (date.getDay() + 6) % 7;
+  }
+
+  function weekBounds(value) {
+    const date = toDateKey(value);
+    const first = addDays(date, -weekdayIndex(date));
+    return { first, last: addDays(first, 6) };
   }
 
   function parseMonthKey(value) {
@@ -389,6 +410,69 @@
     };
   }
 
+  function calculateFoodStats(state, range) {
+    if (!isPlainObject(range)) throw new TypeError("식단 통계 기간이 올바르지 않습니다.");
+    const from = toDateKey(range.from);
+    const to = toDateKey(range.to);
+    if (from > to) throw new Error("식단 통계 시작일은 종료일보다 늦을 수 없습니다.");
+
+    const normalized = normalizeState(state);
+    const foods = new Map();
+    let foodDays = 0;
+    let mealCount = 0;
+    let itemCount = 0;
+
+    Object.entries(normalized.records)
+      .filter(([date]) => date >= from && date <= to)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .forEach(([_date, record]) => {
+        const foodsOnDate = new Set();
+        MEAL_KEYS.forEach((mealKey) => {
+          const items = splitMealItems(record.meals[mealKey]);
+          if (items.length) mealCount += 1;
+          items.forEach((name) => {
+            const key = foodKey(name);
+            if (!key) return;
+            const food = foods.get(key) || { name, count: 0, dayCount: 0 };
+            food.count += 1;
+            foods.set(key, food);
+            foodsOnDate.add(key);
+            itemCount += 1;
+          });
+        });
+        if (!foodsOnDate.size) return;
+        foodDays += 1;
+        foodsOnDate.forEach((key) => {
+          foods.get(key).dayCount += 1;
+        });
+      });
+
+    const items = [...foods.values()].sort((left, right) => (
+      right.count - left.count
+      || right.dayCount - left.dayCount
+      || left.name.localeCompare(right.name, "ko-KR", { numeric: true, sensitivity: "base" })
+    ));
+    return {
+      from,
+      to,
+      foodDays,
+      mealCount,
+      itemCount,
+      uniqueItemCount: items.length,
+      items,
+    };
+  }
+
+  function calculateWeeklyFoodStats(state, value) {
+    const { first, last } = weekBounds(value);
+    return calculateFoodStats(state, { from: first, to: last });
+  }
+
+  function calculateMonthlyFoodStats(state, value) {
+    const { first, last } = monthBounds(value);
+    return calculateFoodStats(state, { from: first, to: last });
+  }
+
   function formatMonthLabel(value) {
     const { year, month } = parseMonthKey(value);
     return `${year}년 ${month}월`;
@@ -397,6 +481,19 @@
   function formatDateLabel(value) {
     const date = parseDateKey(value);
     return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${WEEKDAY_LABELS[weekdayIndex(date)]}요일`;
+  }
+
+  function formatDateRangeLabel(from, to) {
+    const first = parseDateKey(from);
+    const last = parseDateKey(to);
+    if (from > to) throw new Error("시작일은 종료일보다 늦을 수 없습니다.");
+    if (first.getFullYear() !== last.getFullYear()) {
+      return `${first.getFullYear()}년 ${first.getMonth() + 1}월 ${first.getDate()}일–${last.getFullYear()}년 ${last.getMonth() + 1}월 ${last.getDate()}일`;
+    }
+    if (first.getMonth() !== last.getMonth()) {
+      return `${first.getFullYear()}년 ${first.getMonth() + 1}월 ${first.getDate()}일–${last.getMonth() + 1}월 ${last.getDate()}일`;
+    }
+    return `${first.getFullYear()}년 ${first.getMonth() + 1}월 ${first.getDate()}일–${last.getDate()}일`;
   }
 
   function dateForMonth(value, preferredDay) {
@@ -444,6 +541,14 @@
       mealCount: byId("mealCount"),
       drinkingDays: byId("drinkingDaysCount"),
       averageCondition: byId("averageCondition"),
+      mealStatsWeek: byId("mealStatsWeekButton"),
+      mealStatsMonth: byId("mealStatsMonthButton"),
+      mealStatsRange: byId("mealStatsRange"),
+      mealStatsDays: byId("mealStatsDays"),
+      mealStatsItems: byId("mealStatsItems"),
+      mealStatsUniqueItems: byId("mealStatsUniqueItems"),
+      mealRanking: byId("mealRanking"),
+      mealStatsEmpty: byId("mealStatsEmpty"),
       exportButton: byId("exportButton"),
       importButton: byId("importButton"),
       importInput: byId("importInput"),
@@ -472,6 +577,7 @@
     let toastTimer = null;
     let destroyed = false;
     let saveGeneration = 0;
+    let mealStatsPeriod = "week";
 
     function showToast(message) {
       if (!elements.toast) return;
@@ -577,6 +683,48 @@
           ? "-"
           : stats.averageCondition.toFixed(1).replace(/\.0$/, "");
       }
+      renderMealStats();
+    }
+
+    function renderMealStats() {
+      const stats = mealStatsPeriod === "month"
+        ? calculateMonthlyFoodStats(state, currentMonth)
+        : calculateWeeklyFoodStats(state, selectedDate);
+      if (elements.mealStatsRange) {
+        elements.mealStatsRange.textContent = mealStatsPeriod === "month"
+          ? `월간 · ${formatMonthLabel(currentMonth)}`
+          : `주간 · ${formatDateRangeLabel(stats.from, stats.to)}`;
+      }
+      if (elements.mealStatsDays) elements.mealStatsDays.textContent = String(stats.foodDays);
+      if (elements.mealStatsItems) elements.mealStatsItems.textContent = String(stats.itemCount);
+      if (elements.mealStatsUniqueItems) elements.mealStatsUniqueItems.textContent = String(stats.uniqueItemCount);
+      if (elements.mealStatsWeek) elements.mealStatsWeek.setAttribute?.("aria-pressed", String(mealStatsPeriod === "week"));
+      if (elements.mealStatsMonth) elements.mealStatsMonth.setAttribute?.("aria-pressed", String(mealStatsPeriod === "month"));
+      if (!elements.mealRanking) return;
+
+      const ranking = stats.items.slice(0, FOOD_RANKING_LIMIT);
+      elements.mealRanking.replaceChildren();
+      elements.mealRanking.hidden = ranking.length === 0;
+      if (elements.mealStatsEmpty) elements.mealStatsEmpty.hidden = ranking.length !== 0;
+      const maximum = ranking[0]?.count || 1;
+      ranking.forEach((food, index) => {
+        const item = doc.createElement("li");
+        const rank = doc.createElement("span");
+        rank.className = "meal-rank-number";
+        rank.setAttribute?.("aria-hidden", "true");
+        rank.textContent = String(index + 1).padStart(2, "0");
+        const name = doc.createElement("strong");
+        name.textContent = food.name;
+        const count = doc.createElement("span");
+        count.className = "meal-rank-count";
+        count.textContent = `${food.count}회 · ${food.dayCount}일`;
+        const bar = doc.createElement("span");
+        bar.className = "meal-rank-bar";
+        bar.setAttribute?.("aria-hidden", "true");
+        bar.setAttribute?.("style", `--meal-frequency: ${Math.max(8, (food.count / maximum) * 100).toFixed(2)}%`);
+        item.append(rank, name, count, bar);
+        elements.mealRanking.append(item);
+      });
     }
 
     function focusCalendarDate(date) {
@@ -774,6 +922,15 @@
         scheduleEditorSave();
         flushEditorSave();
       });
+    });
+
+    elements.mealStatsWeek?.addEventListener?.("click", () => {
+      mealStatsPeriod = "week";
+      renderMealStats();
+    });
+    elements.mealStatsMonth?.addEventListener?.("click", () => {
+      mealStatsPeriod = "month";
+      renderMealStats();
     });
 
     elements.prevMonth?.addEventListener?.("click", () => {
@@ -977,11 +1134,14 @@
     IMPORT_SIZE_LIMIT,
     WEEKDAY_LABELS,
     MEAL_KEYS,
+    splitMealItems,
+    foodKey,
     parseDateKey,
     toDateKey,
     localToday,
     addDays,
     weekdayIndex,
+    weekBounds,
     parseMonthKey,
     monthKey,
     shiftMonth,
@@ -1002,12 +1162,16 @@
     upsertRecord,
     deleteRecord,
     calculateMonthlyStats,
+    calculateFoodStats,
+    calculateWeeklyFoodStats,
+    calculateMonthlyFoodStats,
     exportState,
     serializeState: exportState,
     importState,
     prepareBrowserStorage,
     formatMonthLabel,
     formatDateLabel,
+    formatDateRangeLabel,
     initDailyLogApp,
   };
 

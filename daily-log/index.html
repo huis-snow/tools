@@ -147,6 +147,46 @@
                   </div>
                 </dl>
               </section>
+
+              <section class="meal-stats" aria-labelledby="mealStatsTitle">
+                <div class="meal-stats-heading">
+                  <div>
+                    <span>FOOD PATTERNS</span>
+                    <h3 id="mealStatsTitle">식단 통계</h3>
+                  </div>
+                  <div class="meal-stats-period" role="group" aria-label="식단 통계 기간">
+                    <button id="mealStatsWeekButton" type="button" aria-pressed="true">주간</button>
+                    <button id="mealStatsMonthButton" type="button" aria-pressed="false">월간</button>
+                  </div>
+                </div>
+                <p class="meal-stats-range" id="mealStatsRange" aria-live="polite" aria-atomic="true">
+                  선택한 날짜의 식단을 계산하고 있어요.
+                </p>
+                <div class="meal-stats-body">
+                  <dl class="meal-stats-totals">
+                    <div>
+                      <dt>기록한 날</dt>
+                      <dd><b id="mealStatsDays">0</b><small>일</small></dd>
+                    </div>
+                    <div>
+                      <dt>음식 항목</dt>
+                      <dd><b id="mealStatsItems">0</b><small>개</small></dd>
+                    </div>
+                    <div>
+                      <dt>서로 다른 음식</dt>
+                      <dd><b id="mealStatsUniqueItems">0</b><small>종</small></dd>
+                    </div>
+                  </dl>
+                  <div class="meal-ranking-panel">
+                    <h4>자주 기록한 음식</h4>
+                    <ol class="meal-ranking" id="mealRanking" role="list"></ol>
+                    <p class="meal-stats-empty" id="mealStatsEmpty">
+                      이 기간에는 쉼표로 나눈 식단 기록이 없어요.
+                    </p>
+                  </div>
+                </div>
+                <p class="meal-stats-note">쉼표로 나눈 음식 이름을 기준으로 최대 5개까지 보여줘요.</p>
+              </section>
             </article>
 
             <aside class="entry-card" aria-labelledby="selectedDateLabel">
@@ -162,7 +202,7 @@
               <form id="dailyLogForm" class="entry-form" novalidate>
                 <fieldset class="entry-section meal-section">
                   <legend><span>01</span> 식사</legend>
-                  <p>먹은 음식이나 함께한 사람처럼 기억할 만큼만 적어요.</p>
+                  <p>먹은 음식을 쉼표(,)로 나눠 적으면 주간·월간 통계에 각각 집계돼요.</p>
                   <div class="meal-fields">
                     <label for="breakfastInput">
                       <span><i aria-hidden="true">AM</i> 아침</span>
@@ -170,20 +210,20 @@
                         id="breakfastInput"
                         rows="2"
                         maxlength="300"
-                        placeholder="무엇을 먹었나요?"
+                        placeholder="예: 토스트, 계란, 커피"
                       ></textarea>
                     </label>
                     <label for="lunchInput">
                       <span><i aria-hidden="true">12</i> 점심</span>
-                      <textarea id="lunchInput" rows="2" maxlength="300" placeholder="무엇을 먹었나요?"></textarea>
+                      <textarea id="lunchInput" rows="2" maxlength="300" placeholder="예: 현미밥, 샐러드"></textarea>
                     </label>
                     <label for="dinnerInput">
                       <span><i aria-hidden="true">PM</i> 저녁</span>
-                      <textarea id="dinnerInput" rows="2" maxlength="300" placeholder="무엇을 먹었나요?"></textarea>
+                      <textarea id="dinnerInput" rows="2" maxlength="300" placeholder="예: 김치찌개, 밥"></textarea>
                     </label>
                     <label for="snackInput">
                       <span><i aria-hidden="true">＋</i> 간식</span>
-                      <textarea id="snackInput" rows="2" maxlength="300" placeholder="간식이나 야식도 적어두세요."></textarea>
+                      <textarea id="snackInput" rows="2" maxlength="300" placeholder="예: 사과, 요거트"></textarea>
                     </label>
                   </div>
                 </fieldset>
