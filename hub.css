@@ -31,6 +31,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 104px;
 }
 
 body {
@@ -51,7 +52,7 @@ a {
 
 .skip-link {
   position: fixed;
-  z-index: 20;
+  z-index: 300;
   top: 12px;
   left: 12px;
   padding: 10px 14px;
@@ -76,10 +77,16 @@ footer {
 
 .site-header {
   height: 88px;
+  position: sticky;
+  z-index: 200;
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
+  background: rgba(244, 241, 232, 0.94);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .brand {
@@ -1369,6 +1376,10 @@ footer > a:last-child {
 }
 
 @media (max-width: 760px) {
+  html {
+    scroll-padding-top: 84px;
+  }
+
   .site-header,
   .vault-panel,
   .hero,

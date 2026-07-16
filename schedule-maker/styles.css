@@ -31,6 +31,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 104px;
 }
 
 body {
@@ -63,7 +64,7 @@ a {
 
 .skip-link {
   position: fixed;
-  z-index: 100;
+  z-index: 300;
   top: 12px;
   left: 12px;
   padding: 10px 15px;
@@ -88,10 +89,16 @@ footer {
 
 .site-header {
   height: 88px;
+  position: sticky;
+  z-index: 200;
+  top: 0;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   border-bottom: 1px solid var(--line);
+  background: rgba(237, 242, 232, 0.94);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .back-link,
@@ -2141,6 +2148,10 @@ footer > a:last-child {
 }
 
 @media (max-width: 680px) {
+  html {
+    scroll-padding-top: 84px;
+  }
+
   .site-header,
   .hero,
   .workspace-section,
