@@ -1025,6 +1025,66 @@ footer {
   margin: 0 0 0 auto;
 }
 
+.usage-guide {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.7fr);
+  gap: clamp(42px, 7vw, 96px);
+  margin-top: 76px;
+  padding-top: 48px;
+  border-top: 1px solid var(--line);
+}
+
+.usage-guide-intro h2 {
+  max-width: 390px;
+  margin: 10px 0 18px;
+  font-size: clamp(27px, 3vw, 38px);
+  line-height: 1.2;
+  letter-spacing: -0.055em;
+}
+
+.usage-guide-intro > p:last-child {
+  max-width: 380px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.usage-guide-list {
+  border-top: 1px solid var(--line);
+}
+
+.usage-guide-list article {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.72fr) minmax(0, 1fr);
+  gap: 28px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.usage-guide-list h3,
+.usage-guide-list p {
+  margin: 0;
+}
+
+.usage-guide-list h3 {
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -0.035em;
+}
+
+.usage-guide-list p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.85;
+}
+
+.footer-home {
+  text-decoration: underline;
+  text-decoration-color: rgba(84, 96, 91, 0.35);
+  text-underline-offset: 3px;
+}
+
 footer {
   min-height: 104px;
   display: grid;
@@ -1270,6 +1330,18 @@ footer > a:last-child {
     flex-basis: 100%;
     margin: 4px 0 0;
     line-height: 1.6;
+  }
+
+  .usage-guide {
+    grid-template-columns: 1fr;
+    gap: 34px;
+    margin-top: 58px;
+    padding-top: 38px;
+  }
+
+  .usage-guide-list article {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .feature-grid article:last-child {

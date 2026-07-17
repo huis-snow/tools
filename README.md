@@ -4,7 +4,7 @@
 
 ## 도구
 
-- [반듯표](./table-maker/) — 한글·전각 문자를 지원하는 ASCII 테이블 생성기
+- [반듯표](./table-maker/) — 한글·전각 문자를 지원하는 아스키(ASCII) 테이블 생성기
 - [언제표](./schedule-maker/) — 가능한 시간을 공유하고, 받은 일정을 저장·수정·취합하는 주간 일정표
 - [언제표 취합](./schedule-maker/compare.html) — 여러 사람의 언제표 링크에서 겹치는 시간을 찾는 도구
 - [꾸준표](./habit-maker/) — 목표량과 실천 정도를 기록하는 월간 습관 캘린더
@@ -16,14 +16,15 @@
 1. 저장소 루트에 새 도구 폴더를 만듭니다.
 2. 폴더 안에 독립적으로 실행되는 `index.html`을 둡니다.
 3. 루트 `index.html`의 `.tool-grid`에 해당 도구 카드를 추가합니다.
+4. 새 페이지의 canonical과 공유 메타데이터를 추가하고 `sitemap.xml`에 공개 주소를 등록합니다.
 
 ```text
 /
 ├── index.html
 ├── hub.css
 ├── hub-vault.js
+├── sitemap.xml
 ├── shared/
-├── .nojekyll
 ├── table-maker/
 ├── schedule-maker/
 ├── habit-maker/
@@ -33,6 +34,12 @@
 ```
 
 GitHub Pages의 배포 원본은 `main` 브랜치의 `/ (root)`로 설정합니다.
+
+## Google 검색 등록
+
+공개 검색 페이지는 `https://huis-snow.github.io/tools/` 아래의 canonical 주소를 사용하며, 검색 허용 페이지 목록은 루트 [`sitemap.xml`](./sitemap.xml)에서 관리합니다. 브라우저 로컬 데이터만 보여주는 일정 보관함은 `noindex, follow`로 검색 대상에서 제외합니다.
+
+Google Search Console에는 URL 접두어 속성 `https://huis-snow.github.io/tools/`을 등록합니다. 계정별 HTML 확인 태그를 루트 `index.html`의 `<head>`에 추가해 소유권을 확인한 뒤 `https://huis-snow.github.io/tools/sitemap.xml`을 제출하고, 새로 배포한 핵심 페이지는 URL 검사에서 색인을 요청합니다.
 
 ## 기록 보관함
 

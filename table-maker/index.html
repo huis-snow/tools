@@ -5,12 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="한글, 한자, 일본어, 이모지의 표시 폭까지 정확하게 맞추는 무료 ASCII 테이블 생성기"
+      content="한글·한자·일본어·이모지의 표시 폭을 계산해 디스코드와 터미널에서도 줄이 맞는 아스키(ASCII) 표를 만드는 무료 도구"
     />
     <meta name="theme-color" content="#f4f1e8" />
-    <title>한글 ASCII 테이블 생성기 | 반듯표</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="한글 아스키(ASCII) 테이블 생성기 | 반듯표" />
+    <meta
+      property="og:description"
+      content="한글과 이모지의 표시 폭을 계산해 디스코드와 터미널에서도 줄이 맞는 아스키 표를 만드세요."
+    />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/table-maker/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="한글 아스키(ASCII) 테이블 생성기 | 반듯표" />
+    <meta
+      name="twitter:description"
+      content="한글과 이모지의 표시 폭을 계산해 디스코드와 터미널에서도 줄이 맞는 아스키 표를 만드세요."
+    />
+    <title>한글 아스키(ASCII) 테이블 생성기 | 반듯표</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/table-maker/" />
     <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "반듯표",
+        "alternateName": "한글 아스키 테이블 생성기",
+        "url": "https://huis-snow.github.io/tools/table-maker/",
+        "description": "한글·한자·일본어·이모지의 표시 폭을 계산해 줄이 맞는 아스키 표를 만드는 무료 웹 도구",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "JavaScript를 지원하는 최신 웹 브라우저",
+        "inLanguage": "ko-KR",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "KRW"
+        }
+      }
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#workspace">도구로 바로가기</a>
@@ -29,10 +65,10 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow"><span></span> Korean-ready ASCII table</p>
-          <h1 id="hero-title">한글도, 이모지도<br /><em>흐트러지지 않게.</em></h1>
+          <h1 id="hero-title">한글 아스키<br /><em>테이블 생성기.</em></h1>
           <p class="hero-description">
-            붙여넣기만 하면 터미널에서 반듯한 표가 완성됩니다.<br class="desktop-only" />
-            전각 문자와 유니코드 표시 폭을 알아서 계산해요.
+            한글·전각 문자와 이모지의 유니코드 표시 폭을 알아서 계산합니다.<br class="desktop-only" />
+            디스코드와 터미널에서 쓸 표를 붙여넣기만으로 완성하세요.
           </p>
           <a class="primary-cta" href="#workspace">지금 표 만들기 <span aria-hidden="true">↓</span></a>
         </div>
@@ -192,7 +228,7 @@
         <div class="section-heading explanation-heading">
           <div>
             <p class="section-number">02 / WHY IT WORKS</p>
-            <h2 id="explanation-title">문자 수가 아닌, 표시 폭을 셉니다</h2>
+            <h2 id="explanation-title">한글 아스키 표는 표시 폭을 셉니다</h2>
           </div>
           <p>브라우저 안에서만 처리되어 입력한 데이터는 어디에도 전송되지 않습니다.</p>
         </div>
@@ -221,6 +257,37 @@
           <code>A = 1칸</code><span>·</span><code>가 = 2칸</code><span>·</span><code>결합 문자 = 0칸</code><span>·</span><code>이모지 = 2칸*</code>
           <p>* 이모지와 일부 특수기호는 터미널·폰트 설정에 따라 폭이 다를 수 있어요.</p>
         </div>
+
+        <div class="usage-guide" aria-labelledby="usage-guide-title">
+          <div class="usage-guide-intro">
+            <p class="section-number">03 / USE &amp; SHARE</p>
+            <h2 id="usage-guide-title">한글 아스키 테이블을 어디서든 간편하게</h2>
+            <p>텍스트가 잘 맞지 않는 환경에서는 같은 내용을 이미지로 복사해 공유할 수 있습니다.</p>
+          </div>
+          <div class="usage-guide-list">
+            <article>
+              <h3>디스코드에서 표가 어긋나는 이유</h3>
+              <p>
+                코드 블록도 한글과 영문의 실제 표시 폭, 사용하는 글꼴에 따라 줄이 달라질 수 있어요.
+                텍스트 결과가 어긋나면 이미지 복사를 사용하면 모양을 그대로 전달할 수 있습니다.
+              </p>
+            </article>
+            <article>
+              <h3>한글과 전각 문자는 왜 2칸일까요?</h3>
+              <p>
+                영문과 숫자는 보통 한 칸, 한글·한자·일본어 같은 전각 문자는 두 칸을 차지합니다.
+                반듯표는 글자 개수가 아니라 화면에서 차지하는 칸 수를 기준으로 열 너비를 맞춥니다.
+              </p>
+            </article>
+            <article>
+              <h3>스프레드시트에서 바로 표 만들기</h3>
+              <p>
+                엑셀이나 Google 스프레드시트의 셀을 복사해 붙여넣으면 탭 구분을 자동으로 인식합니다.
+                쉼표와 세로줄 데이터도 아스키(ASCII), 유니코드, Markdown 표로 바꿀 수 있습니다.
+              </p>
+            </article>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -229,7 +296,7 @@
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
         <span>반듯표</span>
       </a>
-      <p>한글을 위한 작은 웹 도구 · <span id="currentYear"></span></p>
+      <p><a class="footer-home" href="../">작은 도구함</a>의 한글 웹 도구 · <span id="currentYear"></span></p>
       <a href="#top">맨 위로 <span aria-hidden="true">↑</span></a>
     </footer>
 
