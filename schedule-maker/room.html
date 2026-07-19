@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="방 링크 하나로 최대 8명이 직접 가능한 시간을 입력하고 실시간으로 겹치는 시간을 확인하는 온라인 언제표"
+    />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#edf2e8" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="온라인 취합방 | 언제표" />
+    <meta property="og:description" content="한 링크에서 최대 8명이 직접 입력하고 실시간 취합하는 주간 가능 시간표" />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/schedule-maker/room.html" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="온라인 취합방 | 언제표" />
+    <meta name="twitter:description" content="한 링크에서 최대 8명이 직접 입력하고 실시간 취합하는 주간 가능 시간표" />
+    <title>온라인 취합방 만들기 | 언제표</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/schedule-maker/room.html" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="online-room-page" id="top">
+    <a class="skip-link" href="#online-room-main">온라인 취합방으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="언제표 일정 만들기 페이지">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>언제표</span>
+      </a>
+      <nav class="saved-header-nav" aria-label="언제표 주요 메뉴">
+        <a href="./">일정 만들기</a>
+        <span aria-hidden="true">/</span>
+        <a href="./compare.html">수동 취합</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="online-room-hero" aria-labelledby="online-hero-title">
+        <div class="online-room-hero-copy">
+          <p class="eyebrow"><span></span> ONE LINK, EIGHT PEOPLE</p>
+          <h1 id="online-hero-title">링크 하나로,<br /><em>한곳에.</em></h1>
+          <p>
+            링크 여덟 개를 다시 모으지 않아도 돼요.<br class="desktop-only" />
+            한 방에서 각자 입력하면 취합표가 바로 갱신됩니다.
+          </p>
+          <a class="hero-cta" href="#online-room-main">온라인 방 시작 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="online-room-demo" aria-label="온라인 취합방 작동 방식">
+          <p><span>01</span><strong>방 링크 하나 만들기</strong></p>
+          <i aria-hidden="true"></i>
+          <p><span>02</span><strong>8명이 직접 시간 입력</strong></p>
+          <i aria-hidden="true"></i>
+          <p><span>03</span><strong>실시간으로 겹침 확인</strong></p>
+        </div>
+      </section>
+
+      <section class="online-room-section" id="online-room-main" aria-labelledby="online-room-heading">
+        <div class="section-heading">
+          <div>
+            <p>01 / ONLINE ROOM</p>
+            <h2 id="online-room-heading">온라인 취합방</h2>
+          </div>
+          <p>방 링크를 아는 사람만 들어올 수 있도록 충분히 긴 무작위 주소를 사용해요.</p>
+        </div>
+
+        <aside class="online-setup-notice" id="onlineSetupNotice" role="status" hidden>
+          <strong>Firebase 연결이 필요합니다</strong>
+          <p>
+            공개 웹 설정과 익명 로그인을 연결한 뒤 사용할 수 있어요. 서비스 계정 키는 필요하지 않습니다.
+            설정 순서는
+            <a href="https://github.com/huis-snow/tools/blob/main/schedule-maker/FIREBASE_SETUP.md">Firebase 연결 안내</a>에
+            정리되어 있어요.
+          </p>
+        </aside>
+
+        <form class="online-room-create-card" id="onlineRoomCreateForm">
+          <div class="online-create-heading">
+            <span>CREATE A ROOM</span>
+            <div>
+              <h3>새 취합방 만들기</h3>
+              <p>방의 시간 기준은 첫 응답이 들어온 뒤 바뀌지 않아요.</p>
+            </div>
+          </div>
+          <div class="online-create-fields">
+            <label class="text-field">
+              <span>방 이름</span>
+              <input id="onlineCreateTitle" type="text" maxlength="60" autocomplete="off" required />
+              <small>예: 절렉 공대 가능한 시간</small>
+            </label>
+            <label class="select-field">
+              <span>하루 시작</span>
+              <select id="onlineCreateStartHour"></select>
+              <small>선택 시각부터 24시간</small>
+            </label>
+            <label class="select-field">
+              <span>시작 요일</span>
+              <select id="onlineCreateStartDay"></select>
+              <small>표의 첫 번째 요일</small>
+            </label>
+            <label class="text-field">
+              <span>기준 시간대</span>
+              <input id="onlineCreateTimezone" type="text" maxlength="40" required />
+              <small>모든 참여자가 같은 기준을 사용해요</small>
+            </label>
+          </div>
+          <div class="online-create-actions">
+            <p>
+              익명 방장 권한은 이 브라우저에 보관됩니다. 브라우저 데이터를 지우면 방장 권한을 잃을 수 있어요.
+            </p>
+            <button id="onlineCreateButton" type="submit" disabled>온라인 취합방 만들기 <span aria-hidden="true">→</span></button>
+          </div>
+          <p class="online-action-status" id="onlineCreateStatus" role="status" aria-live="polite">
+            Firebase 연결을 확인하고 있어요.
+          </p>
+        </form>
+
+        <div class="online-room-workspace" id="onlineRoomWorkspace" aria-busy="true" hidden>
+          <section class="online-room-banner" aria-labelledby="onlineRoomTitle">
+            <div class="online-room-banner-copy">
+              <p>LIVE ROOM <span id="onlineRoomState" data-state="loading">연결 중</span></p>
+              <h2 id="onlineRoomTitle" tabindex="-1">온라인 방 불러오는 중</h2>
+              <span id="onlineRoomMeta">잠시만 기다려 주세요.</span>
+            </div>
+            <div class="online-room-count" aria-label="현재 저장된 참여자 수">
+              <strong id="onlineRoomParticipantCount">0</strong>
+              <span>/ 8명</span>
+            </div>
+            <div class="online-room-banner-actions">
+              <button id="onlineRoomCopyButton" type="button">방 링크 복사 <span aria-hidden="true">↗</span></button>
+              <button id="onlineRoomLockButton" type="button" hidden>입력 마감</button>
+              <button id="onlineRoomDeleteButton" class="danger" type="button" hidden>방 삭제</button>
+            </div>
+            <p class="online-room-owner-note" id="onlineRoomOwnerNote" hidden>
+              이 브라우저가 방장입니다. 잘못 들어온 응답을 아래 참여자 목록에서 삭제하고, 일정이 끝난 방은 직접 정리해 주세요.
+            </p>
+            <p class="online-action-status" id="onlineRoomStatus" role="status" aria-live="polite">
+              Firebase에서 방 정보를 확인하고 있어요.
+            </p>
+            <div class="online-room-missing-actions" id="onlineRoomMissingActions" hidden>
+              <a href="./room.html">새 온라인 방 만들기</a>
+              <a href="./compare.html">수동 취합으로 돌아가기</a>
+            </div>
+          </section>
+
+          <section class="online-editor-section" aria-labelledby="online-editor-title">
+            <div class="section-heading">
+              <div>
+                <p>02 / YOUR TIME</p>
+                <h2 id="online-editor-title">내 가능한 시간</h2>
+              </div>
+              <p>닉네임을 입력하고 시간을 칠한 뒤 저장해야 취합표에 반영됩니다.</p>
+            </div>
+
+            <div class="schedule-panel" id="onlineSchedulePanel">
+              <div class="setup-bar online-setup-bar">
+                <label class="text-field title-field">
+                  <span>닉네임</span>
+                  <input id="titleInput" type="text" maxlength="60" autocomplete="off" />
+                  <small>취합표에 표시될 이름</small>
+                </label>
+                <label class="select-field start-field">
+                  <span>하루 시작</span>
+                  <select id="startHourSelect" aria-describedby="startHourHelp"></select>
+                  <small id="startHourHelp">방장이 정한 기준</small>
+                </label>
+                <label class="select-field start-day-field">
+                  <span>시작 요일</span>
+                  <select id="startDaySelect" aria-describedby="startDayHelp"></select>
+                  <small id="startDayHelp">방장이 정한 기준</small>
+                </label>
+                <label class="text-field timezone-field">
+                  <span>기준 시간대</span>
+                  <input id="timezoneInput" type="text" maxlength="40" readonly />
+                  <small>방장이 정한 기준</small>
+                </label>
+                <div class="presets" aria-labelledby="presetLabel">
+                  <span id="presetLabel">빠른 선택</span>
+                  <div>
+                    <button type="button" data-preset="weekday-morning">평일 오전</button>
+                    <button type="button" data-preset="weekday-evening">평일 저녁</button>
+                    <button type="button" data-preset="all">전체</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="schedule-toolbar">
+                <div class="legend"><i aria-hidden="true">✓</i> 선택한 칸은 <strong>가능한 시간</strong>이에요</div>
+                <div class="schedule-hints">
+                  <div class="range-help"><span aria-hidden="true">↻</span> <b id="rangeLabel">08:00부터 익일 08:00까지</b></div>
+                  <div class="interaction-help"><span aria-hidden="true">↔</span> 클릭 또는 드래그로 칠하기</div>
+                </div>
+              </div>
+
+              <div class="schedule-scroller" id="scheduleScroller" tabindex="0" aria-label="내 주간 가능 시간표 스크롤 영역">
+                <div class="schedule-grid" id="scheduleGrid" role="grid" aria-label="요일과 시간별 내 가능 여부"></div>
+              </div>
+
+              <div class="schedule-footer">
+                <div class="selection-status">
+                  <p><strong id="selectedCount">0</strong><span> / 168칸 선택</span></p>
+                  <div class="progress" aria-hidden="true"><span id="selectionProgress"></span></div>
+                </div>
+                <div class="edit-actions">
+                  <button id="undoButton" type="button" disabled><span aria-hidden="true">↶</span> 되돌리기</button>
+                  <button id="clearButton" type="button"><span aria-hidden="true">×</span> 모두 지우기</button>
+                  <button id="resetButton" type="button"><span aria-hidden="true">↺</span> 초기화</button>
+                </div>
+              </div>
+              <div class="online-response-actions">
+                <p class="online-action-status" id="onlineResponseStatus" role="status" aria-live="polite">
+                  방 정보를 불러오고 있어요.
+                </p>
+                <div>
+                  <button id="onlineDeleteResponseButton" class="secondary" type="button" hidden>내 일정 삭제</button>
+                  <button id="onlineSaveResponseButton" type="button" disabled>내 일정 서버에 저장 <span aria-hidden="true">→</span></button>
+                </div>
+              </div>
+              <p class="mobile-help">모바일에서는 칸을 끌어 선택하고, 왼쪽 시간 칸을 밀어 표를 스크롤할 수 있어요.</p>
+            </div>
+            <div class="live-region sr-only" id="liveRegion" role="status" aria-live="polite"></div>
+          </section>
+
+          <section class="online-result-section" aria-labelledby="online-result-title">
+            <div class="section-heading">
+              <div>
+                <p>03 / LIVE RESULT</p>
+                <h2 id="online-result-title">실시간 취합표</h2>
+              </div>
+              <p>누군가 저장하거나 수정하면 이 화면에도 바로 반영됩니다.</p>
+            </div>
+
+            <div class="compare-panel online-compare-panel">
+              <div class="online-hidden-controls" hidden>
+                <textarea id="compareLinksInput"></textarea>
+                <button id="compareAddButton" type="button">추가</button>
+                <p id="compareInputStatus"></p>
+                <button id="compareClearButton" type="button">비우기</button>
+                <select id="compareStartHourSelect"></select>
+                <select id="compareStartDaySelect"></select>
+                <input id="compareCollectionNameInput" type="text" />
+              </div>
+
+              <section class="participant-area online-participant-area" id="participantArea" aria-labelledby="participant-title">
+                <div class="participant-heading">
+                  <div>
+                    <p id="participant-title">서버에 저장된 일정</p>
+                    <strong><span id="participantCount">0</span>명 참여 중</strong>
+                  </div>
+                  <p class="online-timezone-status" id="compareTimezoneStatus" role="status" aria-live="polite">
+                    참여자가 저장하면 기준 시간대를 확인해요.
+                  </p>
+                </div>
+                <div
+                  class="participant-list"
+                  id="participantList"
+                  role="list"
+                  aria-label="온라인 방 참여자 목록"
+                  aria-live="polite"
+                  aria-relevant="additions removals"
+                >
+                  <p class="participant-empty">아직 저장한 참여자가 없어요.</p>
+                </div>
+              </section>
+
+              <section class="compare-result online-compare-result" aria-labelledby="compare-result-title">
+                <div class="compare-result-heading">
+                  <div>
+                    <p>겹치는 시간</p>
+                    <h3 id="compare-result-title">함께 가능한 시간 찾기</h3>
+                  </div>
+                  <div class="compare-summary" aria-live="polite" aria-atomic="true">
+                    <div class="compare-max">
+                      <strong id="compareMaxCount">0</strong>
+                      <span>명<br />최대 겹침</span>
+                    </div>
+                    <p id="compareSummaryText">참여자가 저장하면 가장 많이 겹치는 시간을 찾아드려요.</p>
+                  </div>
+                </div>
+
+                <div class="compare-image-export" role="group" aria-labelledby="compare-image-export-title">
+                  <div class="compare-image-export-copy">
+                    <span class="compare-image-export-icon" aria-hidden="true"><i></i></span>
+                    <p>
+                      <strong id="compare-image-export-title">이미지로 내보내기</strong>
+                      <small>온라인 취합 결과도 고해상도 PNG로 복사하거나 저장해요.</small>
+                    </p>
+                  </div>
+                  <div class="compare-image-scope">
+                    <div class="compare-image-scope-controls">
+                      <label for="compareImageMode">
+                        <span>이미지 범위</span>
+                        <select id="compareImageMode" aria-describedby="compareImageScopeHelp">
+                          <option value="overlap" selected>전체 현황</option>
+                          <option value="all">전원 가능만</option>
+                          <option value="selected">직접 선택</option>
+                        </select>
+                      </label>
+                      <div
+                        class="compare-image-selection-status"
+                        id="compareImageSelectionStatus"
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        hidden
+                      >
+                        <p><strong id="compareImageSelectedCount">0</strong>칸 선택</p>
+                        <button id="compareImageSelectionClearButton" type="button" disabled>선택 지우기</button>
+                      </div>
+                    </div>
+                    <p id="compareImageScopeHelp">겹치는 인원 현황을 모두 이미지에 표시해요.</p>
+                  </div>
+                  <div class="compare-image-actions">
+                    <button id="compareImageButton" type="button" disabled>
+                      <span aria-hidden="true">▧</span><span id="compareImageLabel">이미지 복사</span>
+                    </button>
+                    <button id="comparePngButton" type="button" disabled>
+                      <span aria-hidden="true">↓</span><span>PNG 저장</span>
+                    </button>
+                  </div>
+                </div>
+                <p id="compareImageStatus" class="sr-only" role="status" aria-live="polite">
+                  참여자가 저장하면 결과를 이미지로 내보낼 수 있어요.
+                </p>
+
+                <div class="compare-grid-toolbar">
+                  <div class="compare-heat-legend" aria-label="1명부터 8명까지 겹치는 인원이 많을수록 색이 진해집니다">
+                    <span>1명</span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span>8명</span>
+                  </div>
+                  <p><span aria-hidden="true">◎</span> 칸에 마우스를 올리거나 탭하면 참여자를 확인할 수 있어요.</p>
+                </div>
+
+                <div class="compare-grid-scroller" id="compareGridScroller" tabindex="0" aria-label="온라인 방 가능 인원 취합표 스크롤 영역">
+                  <div
+                    class="compare-grid"
+                    id="compareGrid"
+                    role="grid"
+                    aria-label="요일과 시간별 온라인 방 가능 인원"
+                    aria-describedby="compareDetail"
+                  ></div>
+                </div>
+
+                <div class="compare-detail" id="compareDetail" role="status" aria-live="polite" aria-atomic="true">
+                  <span aria-hidden="true">↖</span>
+                  <p>참여자가 저장한 뒤 시간 칸에서 가능한 사람을 확인할 수 있어요.</p>
+                </div>
+              </section>
+            </div>
+
+            <p class="online-privacy-note">
+              <span aria-hidden="true">●</span>
+              닉네임과 선택한 시간은 Firebase에 저장됩니다. 방 링크를 아는 사람은 이 방의 취합 결과를 볼 수 있어요.
+            </p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+        <span>언제표</span>
+      </a>
+      <p>언제표 · 온라인 취합방</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="online-room-core.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+    <script type="module" src="room-page.js"></script>
+  </body>
+</html>

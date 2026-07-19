@@ -1,0 +1,142 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validRoomId(roomId) {
+      return roomId.matches('[A-Za-z0-9_-]{22}');
+    }
+
+    function validRoom(data) {
+      return data.keys().hasAll([
+          'version',
+          'title',
+          'timezone',
+          'startHour',
+          'startDay',
+          'ownerUid',
+          'locked',
+          'createdAt',
+          'updatedAt',
+          'responses'
+        ]) &&
+        data.keys().hasOnly([
+          'version',
+          'title',
+          'timezone',
+          'startHour',
+          'startDay',
+          'ownerUid',
+          'locked',
+          'createdAt',
+          'updatedAt',
+          'responses'
+        ]) &&
+        data.version is int &&
+        data.version == 1 &&
+        data.title is string &&
+        data.title == data.title.trim() &&
+        data.title.size() > 0 &&
+        data.title.size() <= 60 &&
+        data.timezone is string &&
+        data.timezone.matches('[-A-Za-z0-9_+./]{1,40}') &&
+        data.startHour is int &&
+        data.startHour >= 0 &&
+        data.startHour <= 23 &&
+        data.startDay is int &&
+        data.startDay >= 0 &&
+        data.startDay <= 6 &&
+        data.ownerUid is string &&
+        data.ownerUid.size() > 0 &&
+        data.ownerUid.size() <= 128 &&
+        data.locked is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        data.responses is map &&
+        data.responses.size() <= 8;
+    }
+
+    function validResponse(data) {
+      return data is map &&
+        data.keys().hasAll(['nickname', 'slots', 'updatedAt']) &&
+        data.keys().hasOnly(['nickname', 'slots', 'updatedAt']) &&
+        data.nickname is string &&
+        data.nickname == data.nickname.trim() &&
+        data.nickname.size() > 0 &&
+        data.nickname.size() <= 60 &&
+        data.slots is string &&
+        data.slots.matches('[A-Za-z0-9_-]{28}') &&
+        data.updatedAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    match /rooms/{roomId} {
+      function owner() {
+        return signedIn() && resource.data.ownerUid == request.auth.uid;
+      }
+
+      function participantResponseChange() {
+        let topLevelChanges = request.resource.data.diff(resource.data).affectedKeys();
+        let responseChanges = request.resource.data.responses.diff(resource.data.responses).affectedKeys();
+        return signedIn() &&
+          resource.data.locked == false &&
+          validRoom(request.resource.data) &&
+          topLevelChanges.hasOnly(['responses']) &&
+          topLevelChanges.hasAll(['responses']) &&
+          responseChanges.hasOnly([request.auth.uid]) &&
+          responseChanges.hasAll([request.auth.uid]) &&
+          (
+            !(request.auth.uid in request.resource.data.responses) ||
+            validResponse(request.resource.data.responses[request.auth.uid])
+          );
+      }
+
+      function ownerMetadataChange() {
+        let changes = request.resource.data.diff(resource.data).affectedKeys();
+        return owner() &&
+          validRoom(request.resource.data) &&
+          changes.hasOnly(['title', 'locked', 'updatedAt']) &&
+          changes.hasAll(['updatedAt']) &&
+          request.resource.data.updatedAt == request.time;
+      }
+
+      function ownerResponseRemoval() {
+        let topLevelChanges = request.resource.data.diff(resource.data).affectedKeys();
+        let responseChanges = request.resource.data.responses.diff(resource.data.responses);
+        return owner() &&
+          validRoom(request.resource.data) &&
+          topLevelChanges.hasOnly(['responses', 'updatedAt']) &&
+          topLevelChanges.hasAll(['responses', 'updatedAt']) &&
+          responseChanges.addedKeys().size() == 0 &&
+          responseChanges.changedKeys().size() == 0 &&
+          responseChanges.removedKeys().size() > 0 &&
+          request.resource.data.updatedAt == request.time;
+      }
+
+      allow get: if signedIn() && validRoomId(roomId);
+      allow list: if false;
+
+      allow create: if signedIn() &&
+        validRoomId(roomId) &&
+        validRoom(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.locked == false &&
+        request.resource.data.responses.size() == 0 &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if participantResponseChange() ||
+        ownerMetadataChange() ||
+        ownerResponseRemoval();
+
+      allow delete: if owner();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

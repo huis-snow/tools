@@ -16,6 +16,11 @@ const PAGES = [
     indexed: true,
   },
   {
+    file: "schedule-maker/room.html",
+    url: "https://huis-snow.github.io/tools/schedule-maker/room.html",
+    indexed: false,
+  },
+  {
     file: "schedule-maker/saved.html",
     url: "https://huis-snow.github.io/tools/schedule-maker/saved.html",
     indexed: false,

@@ -19,6 +19,7 @@ const PAGE_FILES = [
   "table-maker/index.html",
   "schedule-maker/index.html",
   "schedule-maker/compare.html",
+  "schedule-maker/room.html",
   "schedule-maker/saved.html",
   "habit-maker/index.html",
   "raid-maker/index.html",

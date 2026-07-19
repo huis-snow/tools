@@ -860,6 +860,8 @@
       compareImageStatus: document.querySelector("#compareImageStatus"),
     };
 
+    const onlineRoomMode = typeof document.body?.classList?.contains === "function" &&
+      document.body.classList.contains("online-room-page");
     let slots = createSlots();
     let history = [];
     let slotElements = [];
@@ -882,7 +884,8 @@
     let activeComparisonCollectionId = null;
     let comparisonCollectionDirty = false;
     let comparisonImageBusy = false;
-    const participantColors = ["#f36c3f", "#2d765f", "#49778a", "#d69231", "#7b6aa8", "#b85167", "#42877d"];
+    let scheduleReadOnly = false;
+    const participantColors = ["#f36c3f", "#2d765f", "#49778a", "#d69231", "#7b6aa8", "#b85167", "#42877d", "#6d7f35"];
     const anchorHashes = new Set(["#top", "#schedule", "#share", "#compare"]);
 
     const detectedTimezone = (() => {
@@ -972,6 +975,7 @@
     }
 
     function loadInitialState() {
+      if (onlineRoomMode) return false;
       const shareHash = window.location.hash;
       if (shareHash && !anchorHashes.has(shareHash)) {
         activeSavedScheduleId = null;
@@ -1131,8 +1135,9 @@
       const selected = countSelected(slots);
       elements.count.textContent = String(selected);
       elements.progress.style.width = `${(selected / SLOT_COUNT) * 100}%`;
-      elements.undo.disabled = history.length === 0;
-      elements.clear.disabled = selected === 0;
+      elements.undo.disabled = scheduleReadOnly || history.length === 0;
+      elements.clear.disabled = scheduleReadOnly || selected === 0;
+      if (elements.reset) elements.reset.disabled = scheduleReadOnly;
     }
 
     function showDraftRecoveryWarning() {
@@ -1144,6 +1149,7 @@
     }
 
     function saveDraft({ repair = false } = {}) {
+      if (onlineRoomMode) return true;
       if (draftRecoveryLocked && !repair) {
         showDraftRecoveryWarning();
         return false;
@@ -1311,24 +1317,30 @@
       const hasChanges = countSelected(slots) > 0 ||
         history.length > 0 ||
         elements.title.value.trim() !== "" ||
-        elements.timezone.value.trim() !== detectedTimezone ||
-        currentStartHour() !== 8 ||
-        currentStartDay() !== 0;
+        (!onlineRoomMode && (
+          elements.timezone.value.trim() !== detectedTimezone ||
+          currentStartHour() !== 8 ||
+          currentStartDay() !== 0
+        ));
       const question = draftRecoveryLocked
         ? "읽지 못한 초안 원본은 복구용으로 따로 보관되어 있습니다. 빈 일정표로 초기화할까요?"
-        : "일정표 설정과 선택한 시간을 모두 초기화할까요?";
+        : onlineRoomMode
+          ? "닉네임과 선택한 시간을 모두 초기화할까요?"
+          : "일정표 설정과 선택한 시간을 모두 초기화할까요?";
       if ((hasChanges || draftRecoveryLocked) && !window.confirm(question)) return;
-      if (!await createRecoveryPoint("일정 초안 전체 초기화 전")) return;
+      if (!onlineRoomMode && !await createRecoveryPoint("일정 초안 전체 초기화 전")) return;
 
+      const resetStartHour = onlineRoomMode ? currentStartHour() : 8;
+      const resetStartDay = onlineRoomMode ? currentStartDay() : 0;
       slots = createSlots();
       activeSavedScheduleId = null;
       history = [];
       dragging = null;
       elements.title.value = "";
-      elements.timezone.value = detectedTimezone;
-      elements.startHour.value = "8";
-      elements.startDay.value = "0";
-      rovingIndex = slotIndex(8, 0);
+      if (!onlineRoomMode) elements.timezone.value = detectedTimezone;
+      elements.startHour.value = String(resetStartHour);
+      elements.startDay.value = String(resetStartDay);
+      rovingIndex = slotIndex(resetStartHour, resetStartDay);
       createGrid();
       renderAll({ save: false });
       if (!saveDraft({ repair: draftRecoveryLocked })) {
@@ -1685,13 +1697,16 @@
           startDay: normalizeStartDay(schedule.startDay, 0),
           slots: participantSlots,
         };
-        const key = comparisonParticipantKey(participant, participantSlots);
+        const baseKey = comparisonParticipantKey(participant, participantSlots);
+        const remoteId = typeof schedule.remoteId === "string" ? schedule.remoteId : "";
+        const key = remoteId ? `${remoteId}:${baseKey}` : baseKey;
         if (comparisonParticipants.some((item) => item.key === key)) {
           duplicateCount += 1;
           return;
         }
         comparisonParticipants.push({
           ...participant,
+          remoteId,
           id: nextParticipantId,
           key,
         });
@@ -1922,14 +1937,18 @@
       let help = "겹치는 인원 현황을 모두 이미지에 표시해요.";
       let status = compatibleCount
         ? `현재 ${compatibleCount}명의 전체 취합 결과를 이미지로 복사하거나 저장할 수 있어요.${exclusionNote}`
-        : "취합할 일정을 추가하면 결과를 이미지로 내보낼 수 있어요.";
+        : onlineRoomMode
+          ? "참여자가 일정을 저장하면 결과를 이미지로 내보낼 수 있어요."
+          : "취합할 일정을 추가하면 결과를 이미지로 내보낼 수 있어요.";
 
       if (mode === "all") {
         const everyoneCells = comparisonEveryoneCellCount();
         help = "모두 가능한 시간만 진하게 남기고 다른 칸의 숫자는 숨겨요.";
         status = compatibleCount
           ? `${compatibleCount}명 전원이 가능한 ${everyoneCells}칸만 이미지에 표시해요.${exclusionNote}`
-          : "취합할 일정을 추가하면 전원 가능한 시간을 이미지로 내보낼 수 있어요.";
+          : onlineRoomMode
+            ? "참여자가 일정을 저장하면 전원 가능한 시간을 이미지로 내보낼 수 있어요."
+            : "취합할 일정을 추가하면 전원 가능한 시간을 이미지로 내보낼 수 있어요.";
       } else if (mode === "selected") {
         const selectedCount = comparisonImageSelectedIndexes.size;
         help = selectedCount
@@ -2095,7 +2114,9 @@
       if (!roster.length) {
         const empty = document.createElement("p");
         empty.className = "participant-empty";
-        empty.textContent = "아직 추가한 일정이 없어요.";
+        empty.textContent = onlineRoomMode
+          ? "아직 저장한 참여자가 없어요."
+          : "아직 추가한 일정이 없어요.";
         elements.participantList.append(empty);
         return;
       }
@@ -2122,6 +2143,10 @@
         const remove = document.createElement("button");
         remove.type = "button";
         remove.dataset.participantId = String(participant.id);
+        if (participant.remoteId) {
+          remove.dataset.remoteParticipantUid = participant.remoteId;
+          remove.hidden = onlineRoomMode;
+        }
         remove.setAttribute("aria-label", `${participant.displayName} 일정 제거`);
         remove.textContent = "×";
         chip.append(remove);
@@ -2142,7 +2167,9 @@
       const message = document.createElement("p");
       message.textContent = comparisonRoster.length
         ? "시간 칸을 가리키거나 선택하면 가능한 사람과 불가능한 사람을 보여드려요."
-        : "일정 링크를 추가한 뒤 시간 칸에서 겹치는 사람을 확인할 수 있어요.";
+        : onlineRoomMode
+          ? "참여자가 저장한 뒤 시간 칸에서 가능한 사람을 확인할 수 있어요."
+          : "일정 링크를 추가한 뒤 시간 칸에서 겹치는 사람을 확인할 수 있어요.";
       elements.compareDetail.append(icon, message);
     }
 
@@ -2273,12 +2300,21 @@
       elements.compareGrid.append(fragment);
     }
 
-    function renderComparison() {
+    function renderComparison(options = {}) {
+      const preserveView = options.preserveView === true;
+      const previousScrollTop = preserveView ? elements.compareGridScroller.scrollTop : 0;
+      const previousActiveIndex = preserveView ? comparisonActiveIndex : null;
+      const previousRovingIndex = preserveView ? comparisonRovingIndex : null;
+      const hadGridFocus = preserveView &&
+        typeof elements.compareGrid.contains === "function" &&
+        elements.compareGrid.contains(document.activeElement);
       const { roster, compatible, excluded, baseTimezone } = comparisonView();
       renderParticipantList(roster, excluded);
 
       if (!roster.length) {
-        elements.compareTimezoneStatus.textContent = "링크를 추가하면 기준 시간대를 확인해요.";
+        elements.compareTimezoneStatus.textContent = onlineRoomMode
+          ? "참여자가 저장하면 기준 시간대를 확인해요."
+          : "링크를 추가하면 기준 시간대를 확인해요.";
         delete elements.compareTimezoneStatus.dataset.state;
       } else if (excluded.length) {
         elements.compareTimezoneStatus.textContent = `${baseTimezone} 기준 ${compatible.length}명만 비교해요. 다른 시간대 ${excluded.length}명은 정확히 변환할 수 없어 제외했어요.`;
@@ -2294,15 +2330,27 @@
       comparisonCells = aggregate.cells;
       comparisonRoster = compatible;
       comparisonActiveIndex = null;
-      comparisonRovingIndex = slotIndex(startHour, startDay);
+      comparisonRovingIndex = Number.isInteger(previousRovingIndex)
+        ? previousRovingIndex
+        : slotIndex(startHour, startDay);
       createComparisonGrid(aggregate, compatible);
       syncComparisonImageSelectionPresentation();
-      resetComparisonDetail();
-      elements.compareGridScroller.scrollTop = 0;
+      if (compatible.length && previousActiveIndex !== null && comparisonCells[previousActiveIndex]) {
+        showComparisonDetail(previousActiveIndex);
+      } else {
+        resetComparisonDetail();
+      }
+      elements.compareGridScroller.scrollTop = previousScrollTop;
+      if (hadGridFocus) {
+        comparisonCellElements[comparisonRovingIndex]?.focus?.({ preventScroll: true });
+        elements.compareGridScroller.scrollTop = previousScrollTop;
+      }
       elements.compareMaxCount.textContent = String(aggregate.maxCount);
 
       if (!compatible.length) {
-        elements.compareSummaryText.textContent = "링크를 추가하면 가장 많이 겹치는 시간을 찾아드려요.";
+        elements.compareSummaryText.textContent = onlineRoomMode
+          ? "참여자가 저장하면 가장 많이 겹치는 시간을 찾아드려요."
+          : "링크를 추가하면 가장 많이 겹치는 시간을 찾아드려요.";
       } else if (aggregate.maxCount === 0) {
         elements.compareSummaryText.textContent = `${compatible.length}명의 선택 중 겹치는 가능한 시간이 아직 없어요.`;
       } else {
@@ -2368,6 +2416,87 @@
       }
     }
 
+    function currentScheduleSnapshot() {
+      if (!elements.grid) return null;
+      return {
+        slots: slots.slice(),
+        title: elements.title?.value?.trim?.() || "",
+        timezone: cleanMeta(elements.timezone?.value, detectedTimezone, 40),
+        startHour: normalizeStartHour(elements.startHour?.value, 8),
+        startDay: normalizeStartDay(elements.startDay?.value, 0),
+      };
+    }
+
+    function applyExternalSchedule(schedule = {}) {
+      if (!elements.grid) return false;
+      const nextSlots = schedule.slots instanceof Uint8Array
+        ? schedule.slots.slice()
+        : typeof schedule.slots === "string"
+          ? decodeSlots(schedule.slots)
+          : createSlots();
+      slots = nextSlots;
+      history = [];
+      dragging = null;
+      if (elements.title) elements.title.value = String(schedule.title ?? "").trim().slice(0, 60);
+      if (elements.timezone) {
+        elements.timezone.value = cleanMeta(schedule.timezone, detectedTimezone, 40);
+      }
+      if (elements.startHour) {
+        elements.startHour.value = String(normalizeStartHour(schedule.startHour, 8));
+      }
+      if (elements.startDay) {
+        elements.startDay.value = String(normalizeStartDay(schedule.startDay, 0));
+      }
+      rovingIndex = slotIndex(currentStartHour(), currentStartDay());
+      createGrid();
+      renderAll({ save: false });
+      if (elements.scroller) elements.scroller.scrollTop = 0;
+      return true;
+    }
+
+    function setScheduleConfigurationLocked(locked = true) {
+      if (elements.startHour) elements.startHour.disabled = Boolean(locked);
+      if (elements.startDay) elements.startDay.disabled = Boolean(locked);
+      if (elements.timezone) elements.timezone.readOnly = Boolean(locked);
+    }
+
+    function setScheduleReadOnly(readOnly = true) {
+      scheduleReadOnly = Boolean(readOnly);
+      if (elements.title) elements.title.readOnly = scheduleReadOnly;
+      slotElements.forEach((element) => {
+        element.disabled = scheduleReadOnly;
+      });
+      dayButtons.forEach((element) => {
+        if (element) element.disabled = scheduleReadOnly;
+      });
+      timeButtons.forEach((element) => {
+        if (element) element.disabled = scheduleReadOnly;
+      });
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.disabled = scheduleReadOnly;
+      });
+      updateStatus();
+    }
+
+    function replaceComparisonSchedules(schedules = [], options = {}) {
+      if (!elements.compareGrid) return false;
+      comparisonParticipants = [];
+      if (options.preserveView !== true) comparisonImageSelectedIndexes.clear();
+      nextParticipantId = 1;
+      appendComparisonSchedules(Array.isArray(schedules) ? schedules : []);
+      if (elements.compareStartHour) {
+        elements.compareStartHour.value = String(normalizeStartHour(options.startHour, 8));
+      }
+      if (elements.compareStartDay) {
+        elements.compareStartDay.value = String(normalizeStartDay(options.startDay, 0));
+      }
+      if (elements.compareCollectionName && typeof options.title === "string") {
+        elements.compareCollectionName.value = options.title.trim().slice(0, 60);
+      }
+      renderComparison({ preserveView: options.preserveView === true });
+      return true;
+    }
+
     function initScheduleApp() {
       if (!elements.grid) return false;
       if (window.location.hash === "#compare") {
@@ -2410,10 +2539,10 @@
         rebuildScheduleGrid();
         announce(`${DAYS[currentStartDay()].full}부터 보이도록 순서를 바꿨습니다. 기존 선택은 유지됩니다.`);
       });
-      elements.linkButton.addEventListener("click", copyLink);
-      elements.textButton.addEventListener("click", copyScheduleText);
-      elements.imageButton.addEventListener("click", copyImage);
-      elements.pngButton.addEventListener("click", savePng);
+      elements.linkButton?.addEventListener("click", copyLink);
+      elements.textButton?.addEventListener("click", copyScheduleText);
+      elements.imageButton?.addEventListener("click", copyImage);
+      elements.pngButton?.addEventListener("click", savePng);
 
       document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
         anchor.addEventListener("click", (event) => {
@@ -2438,69 +2567,71 @@
       if (elements.compareImageMode && !["overlap", "all", "selected"].includes(elements.compareImageMode.value)) {
         elements.compareImageMode.value = "overlap";
       }
-      const comparisonApi = savedComparisonsApi();
-      const hasInitialCollection = Boolean(
+      const comparisonApi = onlineRoomMode ? null : savedComparisonsApi();
+      const hasInitialCollection = !onlineRoomMode && Boolean(
         (comparisonApi && (window.location.hash || "").startsWith(`#${comparisonApi.SHARE_PARAMETER || "g"}=`))
         || new URLSearchParams(window.location.search || "").has("collection")
       );
-      loadInitialComparisonCollection();
+      if (!onlineRoomMode) loadInitialComparisonCollection();
       renderComparison();
-      if (!hasInitialCollection) describeComparisonCollectionState();
-      try {
-        const savedApi = savedSchedulesApi();
-        const queued = savedApi?.consumeComparisonQueue(window.sessionStorage);
-        if (queued?.hashes?.length) {
-          elements.compareLinks.value = queued.hashes.join("\n");
-          addComparisonLinks();
+      if (!onlineRoomMode) {
+        if (!hasInitialCollection) describeComparisonCollectionState();
+        try {
+          const savedApi = savedSchedulesApi();
+          const queued = savedApi?.consumeComparisonQueue(window.sessionStorage);
+          if (queued?.hashes?.length) {
+            elements.compareLinks.value = queued.hashes.join("\n");
+            addComparisonLinks();
+          }
+        } catch (_error) {
+          // 세션 저장소가 막혀 있으면 기존 링크 붙여넣기 흐름을 그대로 제공한다.
         }
-      } catch (_error) {
-        // 세션 저장소가 막혀 있으면 기존 링크 붙여넣기 흐름을 그대로 제공한다.
+        elements.compareAdd?.addEventListener("click", addComparisonLinks);
+        elements.compareLinks?.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            addComparisonLinks();
+          }
+        });
+        elements.compareStartHour?.addEventListener("change", () => {
+          comparisonImageSelectedIndexes.clear();
+          renderComparison();
+          markComparisonCollectionDirty();
+          setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
+        });
+        elements.compareStartDay?.addEventListener("change", () => {
+          renderComparison();
+          markComparisonCollectionDirty();
+          setComparisonInputStatus(`결과를 ${DAYS[currentComparisonStartDay()].full}부터 보이도록 바꿨어요.`, "success");
+        });
+        elements.compareClear?.addEventListener("click", () => {
+          comparisonParticipants = [];
+          comparisonImageSelectedIndexes.clear();
+          renderComparison();
+          markComparisonCollectionDirty();
+          setComparisonInputStatus("추가한 일정을 모두 비웠어요.", "success");
+        });
+        elements.participantList?.addEventListener("click", (event) => {
+          const remove = event.target.closest("[data-participant-id]");
+          if (!remove) return;
+          const participantId = Number(remove.dataset.participantId);
+          const participant = comparisonParticipants.find((item) => item.id === participantId);
+          comparisonParticipants = comparisonParticipants.filter((item) => item.id !== participantId);
+          if (!comparisonParticipants.length) comparisonImageSelectedIndexes.clear();
+          renderComparison();
+          markComparisonCollectionDirty();
+          setComparisonInputStatus(`${participant?.title || "일정"} 일정을 제거했어요.`, "success");
+        });
+        elements.compareCollectionName?.addEventListener("input", () => {
+          elements.compareCollectionName.removeAttribute("aria-invalid");
+          markComparisonCollectionDirty();
+        });
+        elements.compareCollectionSave?.addEventListener("click", () => {
+          const record = saveCurrentComparisonCollection();
+          if (record) showToast(`${record.name} 취합표를 저장했어요`);
+        });
+        elements.compareCollectionShare?.addEventListener("click", copyCurrentComparisonCollection);
       }
-      elements.compareAdd.addEventListener("click", addComparisonLinks);
-      elements.compareLinks.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-          event.preventDefault();
-          addComparisonLinks();
-        }
-      });
-      elements.compareStartHour.addEventListener("change", () => {
-        comparisonImageSelectedIndexes.clear();
-        renderComparison();
-        markComparisonCollectionDirty();
-        setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
-      });
-      elements.compareStartDay.addEventListener("change", () => {
-        renderComparison();
-        markComparisonCollectionDirty();
-        setComparisonInputStatus(`결과를 ${DAYS[currentComparisonStartDay()].full}부터 보이도록 바꿨어요.`, "success");
-      });
-      elements.compareClear.addEventListener("click", () => {
-        comparisonParticipants = [];
-        comparisonImageSelectedIndexes.clear();
-        renderComparison();
-        markComparisonCollectionDirty();
-        setComparisonInputStatus("추가한 일정을 모두 비웠어요.", "success");
-      });
-      elements.participantList.addEventListener("click", (event) => {
-        const remove = event.target.closest("[data-participant-id]");
-        if (!remove) return;
-        const participantId = Number(remove.dataset.participantId);
-        const participant = comparisonParticipants.find((item) => item.id === participantId);
-        comparisonParticipants = comparisonParticipants.filter((item) => item.id !== participantId);
-        if (!comparisonParticipants.length) comparisonImageSelectedIndexes.clear();
-        renderComparison();
-        markComparisonCollectionDirty();
-        setComparisonInputStatus(`${participant?.title || "일정"} 일정을 제거했어요.`, "success");
-      });
-      elements.compareCollectionName?.addEventListener("input", () => {
-        elements.compareCollectionName.removeAttribute("aria-invalid");
-        markComparisonCollectionDirty();
-      });
-      elements.compareCollectionSave?.addEventListener("click", () => {
-        const record = saveCurrentComparisonCollection();
-        if (record) showToast(`${record.name} 취합표를 저장했어요`);
-      });
-      elements.compareCollectionShare?.addEventListener("click", copyCurrentComparisonCollection);
       elements.compareImageMode?.addEventListener("change", () => {
         syncComparisonImageSelectionPresentation();
         syncComparisonImageControls(comparisonRoster.length);
@@ -2536,6 +2667,16 @@
 
     const redirectedFromScheduleApp = initScheduleApp();
     if (!redirectedFromScheduleApp) initComparisonApp();
+    root.EonjepyoApp = {
+      getSchedule: currentScheduleSnapshot,
+      applySchedule: applyExternalSchedule,
+      setScheduleConfigurationLocked,
+      setScheduleReadOnly,
+      replaceComparisonSchedules,
+    };
+    if (typeof root.CustomEvent === "function" && typeof document.dispatchEvent === "function") {
+      document.dispatchEvent(new root.CustomEvent("eonjepyo:app-ready"));
+    }
     if (elements.grid || elements.compareGrid) {
       window.addEventListener?.("storage", (event) => {
         if (root.EonjepyoStorage === root.SmallToolsVault?.storage && event.storageArea) return;
