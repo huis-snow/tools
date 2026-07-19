@@ -35,6 +35,7 @@ service cloud.firestore {
           'timezone',
           'startHour',
           'startDay',
+          'startDate',
           'ownerUid',
           'locked',
           'createdAt',
@@ -55,6 +56,13 @@ service cloud.firestore {
         data.startDay is int &&
         data.startDay >= 0 &&
         data.startDay <= 6 &&
+        (
+          !('startDate' in data) ||
+          (
+            data.startDate is string &&
+            data.startDate.matches('[1-9][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])')
+          )
+        ) &&
         data.ownerUid is string &&
         data.ownerUid.size() > 0 &&
         data.ownerUid.size() <= 128 &&
@@ -130,6 +138,7 @@ service cloud.firestore {
       allow create: if googleAccount() &&
         validRoomId(roomId) &&
         validRoom(request.resource.data) &&
+        'startDate' in request.resource.data &&
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.locked == false &&
         request.resource.data.responses.size() == 0 &&

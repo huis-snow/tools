@@ -545,6 +545,13 @@ footer {
   font-weight: 700;
 }
 
+.day-toggle.has-calendar-date,
+.compare-day.has-calendar-date {
+  font-size: 11px;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
 .day-toggle:hover {
   background: #dce8d8;
 }
@@ -4734,9 +4741,44 @@ footer,
 
 .online-create-fields {
   display: grid;
-  grid-template-columns: minmax(210px, 1.3fr) minmax(135px, 0.65fr) minmax(135px, 0.65fr) minmax(190px, 0.9fr);
+  grid-template-columns: minmax(210px, 1.25fr) minmax(135px, 0.6fr) minmax(230px, 0.85fr) minmax(190px, 0.9fr);
   gap: 18px;
   padding: 26px 27px;
+}
+
+.online-date-field {
+  min-width: 0;
+}
+
+.online-date-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.online-date-shortcuts button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #bac5bd;
+  border-radius: 2px;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: var(--text-meta);
+  font-weight: 750;
+}
+
+.online-date-shortcuts button:hover {
+  border-color: var(--orange);
+  color: var(--orange-dark);
+}
+
+#onlineCreateDateRange {
+  display: block;
+  margin-top: 7px;
+  color: #6a7d75;
+  font-size: var(--text-meta);
+  line-height: 1.45;
 }
 
 .online-create-actions {
@@ -5168,6 +5210,34 @@ footer,
   opacity: 1;
 }
 
+.online-period-field > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #5e726a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.online-period-field > strong {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid #bac5bd;
+  border-radius: 2px;
+  background: #eef1e9;
+  color: #62736c;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.online-period-field > small {
+  display: block;
+  margin-top: 5px;
+  color: #939c97;
+  font-size: 8px;
+}
+
 .online-response-actions {
   display: flex;
   align-items: center;
@@ -5393,6 +5463,11 @@ footer,
 
   .online-create-actions button {
     justify-content: center;
+  }
+
+  .online-date-shortcuts button {
+    min-height: 44px;
+    flex: 1 1 110px;
   }
 
   .online-room-create-card > .online-action-status {

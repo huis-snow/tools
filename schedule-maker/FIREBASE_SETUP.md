@@ -70,6 +70,7 @@ firebase deploy --only firestore:rules,firestore:indexes
 - 참여자는 자기 Firebase UID에 해당하는 응답만 추가·수정·삭제
 - 참여자 최대 8명
 - 잠긴 방의 참여자 수정 거부
+- 새 방의 `YYYY-MM-DD` 기간 시작일 필수 및 생성 후 변경 차단
 - 닉네임 60자, 시간대 40자, 시간표 데이터 28자 제한
 
 ## 5. 온라인 방 확인하기
@@ -108,7 +109,8 @@ rooms/{22자 무작위 roomId}
   title
   timezone
   startHour
-  startDay
+  startDay              startDate에서 계산한 월=0 … 일=6
+  startDate             YYYY-MM-DD 기간 시작일, 날짜 기능 이전 방에는 없음
   ownerUid              Google 방장 UID, 기존 방은 익명 UID일 수 있음
   locked
   createdAt
@@ -121,3 +123,5 @@ rooms/{22자 무작위 roomId}
 ```
 
 한 사람의 168칸 선택은 기존 언제표와 같은 21바이트, 28자 base64url 문자열로 저장됩니다.
+
+새 방은 `startDate`와 여기서 계산한 `startDay`를 함께 저장합니다. `startDate`가 없는 기존 방도 계속 읽고 수정할 수 있도록 Rules의 전체 방 검증에서는 선택 필드로 허용하되, 새 방 생성 요청에서는 반드시 포함하도록 검사합니다.

@@ -190,6 +190,127 @@
     return Array.from({ length: DAYS.length }, (_value, offset) => (start + offset) % DAYS.length);
   }
 
+  const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+  function calendarDateParts(value) {
+    const text = String(value ?? "").trim();
+    const match = CALENDAR_DATE_PATTERN.exec(text);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (year === 0) return null;
+    const date = new Date(0);
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCFullYear(year, month - 1, day);
+    if (
+      !Number.isFinite(date.getTime()) ||
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return { text, year, month, day, date };
+  }
+
+  function normalizeCalendarDate(value, fallback = "") {
+    return calendarDateParts(value)?.text || fallback;
+  }
+
+  function calendarDateString(year, month, day) {
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  function addCalendarDays(value, amount) {
+    const parts = calendarDateParts(value);
+    const days = Number(amount);
+    if (!parts || !Number.isInteger(days)) throw new Error("계산할 날짜가 올바르지 않습니다.");
+    parts.date.setUTCDate(parts.date.getUTCDate() + days);
+    const year = parts.date.getUTCFullYear();
+    if (year < 1 || year > 9999) throw new Error("계산한 날짜가 지원 범위를 벗어났습니다.");
+    return calendarDateString(year, parts.date.getUTCMonth() + 1, parts.date.getUTCDate());
+  }
+
+  function calendarWeekday(value, fallback = 0) {
+    const parts = calendarDateParts(value);
+    return parts ? (parts.date.getUTCDay() + 6) % DAYS.length : fallback;
+  }
+
+  function calendarDateForDay(startDate, startDay, day, extraDays = 0) {
+    const normalized = normalizeCalendarDate(startDate);
+    if (!normalized) return "";
+    const columnOffset = (normalizeStartDay(day) - normalizeStartDay(startDay) + DAYS.length) % DAYS.length;
+    return addCalendarDays(normalized, columnOffset + extraDays);
+  }
+
+  function calendarDayHeader(value) {
+    const parts = calendarDateParts(value);
+    if (!parts) return "";
+    return `${parts.month}/${parts.day} ${DAYS[calendarWeekday(value)].short}`;
+  }
+
+  function calendarDateFull(value) {
+    const parts = calendarDateParts(value);
+    if (!parts) return "";
+    return `${parts.year}년 ${parts.month}월 ${parts.day}일 ${DAYS[calendarWeekday(value)].full}`;
+  }
+
+  function calendarDateCompact(value, includeYear = true) {
+    const parts = calendarDateParts(value);
+    if (!parts) return "";
+    return `${includeYear ? `${parts.year}. ` : ""}${parts.month}. ${parts.day}.(${DAYS[calendarWeekday(value)].short})`;
+  }
+
+  function calendarPeriodLabel(startDate) {
+    const start = normalizeCalendarDate(startDate);
+    if (!start) return "";
+    const end = addCalendarDays(start, DAYS.length - 1);
+    const startParts = calendarDateParts(start);
+    const endParts = calendarDateParts(end);
+    return `${calendarDateCompact(start)} ~ ${calendarDateCompact(end, startParts.year !== endParts.year)}`;
+  }
+
+  function calendarPeriodNumeric(startDate) {
+    const start = normalizeCalendarDate(startDate);
+    if (!start) return "";
+    const end = addCalendarDays(start, DAYS.length - 1);
+    const startParts = calendarDateParts(start);
+    const endParts = calendarDateParts(end);
+    const endLabel = startParts.year === endParts.year
+      ? `${String(endParts.month).padStart(2, "0")}.${String(endParts.day).padStart(2, "0")}`
+      : `${endParts.year}.${String(endParts.month).padStart(2, "0")}.${String(endParts.day).padStart(2, "0")}`;
+    return `${startParts.year}.${String(startParts.month).padStart(2, "0")}.${String(startParts.day).padStart(2, "0")}–${endLabel}`;
+  }
+
+  function slotCalendarInterval(startDate, startDay, day, hour, startHour) {
+    const baseDate = calendarDateForDay(
+      startDate,
+      startDay,
+      day,
+      Number(hour) < normalizeStartHour(startHour) ? 1 : 0,
+    );
+    if (!baseDate) return null;
+    return {
+      startDate: baseDate,
+      endDate: Number(hour) === HOURS - 1 ? addCalendarDays(baseDate, 1) : baseDate,
+      startHour: normalizeStartHour(hour),
+      endHour: (normalizeStartHour(hour) + 1) % HOURS,
+    };
+  }
+
+  function slotCalendarLabel(startDate, startDay, day, hour, startHour, options = {}) {
+    const interval = slotCalendarInterval(startDate, startDay, day, hour, startHour);
+    if (!interval) return "";
+    const startDateLabel = options.full
+      ? calendarDateFull(interval.startDate)
+      : calendarDateCompact(interval.startDate);
+    const endDateLabel = interval.endDate === interval.startDate
+      ? ""
+      : `${options.full ? calendarDateFull(interval.endDate) : calendarDateCompact(interval.endDate)} `;
+    return `${startDateLabel} ${formatHour(interval.startHour)}–${endDateLabel}${formatHour(interval.endHour)}`;
+  }
+
   function makeShareHash(slots, metadata = {}) {
     const parameters = new URLSearchParams();
     parameters.set("v", SHARE_VERSION);
@@ -409,6 +530,7 @@
     const timezone = cleanMeta(metadata.timezone, "Asia/Seoul", 40);
     const startHour = normalizeStartHour(metadata.startHour, 0);
     const startDay = normalizeStartDay(metadata.startDay, 0);
+    const startDate = normalizeCalendarDate(metadata.startDate);
     const dayOrder = displayDayIndexes(startDay);
 
     if (document.fonts) {
@@ -443,7 +565,13 @@
 
     context.font = `400 12px ${fontFamily}`;
     context.fillStyle = "#708078";
-    context.fillText(`기준 시간대  ${timezone}  ·  하루 시작  ${formatHour(startHour)}  ·  시작 요일  ${DAYS[startDay].full}`, 38, 117);
+    context.fillText(
+      `기준 시간대  ${timezone}  ·  하루 시작  ${formatHour(startHour)}  ·  ${
+        startDate ? `기간  ${calendarPeriodNumeric(startDate)}` : `시작 요일  ${DAYS[startDay].full}`
+      }`,
+      38,
+      117,
+    );
     context.textAlign = "right";
     context.fillText(`가능한 시간  ${countSelected(slots)}칸`, width - 36, 117);
 
@@ -460,7 +588,11 @@
       const left = dayAreaX + Math.round((columnIndex * dayAreaWidth) / DAYS.length);
       const right = dayAreaX + Math.round(((columnIndex + 1) * dayAreaWidth) / DAYS.length);
       context.fillStyle = day === 6 ? "#ffc2ae" : day === 5 ? "#b9d1d8" : "#ffffff";
-      context.fillText(DAYS[day].short, (left + right) / 2, gridY + headerHeight / 2);
+      context.fillText(
+        startDate ? calendarDayHeader(addCalendarDays(startDate, columnIndex)) : DAYS[day].short,
+        (left + right) / 2,
+        gridY + headerHeight / 2,
+      );
     });
 
     displayHours(startHour).forEach((hour, rowOffset) => {
@@ -559,6 +691,7 @@
     }));
     const startHour = normalizeStartHour(metadata.startHour, 8);
     const startDay = normalizeStartDay(metadata.startDay, 0);
+    const startDate = normalizeCalendarDate(metadata.startDate);
     const dayOrder = displayDayIndexes(startDay);
     const aggregate = aggregateSchedules(roster, startHour);
     const mode = ["overlap", "all", "selected"].includes(options.mode)
@@ -651,7 +784,9 @@
     context.font = `400 12px ${fontFamily}`;
     context.fillStyle = "#708078";
     context.fillText(
-      `기준 시간대  ${timezone}  ·  하루 시작  ${formatHour(startHour)}  ·  시작 요일  ${DAYS[startDay].full}`,
+      `기준 시간대  ${timezone}  ·  하루 시작  ${formatHour(startHour)}  ·  ${
+        startDate ? `기간  ${calendarPeriodNumeric(startDate)}` : `시작 요일  ${DAYS[startDay].full}`
+      }`,
       38,
       114,
     );
@@ -695,7 +830,11 @@
       const left = gridX + Math.round((columnIndex * gridWidth) / DAYS.length);
       const right = gridX + Math.round(((columnIndex + 1) * gridWidth) / DAYS.length);
       context.fillStyle = day === 6 ? "#ffc2ae" : day === 5 ? "#b9d1d8" : "#ffffff";
-      context.fillText(DAYS[day].short, (left + right) / 2, gridY + headerHeight / 2);
+      context.fillText(
+        startDate ? calendarDayHeader(addCalendarDays(startDate, columnIndex)) : DAYS[day].short,
+        (left + right) / 2,
+        gridY + headerHeight / 2,
+      );
     });
 
     imageHours.forEach((hour, croppedRowOffset) => {
@@ -885,6 +1024,8 @@
     let comparisonCollectionDirty = false;
     let comparisonImageBusy = false;
     let scheduleReadOnly = false;
+    let scheduleViewStartDate = "";
+    let comparisonViewStartDate = "";
     const participantColors = ["#f36c3f", "#2d765f", "#49778a", "#d69231", "#7b6aa8", "#b85167", "#42877d", "#6d7f35"];
     const anchorHashes = new Set(["#top", "#schedule", "#share", "#compare"]);
 
@@ -921,6 +1062,7 @@
         timezone: cleanMeta(elements.timezone.value, detectedTimezone, 40),
         startHour: normalizeStartHour(elements.startHour.value, 8),
         startDay: normalizeStartDay(elements.startDay.value, 0),
+        ...(scheduleViewStartDate ? { startDate: scheduleViewStartDate } : {}),
       };
     }
 
@@ -1106,19 +1248,33 @@
       const timelineHour = timelineHourFor(hour);
       const startLabel = formatTimelineHour(timelineHour, startHour);
       const endLabel = formatTimelineHour(timelineHour + 1, startHour);
+      const dateLabel = slotCalendarLabel(
+        scheduleViewStartDate,
+        currentStartDay(),
+        day,
+        hour,
+        startHour,
+        { full: true },
+      );
       element.setAttribute("aria-checked", String(selected));
       element.setAttribute(
         "aria-label",
-        `${DAYS[day].full} ${startLabel}부터 ${endLabel}까지 ${selected ? "가능함" : "선택 안 됨"}`,
+        `${dateLabel || `${DAYS[day].full} ${startLabel}부터 ${endLabel}까지`} ${selected ? "가능함" : "선택 안 됨"}`,
       );
-      element.title = `${DAYS[day].short} ${startLabel}–${endLabel}`;
+      element.title = dateLabel
+        ? slotCalendarLabel(scheduleViewStartDate, currentStartDay(), day, hour, startHour)
+        : `${DAYS[day].short} ${startLabel}–${endLabel}`;
     }
 
     function updateHeaders() {
       dayButtons.forEach((button, day) => {
         const state = daySelectionState(day);
+        const date = calendarDateForDay(scheduleViewStartDate, currentStartDay(), day);
         button.setAttribute("aria-checked", state);
-        button.setAttribute("aria-label", `${DAYS[day].full} 전체 ${state === "true" ? "선택 해제" : "선택"}`);
+        button.setAttribute(
+          "aria-label",
+          `${date ? calendarDateFull(date) : DAYS[day].full} 전체 ${state === "true" ? "선택 해제" : "선택"}`,
+        );
       });
       timeButtons.forEach((button, hour) => {
         const state = hourSelectionState(hour);
@@ -1228,7 +1384,9 @@
       const dayOrder = displayDayIndexes(startDay);
       elements.grid.setAttribute(
         "aria-label",
-        `${DAYS[startDay].full}부터 ${DAYS[dayOrder[dayOrder.length - 1]].full}까지 시간별 가능 여부`,
+        scheduleViewStartDate
+          ? `${calendarPeriodLabel(scheduleViewStartDate)} 시간별 가능 여부`
+          : `${DAYS[startDay].full}부터 ${DAYS[dayOrder[dayOrder.length - 1]].full}까지 시간별 가능 여부`,
       );
 
       const fragment = document.createDocumentFragment();
@@ -1242,14 +1400,16 @@
       corner.textContent = "시간";
       headerRow.append(corner);
 
-      dayOrder.forEach((dayIndex) => {
+      dayOrder.forEach((dayIndex, columnIndex) => {
         const day = DAYS[dayIndex];
+        const date = scheduleViewStartDate ? addCalendarDays(scheduleViewStartDate, columnIndex) : "";
         const button = document.createElement("button");
         button.type = "button";
         button.className = "day-toggle";
+        if (date) button.classList.add("has-calendar-date");
         button.dataset.day = String(dayIndex);
         button.setAttribute("role", "checkbox");
-        button.textContent = day.short;
+        button.textContent = date ? calendarDayHeader(date) : day.short;
         button.addEventListener("click", () => {
           const select = daySelectionState(dayIndex) !== "true";
           commitMutation(() => {
@@ -1999,6 +2159,7 @@
         timezone: baseTimezone || "Asia/Seoul",
         startHour: currentComparisonStartHour(),
         startDay: currentComparisonStartDay(),
+        ...(comparisonViewStartDate ? { startDate: comparisonViewStartDate } : {}),
         excluded,
       }, {
         mode: currentComparisonImageMode(),
@@ -2188,6 +2349,13 @@
       const timelineHour = cell.hour < startHour ? cell.hour + HOURS : cell.hour;
       const startLabel = formatTimelineHour(timelineHour, startHour);
       const endLabel = formatTimelineHour(timelineHour + 1, startHour);
+      const dateLabel = slotCalendarLabel(
+        comparisonViewStartDate,
+        currentComparisonStartDay(),
+        cell.day,
+        cell.hour,
+        startHour,
+      );
       const availableIndexes = new Set(cell.participantIndexes);
       const available = cell.participantIndexes.map((participantIndex) => comparisonRoster[participantIndex]);
       const unavailable = comparisonRoster.filter((_participant, participantIndex) => !availableIndexes.has(participantIndex));
@@ -2198,7 +2366,7 @@
       icon.textContent = "●";
       const detail = document.createElement("p");
       const heading = document.createElement("strong");
-      heading.textContent = `${DAYS[cell.day].full} ${startLabel}–${endLabel}`;
+      heading.textContent = dateLabel || `${DAYS[cell.day].full} ${startLabel}–${endLabel}`;
       detail.append(heading, ` · ${cell.count}/${comparisonRoster.length}명 가능`);
       detail.append(document.createElement("br"), "가능: ");
 
@@ -2231,7 +2399,9 @@
       const dayOrder = displayDayIndexes(startDay);
       elements.compareGrid.setAttribute(
         "aria-label",
-        `${DAYS[startDay].full}부터 ${DAYS[dayOrder[dayOrder.length - 1]].full}까지 시간별 가능 인원`,
+        comparisonViewStartDate
+          ? `${calendarPeriodLabel(comparisonViewStartDate)} 시간별 가능 인원`
+          : `${DAYS[startDay].full}부터 ${DAYS[dayOrder[dayOrder.length - 1]].full}까지 시간별 가능 인원`,
       );
       const fragment = document.createDocumentFragment();
       const headerRow = document.createElement("div");
@@ -2243,13 +2413,16 @@
       corner.setAttribute("role", "columnheader");
       corner.textContent = "시간";
       headerRow.append(corner);
-      dayOrder.forEach((dayIndex) => {
+      dayOrder.forEach((dayIndex, columnIndex) => {
         const day = DAYS[dayIndex];
+        const date = comparisonViewStartDate ? addCalendarDays(comparisonViewStartDate, columnIndex) : "";
         const header = document.createElement("div");
         header.className = "compare-day";
+        if (date) header.classList.add("has-calendar-date");
         header.dataset.day = String(dayIndex);
         header.setAttribute("role", "columnheader");
-        header.textContent = day.short;
+        header.textContent = date ? calendarDayHeader(date) : day.short;
+        if (date) header.setAttribute("aria-label", calendarDateFull(date));
         headerRow.append(header);
       });
       fragment.append(headerRow);
@@ -2276,6 +2449,21 @@
           const cell = aggregate.cells[index];
           const names = cell.participantIndexes.map((participantIndex) => roster[participantIndex].displayName);
           const level = overlapColorLevel(cell.count);
+          const dateLabel = slotCalendarLabel(
+            comparisonViewStartDate,
+            startDay,
+            day,
+            hour,
+            startHour,
+          );
+          const fullDateLabel = slotCalendarLabel(
+            comparisonViewStartDate,
+            startDay,
+            day,
+            hour,
+            startHour,
+            { full: true },
+          );
           const button = document.createElement("button");
           button.type = "button";
           button.className = "compare-cell";
@@ -2285,11 +2473,13 @@
           button.dataset.level = String(level);
           button.setAttribute("role", "gridcell");
           button.setAttribute("aria-selected", "false");
-          button.dataset.baseAriaLabel = `${DAYS[day].full} ${startLabel}부터 ${endLabel}까지, ${roster.length}명 중 ${cell.count}명 가능, 자세히 보기`;
+          button.dataset.baseAriaLabel = `${
+            fullDateLabel || `${DAYS[day].full} ${startLabel}부터 ${endLabel}까지`
+          }, ${roster.length}명 중 ${cell.count}명 가능, 자세히 보기`;
           button.setAttribute("aria-label", button.dataset.baseAriaLabel);
           button.title = names.length
-            ? `${DAYS[day].short} ${startLabel}–${endLabel}\n${cell.count}명: ${names.join(", ")}`
-            : `${DAYS[day].short} ${startLabel}–${endLabel}\n가능한 사람 없음`;
+            ? `${dateLabel || `${DAYS[day].short} ${startLabel}–${endLabel}`}\n${cell.count}명: ${names.join(", ")}`
+            : `${dateLabel || `${DAYS[day].short} ${startLabel}–${endLabel}`}\n가능한 사람 없음`;
           button.tabIndex = index === comparisonRovingIndex ? 0 : -1;
           button.textContent = cell.count ? `${cell.count}명` : "–";
           comparisonCellElements[index] = button;
@@ -2424,11 +2614,13 @@
         timezone: cleanMeta(elements.timezone?.value, detectedTimezone, 40),
         startHour: normalizeStartHour(elements.startHour?.value, 8),
         startDay: normalizeStartDay(elements.startDay?.value, 0),
+        ...(scheduleViewStartDate ? { startDate: scheduleViewStartDate } : {}),
       };
     }
 
     function applyExternalSchedule(schedule = {}) {
       if (!elements.grid) return false;
+      scheduleViewStartDate = normalizeCalendarDate(schedule.startDate);
       const nextSlots = schedule.slots instanceof Uint8Array
         ? schedule.slots.slice()
         : typeof schedule.slots === "string"
@@ -2445,7 +2637,11 @@
         elements.startHour.value = String(normalizeStartHour(schedule.startHour, 8));
       }
       if (elements.startDay) {
-        elements.startDay.value = String(normalizeStartDay(schedule.startDay, 0));
+        elements.startDay.value = String(
+          scheduleViewStartDate
+            ? calendarWeekday(scheduleViewStartDate)
+            : normalizeStartDay(schedule.startDay, 0),
+        );
       }
       rovingIndex = slotIndex(currentStartHour(), currentStartDay());
       createGrid();
@@ -2480,6 +2676,7 @@
 
     function replaceComparisonSchedules(schedules = [], options = {}) {
       if (!elements.compareGrid) return false;
+      comparisonViewStartDate = normalizeCalendarDate(options.startDate);
       comparisonParticipants = [];
       if (options.preserveView !== true) comparisonImageSelectedIndexes.clear();
       nextParticipantId = 1;
@@ -2488,7 +2685,11 @@
         elements.compareStartHour.value = String(normalizeStartHour(options.startHour, 8));
       }
       if (elements.compareStartDay) {
-        elements.compareStartDay.value = String(normalizeStartDay(options.startDay, 0));
+        elements.compareStartDay.value = String(
+          comparisonViewStartDate
+            ? calendarWeekday(comparisonViewStartDate)
+            : normalizeStartDay(options.startDay, 0),
+        );
       }
       if (elements.compareCollectionName && typeof options.title === "string") {
         elements.compareCollectionName.value = options.title.trim().slice(0, 60);
@@ -2706,6 +2907,16 @@
     displayHours,
     normalizeStartDay,
     displayDayIndexes,
+    normalizeCalendarDate,
+    addCalendarDays,
+    calendarWeekday,
+    calendarDateForDay,
+    calendarDayHeader,
+    calendarDateFull,
+    calendarPeriodLabel,
+    calendarPeriodNumeric,
+    slotCalendarInterval,
+    slotCalendarLabel,
     makeShareHash,
     parseShareHash,
     makeShareUrl,

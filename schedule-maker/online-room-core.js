@@ -9,6 +9,7 @@
   const MAX_TITLE_LENGTH = 60;
   const MAX_NICKNAME_LENGTH = 60;
   const MAX_TIMEZONE_LENGTH = 40;
+  const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
   function cleanRequiredText(value, label, maximum) {
     const text = String(value ?? "").trim();
@@ -31,6 +32,78 @@
       throw new Error("기준 시간대 형식이 올바르지 않습니다.");
     }
     return timezone;
+  }
+
+  function normalizeRoomTitle(value) {
+    return cleanRequiredText(value, "방 이름", MAX_TITLE_LENGTH);
+  }
+
+  function calendarDateParts(value, label = "기간 시작일") {
+    const text = String(value ?? "").trim();
+    const match = CALENDAR_DATE_PATTERN.exec(text);
+    if (!match) throw new Error(`${label} 형식이 올바르지 않습니다.`);
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (year === 0) throw new Error(`${label} 값이 올바르지 않습니다.`);
+
+    const date = new Date(0);
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCFullYear(year, month - 1, day);
+    if (
+      !Number.isFinite(date.getTime()) ||
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      throw new Error(`${label} 값이 올바르지 않습니다.`);
+    }
+    return { text, year, month, day, date };
+  }
+
+  function normalizeCalendarDate(value, label = "기간 시작일") {
+    return calendarDateParts(value, label).text;
+  }
+
+  function formatCalendarDate(year, month, day) {
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  function addCalendarDays(value, amount) {
+    const { date } = calendarDateParts(value);
+    const days = Number(amount);
+    if (!Number.isInteger(days)) throw new TypeError("더할 날짜 수는 정수여야 합니다.");
+    date.setUTCDate(date.getUTCDate() + days);
+    const year = date.getUTCFullYear();
+    if (year < 1 || year > 9999) throw new RangeError("계산한 날짜가 지원 범위를 벗어났습니다.");
+    return formatCalendarDate(year, date.getUTCMonth() + 1, date.getUTCDate());
+  }
+
+  function calendarWeekday(value) {
+    const { date } = calendarDateParts(value);
+    return (date.getUTCDay() + 6) % 7;
+  }
+
+  function localCalendarDate(value = new Date()) {
+    if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
+      throw new TypeError("현재 날짜를 확인할 수 없습니다.");
+    }
+    return formatCalendarDate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+  }
+
+  function calendarWeekStart(value) {
+    const date = normalizeCalendarDate(value);
+    return addCalendarDays(date, -calendarWeekday(date));
+  }
+
+  function roomSlotDate(startDate, startDay, day, hour, startHour) {
+    const normalizedDate = normalizeCalendarDate(startDate);
+    const firstDay = normalizeInteger(startDay, "시작 요일", 0, 6);
+    const slotDay = normalizeInteger(day, "요일", 0, 6);
+    const slotHour = normalizeInteger(hour, "시간", 0, 23);
+    const firstHour = normalizeInteger(startHour, "하루 시작", 0, 23);
+    const columnOffset = (slotDay - firstDay + 7) % 7;
+    return addCalendarDays(normalizedDate, columnOffset + (slotHour < firstHour ? 1 : 0));
   }
 
   function validateRoomId(value) {
@@ -66,12 +139,14 @@
 
   function normalizeRoomDraft(value) {
     if (!value || typeof value !== "object") throw new TypeError("온라인 방 설정이 필요합니다.");
+    const startDate = normalizeCalendarDate(value.startDate);
     return {
       version: ROOM_VERSION,
-      title: cleanRequiredText(value.title, "방 이름", MAX_TITLE_LENGTH),
+      title: normalizeRoomTitle(value.title),
       timezone: normalizeTimezone(value.timezone),
       startHour: normalizeInteger(value.startHour, "하루 시작", 0, 23),
-      startDay: normalizeInteger(value.startDay, "시작 요일", 0, 6),
+      startDay: calendarWeekday(startDate),
+      startDate,
     };
   }
 
@@ -102,10 +177,20 @@
   function normalizeRoomSnapshot(value, roomId = "") {
     if (!value || typeof value !== "object") throw new TypeError("온라인 방 데이터가 필요합니다.");
     if (value.version !== ROOM_VERSION) throw new Error("지원하지 않는 온라인 방 데이터입니다.");
-    const draft = normalizeRoomDraft(value);
+    const startDay = normalizeInteger(value.startDay, "시작 요일", 0, 6);
+    const hasStartDate = Object.prototype.hasOwnProperty.call(value, "startDate");
+    const startDate = hasStartDate ? normalizeCalendarDate(value.startDate) : "";
+    if (startDate && calendarWeekday(startDate) !== startDay) {
+      throw new Error("기간 시작일과 시작 요일이 일치하지 않습니다.");
+    }
     const ownerUid = cleanRequiredText(value.ownerUid, "방장 정보", 128);
     return {
-      ...draft,
+      version: ROOM_VERSION,
+      title: normalizeRoomTitle(value.title),
+      timezone: normalizeTimezone(value.timezone),
+      startHour: normalizeInteger(value.startHour, "하루 시작", 0, 23),
+      startDay,
+      ...(startDate ? { startDate } : {}),
       id: roomId ? validateRoomId(roomId) : "",
       ownerUid,
       locked: value.locked === true,
@@ -123,6 +208,7 @@
       timezone: normalized.timezone,
       startHour: normalized.startHour,
       startDay: normalized.startDay,
+      ...(normalized.startDate ? { startDate: normalized.startDate } : {}),
       slots: response.slots,
       updatedAt: response.updatedAt,
     }));
@@ -152,6 +238,15 @@
     MAX_TITLE_LENGTH,
     MAX_NICKNAME_LENGTH,
     MAX_TIMEZONE_LENGTH,
+    CALENDAR_DATE_PATTERN,
+    normalizeRoomTitle,
+    calendarDateParts,
+    normalizeCalendarDate,
+    addCalendarDays,
+    calendarWeekday,
+    localCalendarDate,
+    calendarWeekStart,
+    roomSlotDate,
     validateRoomId,
     createRoomId,
     normalizeRoomDraft,

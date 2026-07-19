@@ -287,12 +287,7 @@ export async function createFirebaseRoomStore(config, options = {}) {
     const update = { updatedAt: serverTimestamp() };
     if (Object.prototype.hasOwnProperty.call(changes, "locked")) update.locked = changes.locked === true;
     if (Object.prototype.hasOwnProperty.call(changes, "title")) {
-      update.title = core.normalizeRoomDraft({
-        title: changes.title,
-        timezone: "Asia/Seoul",
-        startHour: 0,
-        startDay: 0,
-      }).title;
+      update.title = core.normalizeRoomTitle(changes.title);
     }
     await updateDoc(roomReference(roomId), update);
   }

@@ -121,11 +121,22 @@
               <select id="onlineCreateStartHour"></select>
               <small>선택 시각부터 24시간</small>
             </label>
-            <label class="select-field">
-              <span>시작 요일</span>
-              <select id="onlineCreateStartDay"></select>
-              <small>표의 첫 번째 요일</small>
-            </label>
+            <div class="online-date-field">
+              <label class="text-field" for="onlineCreateStartDate">
+                <span>기간 시작일</span>
+                <input
+                  id="onlineCreateStartDate"
+                  type="date"
+                  required
+                  aria-describedby="onlineCreateDateRange"
+                />
+              </label>
+              <div class="online-date-shortcuts" role="group" aria-label="기간 빠른 선택">
+                <button id="onlineCreateThisWeekButton" type="button">이번 주</button>
+                <button id="onlineCreateNextWeekButton" type="button">다음 주</button>
+              </div>
+              <output id="onlineCreateDateRange" for="onlineCreateStartDate" aria-live="polite"></output>
+            </div>
             <label class="text-field">
               <span>기준 시간대</span>
               <input id="onlineCreateTimezone" type="text" maxlength="40" required />
@@ -220,10 +231,15 @@
                   <select id="startHourSelect" aria-describedby="startHourHelp"></select>
                   <small id="startHourHelp">방장이 정한 기준</small>
                 </label>
-                <label class="select-field start-day-field">
-                  <span>시작 요일</span>
+                <div class="online-period-field">
+                  <span>기간</span>
+                  <strong id="onlineRoomPeriod">방 기간 확인 중</strong>
+                  <small>방장이 정한 기준</small>
+                </div>
+                <label class="sr-only" for="startDaySelect">
+                  표 시작 요일
                   <select id="startDaySelect" aria-describedby="startDayHelp"></select>
-                  <small id="startDayHelp">방장이 정한 기준</small>
+                  <small id="startDayHelp">기간 시작일에서 자동 계산됨</small>
                 </label>
                 <label class="text-field timezone-field">
                   <span>기준 시간대</span>

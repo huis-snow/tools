@@ -16,7 +16,10 @@ const elements = {
   createForm: document.querySelector("#onlineRoomCreateForm"),
   createTitle: document.querySelector("#onlineCreateTitle"),
   createStartHour: document.querySelector("#onlineCreateStartHour"),
-  createStartDay: document.querySelector("#onlineCreateStartDay"),
+  createStartDate: document.querySelector("#onlineCreateStartDate"),
+  createDateRange: document.querySelector("#onlineCreateDateRange"),
+  createThisWeek: document.querySelector("#onlineCreateThisWeekButton"),
+  createNextWeek: document.querySelector("#onlineCreateNextWeekButton"),
   createTimezone: document.querySelector("#onlineCreateTimezone"),
   createButton: document.querySelector("#onlineCreateButton"),
   createStatus: document.querySelector("#onlineCreateStatus"),
@@ -31,6 +34,7 @@ const elements = {
   workspace: document.querySelector("#onlineRoomWorkspace"),
   roomTitle: document.querySelector("#onlineRoomTitle"),
   roomMeta: document.querySelector("#onlineRoomMeta"),
+  roomPeriod: document.querySelector("#onlineRoomPeriod"),
   roomState: document.querySelector("#onlineRoomState"),
   roomParticipantCount: document.querySelector("#onlineRoomParticipantCount"),
   roomStatus: document.querySelector("#onlineRoomStatus"),
@@ -100,6 +104,34 @@ function detectedTimezone() {
   }
 }
 
+function roomPeriodLabel(room) {
+  return room?.startDate
+    ? scheduleApi.calendarPeriodLabel(room.startDate)
+    : `날짜 미지정 · ${scheduleApi.DAYS[room?.startDay ?? 0].full}부터`;
+}
+
+function updateCreateDateRange() {
+  if (!elements.createStartDate.value) {
+    elements.createDateRange.textContent = "시작일을 선택하면 7일 기간을 보여드려요.";
+    return false;
+  }
+  try {
+    const startDate = core.normalizeCalendarDate(elements.createStartDate.value);
+    elements.createStartDate.removeAttribute("aria-invalid");
+    elements.createDateRange.textContent = `${scheduleApi.calendarPeriodLabel(startDate)} · 7일`;
+    return true;
+  } catch (_error) {
+    elements.createStartDate.setAttribute("aria-invalid", "true");
+    elements.createDateRange.textContent = "올바른 기간 시작일을 선택해 주세요.";
+    return false;
+  }
+}
+
+function setCreateStartDate(startDate) {
+  elements.createStartDate.value = core.normalizeCalendarDate(startDate);
+  updateCreateDateRange();
+}
+
 function populateCreateOptions() {
   for (let hour = 0; hour < scheduleApi.HOURS; hour += 1) {
     const option = document.createElement("option");
@@ -108,14 +140,7 @@ function populateCreateOptions() {
     elements.createStartHour.append(option);
   }
   elements.createStartHour.value = "8";
-
-  scheduleApi.DAYS.forEach((day, dayIndex) => {
-    const option = document.createElement("option");
-    option.value = String(dayIndex);
-    option.textContent = `${day.full} 시작`;
-    elements.createStartDay.append(option);
-  });
-  elements.createStartDay.value = "0";
+  setCreateStartDate(core.calendarWeekStart(core.localCalendarDate()));
   elements.createTimezone.value = detectedTimezone();
 }
 
@@ -168,6 +193,7 @@ function roomComparisonSignature(room, schedules) {
     room.timezone,
     room.startHour,
     room.startDay,
+    room.startDate || "",
     schedules.map((schedule) => [schedule.remoteId, schedule.title, schedule.slots]),
   ]);
 }
@@ -302,7 +328,7 @@ function createOwnedRoomItem(room) {
   copyButton.dataset.roomId = room.id;
   copyButton.setAttribute("aria-label", `‘${room.title}’ 온라인 방 링크 복사`);
   item.querySelector("[data-field='meta']").textContent =
-    `${scheduleApi.DAYS[room.startDay].full}부터 · ${String(room.startHour).padStart(2, "0")}:00 시작 · ${room.timezone}`;
+    `${roomPeriodLabel(room)} · ${String(room.startHour).padStart(2, "0")}:00 시작 · ${room.timezone}`;
   updated.textContent = formatRoomUpdated(room.updatedAt);
   if (updatedDate && !Number.isNaN(updatedDate.getTime())) updated.dateTime = updatedDate.toISOString();
   return item;
@@ -450,6 +476,7 @@ function showWorkspaceLoading(roomId) {
   elements.workspace.setAttribute("aria-busy", "true");
   elements.roomTitle.textContent = "온라인 방 불러오는 중";
   elements.roomMeta.textContent = "잠시만 기다려 주세요.";
+  elements.roomPeriod.textContent = "방 기간 확인 중";
   elements.roomState.textContent = "연결 중";
   elements.roomState.dataset.state = "loading";
   elements.roomCopy.disabled = true;
@@ -542,6 +569,7 @@ function applyRoomSnapshot(payload) {
     elements.workspace.setAttribute("aria-busy", "false");
     elements.roomTitle.textContent = "방을 찾지 못했어요";
     elements.roomMeta.textContent = "주소가 잘못됐거나 방장이 삭제한 방입니다.";
+    elements.roomPeriod.textContent = "기간 정보 없음";
     elements.roomParticipantCount.textContent = "0";
     elements.roomState.textContent = "종료됨";
     elements.roomState.dataset.state = "error";
@@ -559,6 +587,7 @@ function applyRoomSnapshot(payload) {
       title: "종료된 온라인 방",
       startHour: 8,
       startDay: 0,
+      startDate: "",
     });
     if (focusRoomOnNextSnapshot) {
       focusRoomOnNextSnapshot = false;
@@ -576,7 +605,9 @@ function applyRoomSnapshot(payload) {
 
   elements.workspace.setAttribute("aria-busy", "false");
   elements.roomTitle.textContent = currentRoom.title;
-  elements.roomMeta.textContent = `${currentRoom.timezone} · ${String(currentRoom.startHour).padStart(2, "0")}:00 시작 · ${scheduleApi.DAYS[currentRoom.startDay].full}부터`;
+  elements.roomMeta.textContent =
+    `${roomPeriodLabel(currentRoom)} · ${String(currentRoom.startHour).padStart(2, "0")}:00 시작 · ${currentRoom.timezone}`;
+  elements.roomPeriod.textContent = roomPeriodLabel(currentRoom);
   elements.roomParticipantCount.textContent = String(responseCount);
   elements.roomState.textContent = currentRoom.locked ? "입력 마감" : "입력 중";
   elements.roomState.dataset.state = currentRoom.locked ? "locked" : "open";
@@ -590,6 +621,7 @@ function applyRoomSnapshot(payload) {
       timezone: currentRoom.timezone,
       startHour: currentRoom.startHour,
       startDay: currentRoom.startDay,
+      startDate: currentRoom.startDate || "",
     });
     globalThis.EonjepyoApp.setScheduleConfigurationLocked(true);
     editorInitialized = true;
@@ -605,6 +637,7 @@ function applyRoomSnapshot(payload) {
       title: currentRoom.title,
       startHour: currentRoom.startHour,
       startDay: currentRoom.startDay,
+      startDate: currentRoom.startDate || "",
       preserveView: Boolean(liveComparisonSignature),
     });
     liveComparisonSignature = nextComparisonSignature;
@@ -878,6 +911,16 @@ elements.ownedRoomsRefresh.addEventListener("click", () => {
   refreshOwnedRooms();
 });
 
+elements.createStartDate.addEventListener("input", updateCreateDateRange);
+elements.createThisWeek.addEventListener("click", () => {
+  setCreateStartDate(core.calendarWeekStart(core.localCalendarDate()));
+  elements.createStartDate.focus();
+});
+elements.createNextWeek.addEventListener("click", () => {
+  setCreateStartDate(core.addCalendarDays(core.calendarWeekStart(core.localCalendarDate()), 7));
+  elements.createStartDate.focus();
+});
+
 elements.ownedRoomList.addEventListener("click", async (event) => {
   const copyButton = event.target.closest("[data-action='copy']");
   if (!copyButton) return;
@@ -909,13 +952,17 @@ elements.createForm.addEventListener("submit", async (event) => {
       title: elements.createTitle.value,
       timezone: elements.createTimezone.value,
       startHour: elements.createStartHour.value,
-      startDay: elements.createStartDay.value,
+      startDate: elements.createStartDate.value,
     });
     elements.createTitle.removeAttribute("aria-invalid");
+    elements.createStartDate.removeAttribute("aria-invalid");
   } catch (error) {
     if (!elements.createTitle.value.trim()) {
       elements.createTitle.setAttribute("aria-invalid", "true");
       elements.createTitle.focus();
+    } else if (!updateCreateDateRange()) {
+      elements.createStartDate.setAttribute("aria-invalid", "true");
+      elements.createStartDate.focus();
     }
     setStatus(elements.createStatus, error.message, "error");
     return;
@@ -1001,6 +1048,7 @@ elements.deleteResponse.addEventListener("click", async () => {
       timezone: currentRoom.timezone,
       startHour: currentRoom.startHour,
       startDay: currentRoom.startDay,
+      startDate: currentRoom.startDate || "",
     });
     globalThis.EonjepyoApp.setScheduleConfigurationLocked(true);
     showToast("온라인 방에서 내 일정을 삭제했어요");
