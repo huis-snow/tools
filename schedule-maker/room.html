@@ -74,12 +74,33 @@
         <aside class="online-setup-notice" id="onlineSetupNotice" role="status" hidden>
           <strong>Firebase 연결이 필요합니다</strong>
           <p>
-            공개 웹 설정과 익명 로그인을 연결한 뒤 사용할 수 있어요. 서비스 계정 키는 필요하지 않습니다.
+            공개 웹 설정과 Google·익명 로그인을 연결한 뒤 사용할 수 있어요. 서비스 계정 키는 필요하지 않습니다.
             설정 순서는
             <a href="https://github.com/huis-snow/tools/blob/main/schedule-maker/FIREBASE_SETUP.md">Firebase 연결 안내</a>에
             정리되어 있어요.
           </p>
         </aside>
+
+        <section class="online-auth-card" id="onlineAuthCard" aria-labelledby="onlineAuthTitle" aria-busy="true">
+          <div class="online-auth-identity">
+            <span class="online-google-mark" aria-hidden="true">G</span>
+            <div>
+              <p>ROOM OWNER ACCOUNT</p>
+              <strong id="onlineAuthTitle">로그인 상태를 확인하고 있어요</strong>
+              <span id="onlineAuthDescription">
+                링크로 참여할 때는 로그인하지 않아도 돼요.
+              </span>
+            </div>
+          </div>
+          <div class="online-auth-actions">
+            <a id="onlineOwnedRoomsLink" href="./room.html?view=mine" hidden>내 방 목록</a>
+            <button id="onlineGoogleSignInButton" type="button" disabled>Google로 로그인</button>
+            <button id="onlineGoogleSignOutButton" type="button" hidden>로그아웃</button>
+          </div>
+          <p class="online-action-status" id="onlineAuthStatus" role="status" aria-live="polite" aria-atomic="true">
+            Firebase 인증 연결을 준비하고 있어요.
+          </p>
+        </section>
 
         <form class="online-room-create-card" id="onlineRoomCreateForm">
           <div class="online-create-heading">
@@ -113,7 +134,7 @@
           </div>
           <div class="online-create-actions">
             <p>
-              익명 방장 권한은 이 브라우저에 보관됩니다. 브라우저 데이터를 지우면 방장 권한을 잃을 수 있어요.
+              방장 권한은 Google 계정에 연결됩니다. Google 이름과 이메일은 방 참여자에게 공개되지 않아요.
             </p>
             <button id="onlineCreateButton" type="submit" disabled>온라인 취합방 만들기 <span aria-hidden="true">→</span></button>
           </div>
@@ -121,6 +142,34 @@
             Firebase 연결을 확인하고 있어요.
           </p>
         </form>
+
+        <section
+          class="online-owned-rooms"
+          id="onlineOwnedRoomsSection"
+          aria-labelledby="onlineOwnedRoomsTitle"
+          aria-busy="false"
+          hidden
+        >
+          <div class="online-owned-heading">
+            <div>
+              <p>MY ONLINE ROOMS</p>
+              <h3 id="onlineOwnedRoomsTitle" tabindex="-1">내 온라인 방</h3>
+              <span>이 Google 계정으로 만든 방을 다른 기기에서도 다시 열 수 있어요.</span>
+            </div>
+            <div>
+              <strong>최근 <span id="onlineOwnedRoomCount">0</span>개</strong>
+              <button id="onlineOwnedRoomsRefreshButton" type="button">새로고침</button>
+            </div>
+          </div>
+          <ul class="online-owned-list" id="onlineOwnedRoomList"></ul>
+          <div class="online-owned-empty" id="onlineOwnedRoomsEmpty" hidden>
+            <strong>아직 만든 온라인 방이 없어요</strong>
+            <p>위에서 첫 취합방을 만들어 보세요.</p>
+          </div>
+          <p class="online-action-status" id="onlineOwnedRoomsStatus" role="status" aria-live="polite" aria-atomic="true">
+            내 온라인 방을 불러올 준비가 됐어요.
+          </p>
+        </section>
 
         <div class="online-room-workspace" id="onlineRoomWorkspace" aria-busy="true" hidden>
           <section class="online-room-banner" aria-labelledby="onlineRoomTitle">
@@ -139,7 +188,7 @@
               <button id="onlineRoomDeleteButton" class="danger" type="button" hidden>방 삭제</button>
             </div>
             <p class="online-room-owner-note" id="onlineRoomOwnerNote" hidden>
-              이 브라우저가 방장입니다. 잘못 들어온 응답을 아래 참여자 목록에서 삭제하고, 일정이 끝난 방은 직접 정리해 주세요.
+              이 Google 계정이 방장입니다. 잘못 들어온 응답을 아래 참여자 목록에서 삭제하고, 일정이 끝난 방은 직접 정리해 주세요.
             </p>
             <p class="online-action-status" id="onlineRoomStatus" role="status" aria-live="polite">
               Firebase에서 방 정보를 확인하고 있어요.
@@ -371,6 +420,26 @@
       <p>언제표 · 온라인 취합방</p>
       <a href="#top">맨 위로 ↑</a>
     </footer>
+
+    <template id="onlineOwnedRoomTemplate">
+      <li>
+        <article class="online-owned-item">
+          <div class="online-owned-item-copy">
+            <p>
+              <span data-field="state">입력 중</span>
+              <span data-field="participants">0 / 8명</span>
+            </p>
+            <h4 data-field="title">온라인 방</h4>
+            <span data-field="meta"></span>
+            <time data-field="updated"></time>
+          </div>
+          <div class="online-owned-item-actions">
+            <a data-action="open-button" href="./room.html">방 열기</a>
+            <button data-action="copy" type="button">링크 복사</button>
+          </div>
+        </article>
+      </li>
+    </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="online-room-core.js"></script>

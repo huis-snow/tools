@@ -4589,6 +4589,115 @@ footer,
   text-underline-offset: 3px;
 }
 
+.online-auth-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px 24px;
+  margin-bottom: 16px;
+  padding: 18px 20px 13px;
+  border: 1px solid #9eaca4;
+  background: #f7f7ed;
+}
+
+.online-auth-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.online-google-mark {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b9c2bc;
+  border-radius: 50%;
+  background: white;
+  color: #4285f4;
+  font: 800 18px/1 Arial, sans-serif;
+}
+
+.online-auth-identity p {
+  margin: 0 0 4px;
+  color: var(--orange-dark);
+  font: 600 9px var(--mono);
+  letter-spacing: 0.07em;
+}
+
+.online-auth-identity strong,
+.online-auth-identity span:not(.online-google-mark) {
+  display: block;
+}
+
+.online-auth-identity strong {
+  margin-bottom: 3px;
+  overflow-wrap: anywhere;
+  font-size: var(--text-ui);
+}
+
+.online-auth-identity span:not(.online-google-mark) {
+  overflow-wrap: anywhere;
+  color: #5f7068;
+  font-size: var(--text-meta);
+  line-height: 1.55;
+}
+
+.online-auth-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.online-auth-actions button,
+.online-auth-actions a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 15px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-ui);
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.online-auth-actions #onlineGoogleSignInButton {
+  background: var(--ink);
+  color: white;
+}
+
+.online-auth-actions #onlineOwnedRoomsLink {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.online-auth-actions button:hover:not(:disabled),
+.online-auth-actions a:hover {
+  background: #e4ebe2;
+}
+
+.online-auth-actions #onlineGoogleSignInButton:hover:not(:disabled) {
+  background: #235247;
+}
+
+.online-auth-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.online-auth-card > .online-action-status {
+  grid-column: 1 / -1;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
 .online-room-create-card {
   border: 1px solid var(--ink);
   background: var(--cream);
@@ -4702,6 +4811,204 @@ footer,
 .online-action-status[data-state="error"] {
   color: #a63b2b;
   font-weight: 700;
+}
+
+.online-owned-rooms {
+  margin-top: 28px;
+  border: 1px solid var(--ink);
+  background: var(--cream);
+  box-shadow: 5px 6px 0 rgba(21, 60, 52, 0.06);
+}
+
+.online-owned-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 25px;
+  border-bottom: 1px solid var(--line);
+  background: #f7f7ed;
+}
+
+.online-owned-heading p {
+  margin: 0 0 6px;
+  color: var(--orange-dark);
+  font: 600 9px var(--mono);
+  letter-spacing: 0.07em;
+}
+
+.online-owned-heading h3 {
+  margin: 0 0 5px;
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
+.online-owned-heading > div > span {
+  color: #5f7068;
+  font-size: var(--text-meta);
+  line-height: 1.6;
+}
+
+.online-owned-heading > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.online-owned-heading strong {
+  color: #5f7068;
+  font-size: var(--text-meta);
+  white-space: nowrap;
+}
+
+.online-owned-heading button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-ui);
+  font-weight: 750;
+}
+
+.online-owned-heading button:hover:not(:disabled) {
+  background: #e4ebe2;
+}
+
+.online-owned-heading button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.online-owned-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 18px;
+  list-style: none;
+}
+
+.online-owned-list:empty {
+  display: none;
+}
+
+.online-owned-item {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: #fffdf5;
+}
+
+.online-owned-item-copy {
+  min-width: 0;
+}
+
+.online-owned-item-copy > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.online-owned-item-copy > p span {
+  padding: 3px 7px;
+  border-radius: 99px;
+  background: var(--green-light);
+  color: #256b55;
+  font-size: var(--text-meta);
+  font-weight: 750;
+}
+
+.online-owned-item-copy > p span[data-state="locked"] {
+  background: #ffded3;
+  color: #b93c1b;
+}
+
+.online-owned-item-copy > p span + span {
+  background: #e9ece6;
+  color: #5f7068;
+}
+
+.online-owned-item h4 {
+  margin: 0 0 7px;
+  overflow: hidden;
+  font-size: var(--text-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-owned-item-copy > span,
+.online-owned-item-copy time {
+  display: block;
+  color: #5f7068;
+  font-size: var(--text-meta);
+  line-height: 1.55;
+}
+
+.online-owned-item-copy time {
+  margin-top: 2px;
+}
+
+.online-owned-item-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.online-owned-item-actions a,
+.online-owned-item-actions button {
+  min-width: 78px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 11px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-meta);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.online-owned-item-actions a {
+  background: var(--ink);
+  color: white;
+}
+
+.online-owned-item-actions a:hover {
+  background: #235247;
+}
+
+.online-owned-item-actions button:hover {
+  background: #e4ebe2;
+}
+
+.online-owned-empty {
+  padding: 38px 24px;
+  text-align: center;
+}
+
+.online-owned-empty strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--text-ui);
+}
+
+.online-owned-empty p {
+  margin: 0;
+  color: #5f7068;
+  font-size: var(--text-meta);
+}
+
+.online-owned-rooms > .online-action-status {
+  padding: 11px 24px;
+  border-top: 1px dashed var(--line);
 }
 
 .online-room-workspace {
@@ -4974,6 +5281,10 @@ footer,
     grid-template-columns: minmax(0, 1.2fr) minmax(145px, 0.8fr);
   }
 
+  .online-owned-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .online-room-banner {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -5038,6 +5349,31 @@ footer,
     gap: 8px;
   }
 
+  .online-auth-card {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline: 17px;
+  }
+
+  .online-auth-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+
+  .online-auth-actions #onlineGoogleSignInButton {
+    grid-column: 1 / -1;
+  }
+
+  .online-auth-actions > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  .online-auth-actions button,
+  .online-auth-actions a {
+    min-height: 44px;
+    white-space: normal;
+  }
+
   .online-create-heading {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
@@ -5061,6 +5397,34 @@ footer,
 
   .online-room-create-card > .online-action-status {
     padding-inline: 18px;
+  }
+
+  .online-owned-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 20px 18px;
+  }
+
+  .online-owned-heading > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .online-owned-list {
+    padding: 12px;
+  }
+
+  .online-owned-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .online-owned-item-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .online-owned-item-actions a,
+  .online-owned-item-actions button {
+    min-height: 44px;
   }
 
   .online-room-workspace {

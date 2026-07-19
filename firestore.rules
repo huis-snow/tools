@@ -6,6 +6,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function googleAccount() {
+      return signedIn() &&
+        request.auth.token.firebase.identities is map &&
+        'google.com' in request.auth.token.firebase.identities;
+    }
+
     function validRoomId(roomId) {
       return roomId.matches('[A-Za-z0-9_-]{22}');
     }
@@ -117,9 +123,11 @@ service cloud.firestore {
       }
 
       allow get: if signedIn() && validRoomId(roomId);
-      allow list: if false;
+      allow list: if googleAccount() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.query.limit <= 30;
 
-      allow create: if signedIn() &&
+      allow create: if googleAccount() &&
         validRoomId(roomId) &&
         validRoom(request.resource.data) &&
         request.resource.data.ownerUid == request.auth.uid &&

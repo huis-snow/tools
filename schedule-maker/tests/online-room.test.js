@@ -129,7 +129,12 @@ test("Firebase 연결 여부는 공개 웹 설정 네 항목만 검사한다", (
 test("온라인 방 페이지는 noindex와 공개 설정·Firebase 모듈 로드 순서를 유지한다", () => {
   const html = fs.readFileSync(path.join(ROOT, "schedule-maker/room.html"), "utf8");
   assert.match(html, /<meta name="robots" content="noindex, follow"\s*\/>/);
+  assert.match(html, /id="onlineGoogleSignInButton"/);
+  assert.match(html, /id="onlineGoogleSignOutButton"/);
+  assert.match(html, /id="onlineOwnedRoomsLink" href="\.\/room\.html\?view=mine"/);
   assert.match(html, /id="onlineRoomCreateForm"/);
+  assert.match(html, /id="onlineOwnedRoomsSection"/);
+  assert.match(html, /id="onlineOwnedRoomTemplate"/);
   assert.match(html, /id="onlineSaveResponseButton"/);
   assert.match(html, /id="compareGrid"/);
   assert.match(html, /닉네임과 선택한 시간은 Firebase에 저장됩니다/);
@@ -147,13 +152,41 @@ test("공개 Firebase 설정에는 서비스 계정 비공개 키가 없다", ()
   assert.doesNotMatch(config, /private_key|service_account|client_email/i);
 });
 
-test("Firestore Rules는 방 목록과 9번째 응답을 막고 UID별 수정만 허용한다", () => {
+test("Firebase 방 저장소는 Google 방장과 익명 참여자를 분리하고 본인 방만 조회한다", () => {
+  const store = fs.readFileSync(path.join(ROOT, "schedule-maker/firebase-room-store.js"), "utf8");
+  const page = fs.readFileSync(path.join(ROOT, "schedule-maker/room-page.js"), "utf8");
+
+  assert.match(store, /linkWithPopup/);
+  assert.match(store, /signInWithPopup/);
+  assert.match(store, /signInWithCredential/);
+  assert.match(store, /get user\(\)\s*{\s*return auth\.currentUser;/);
+  assert.doesNotMatch(store, /const user = auth\.currentUser \|\|/);
+  assert.match(store, /where\("ownerUid", "==", user\.uid\)/);
+  assert.match(store, /orderBy\("createdAt", "desc"\)/);
+  assert.match(store, /limit\(OWNED_ROOM_LIMIT\)/);
+  assert.match(page, /ensureAnonymous: Boolean\(requestedRoom\)/);
+  assert.match(page, /requestParameters\.get\("view"\) === "mine"/);
+  assert.match(page, /store\.signInCreatorWithGoogle\(\)/);
+  assert.match(page, /store\.signOutCreator\(\{ ensureAnonymous: Boolean\(currentRoomId\) \}\)/);
+  assert.match(page, /익명 .*을 보호하기 위해 Google 계정 전환을 중단했어요/);
+});
+
+test("Firestore Rules는 Google 방장 목록만 허용하고 9번째 응답과 타인 수정을 막는다", () => {
   const rules = fs.readFileSync(path.join(ROOT, "firestore.rules"), "utf8");
-  assert.match(rules, /allow list:\s*if false;/);
+  const indexes = fs.readFileSync(path.join(ROOT, "firestore.indexes.json"), "utf8");
+  const firebase = fs.readFileSync(path.join(ROOT, "firebase.json"), "utf8");
+  assert.match(rules, /function googleAccount\(\)/);
+  assert.match(rules, /'google\.com' in request\.auth\.token\.firebase\.identities/);
+  assert.match(rules, /allow list:\s*if googleAccount\(\)\s*&&\s*resource\.data\.ownerUid == request\.auth\.uid\s*&&\s*request\.query\.limit <= 30;/);
+  assert.match(rules, /allow create:\s*if googleAccount\(\)/);
   assert.match(rules, /data\.responses\.size\(\)\s*<=\s*8/);
   assert.match(rules, /data\.title == data\.title\.trim\(\)/);
   assert.match(rules, /data\.nickname == data\.nickname\.trim\(\)/);
   assert.match(rules, /responseChanges\.hasOnly\(\[request\.auth\.uid\]\)/);
   assert.match(rules, /resource\.data\.locked == false/);
   assert.match(rules, /responseChanges\.addedKeys\(\)\.size\(\) == 0/);
+  assert.match(indexes, /"fieldPath": "ownerUid"/);
+  assert.match(indexes, /"fieldPath": "createdAt"/);
+  assert.match(indexes, /"order": "DESCENDING"/);
+  assert.match(firebase, /"indexes": "firestore\.indexes\.json"/);
 });

@@ -6,6 +6,13 @@ if (!core || !scheduleApi) throw new Error("온라인 언제표를 시작하는 
 
 const elements = {
   setupNotice: document.querySelector("#onlineSetupNotice"),
+  authCard: document.querySelector("#onlineAuthCard"),
+  authTitle: document.querySelector("#onlineAuthTitle"),
+  authDescription: document.querySelector("#onlineAuthDescription"),
+  authStatus: document.querySelector("#onlineAuthStatus"),
+  googleSignIn: document.querySelector("#onlineGoogleSignInButton"),
+  googleSignOut: document.querySelector("#onlineGoogleSignOutButton"),
+  ownedRoomsLink: document.querySelector("#onlineOwnedRoomsLink"),
   createForm: document.querySelector("#onlineRoomCreateForm"),
   createTitle: document.querySelector("#onlineCreateTitle"),
   createStartHour: document.querySelector("#onlineCreateStartHour"),
@@ -13,6 +20,14 @@ const elements = {
   createTimezone: document.querySelector("#onlineCreateTimezone"),
   createButton: document.querySelector("#onlineCreateButton"),
   createStatus: document.querySelector("#onlineCreateStatus"),
+  ownedRoomsSection: document.querySelector("#onlineOwnedRoomsSection"),
+  ownedRoomsTitle: document.querySelector("#onlineOwnedRoomsTitle"),
+  ownedRoomCount: document.querySelector("#onlineOwnedRoomCount"),
+  ownedRoomList: document.querySelector("#onlineOwnedRoomList"),
+  ownedRoomsEmpty: document.querySelector("#onlineOwnedRoomsEmpty"),
+  ownedRoomsStatus: document.querySelector("#onlineOwnedRoomsStatus"),
+  ownedRoomsRefresh: document.querySelector("#onlineOwnedRoomsRefreshButton"),
+  ownedRoomTemplate: document.querySelector("#onlineOwnedRoomTemplate"),
   workspace: document.querySelector("#onlineRoomWorkspace"),
   roomTitle: document.querySelector("#onlineRoomTitle"),
   roomMeta: document.querySelector("#onlineRoomMeta"),
@@ -43,6 +58,10 @@ let ownResponseSignature = responseSignature(null);
 let liveComparisonSignature = "";
 let currentSnapshotMetadata = {};
 let actionBusy = false;
+let authBusy = false;
+let ownedRoomsBusy = false;
+let ownedRoomsRequest = 0;
+let ownedRooms = [];
 let focusRoomOnNextSnapshot = false;
 let toastTimer = null;
 
@@ -103,8 +122,18 @@ function populateCreateOptions() {
 function firebaseErrorMessage(error, fallback = "Firebase 연결 중 문제가 생겼습니다.") {
   const code = String(error?.code || "");
   if (code.includes("permission-denied")) return "권한이 없습니다. 방이 잠겼거나 Firebase 보안 규칙을 확인해 주세요.";
-  if (code.includes("unauthenticated")) return "익명 로그인에 실패했습니다. Firebase Authentication 설정을 확인해 주세요.";
-  if (code.includes("unavailable") || code.includes("network")) return "네트워크에 연결할 수 없습니다. 연결 상태를 확인해 주세요.";
+  if (code.includes("google-sign-in-required")) return "온라인 방을 만들려면 Google 로그인이 필요합니다.";
+  if (code.includes("popup-closed-by-user") || code.includes("cancelled-popup-request")) return "Google 로그인을 취소했어요.";
+  if (code.includes("popup-blocked")) return "Google 로그인 창이 차단됐어요. 팝업을 허용한 뒤 다시 시도해 주세요.";
+  if (code.includes("unauthorized-domain")) return "이 주소에서는 Google 로그인을 사용할 수 없어요. Firebase 승인된 도메인을 확인해 주세요.";
+  if (code.includes("operation-not-allowed")) return "Firebase Authentication에서 Google 로그인을 활성화해 주세요.";
+  if (code.includes("credential-already-in-use") || code.includes("account-exists-with-different-credential")) {
+    return "이 Google 계정은 이미 연결되어 있어요. 현재 익명 권한은 그대로 유지했습니다.";
+  }
+  if (code.includes("unauthenticated")) return "로그인 연결이 끊겼어요. 다시 로그인해 주세요.";
+  if (code.includes("unavailable") || code.includes("network-request-failed") || code.includes("network")) {
+    return "네트워크에 연결할 수 없습니다. 연결 상태를 확인해 주세요.";
+  }
   if (code.includes("resource-exhausted")) return "오늘의 Firebase 무료 사용 한도를 초과했습니다.";
   if (code.includes("not-found")) return "온라인 방을 찾지 못했습니다.";
   return error?.message || fallback;
@@ -162,6 +191,222 @@ async function copyPlainText(text) {
   helper.remove();
 }
 
+function googleAccountConnected() {
+  return Boolean(store?.isGoogleAccount?.());
+}
+
+function authDisplayName(user) {
+  return String(user?.displayName || user?.email || "Google 사용자").trim();
+}
+
+function syncAuthControls(options = {}) {
+  const user = store?.user || null;
+  const googleConnected = googleAccountConnected();
+  const hasRoom = Boolean(currentRoomId);
+
+  elements.authCard.setAttribute("aria-busy", String(authBusy || !store));
+  elements.googleSignIn.hidden = googleConnected;
+  elements.googleSignIn.disabled = authBusy || actionBusy || !store;
+  elements.googleSignOut.hidden = !googleConnected;
+  elements.googleSignOut.disabled = authBusy || actionBusy;
+  elements.ownedRoomsLink.hidden = !googleConnected || !hasRoom;
+  elements.createButton.disabled = !store || !googleConnected || actionBusy || authBusy;
+  elements.ownedRoomsSection.hidden = !googleConnected || hasRoom;
+  elements.ownedRoomsSection.setAttribute("aria-busy", String(ownedRoomsBusy));
+  elements.ownedRoomsRefresh.disabled = ownedRoomsBusy || authBusy || actionBusy;
+
+  if (!store) {
+    elements.authTitle.textContent = "로그인 상태를 확인하고 있어요";
+    elements.authDescription.textContent = "링크로 참여할 때는 로그인하지 않아도 돼요.";
+    if (options.preserveStatus !== true) {
+      setStatus(elements.authStatus, "Firebase 인증 연결을 준비하고 있어요.");
+    }
+    return;
+  }
+
+  if (googleConnected) {
+    elements.authTitle.textContent = `${authDisplayName(user)}님으로 로그인됨`;
+    const email = String(user?.email || "").trim();
+    elements.authDescription.textContent = email
+      ? `${email} · 이름과 이메일은 방 참여자에게 공개되지 않아요.`
+      : "Google 이름과 이메일은 방 참여자에게 공개되지 않아요.";
+    if (options.preserveStatus !== true && !authBusy) {
+      setStatus(
+        elements.authStatus,
+        hasRoom
+          ? "이 계정으로 방장 권한을 확인하고 있어요."
+          : "새 방을 만들고 내 온라인 방을 불러올 수 있어요.",
+        "success",
+      );
+    }
+    return;
+  }
+
+  elements.authTitle.textContent = "Google 로그인으로 방을 관리해요";
+  elements.authDescription.textContent = hasRoom
+    ? "참여자는 로그인 없이 입력할 수 있어요. 이 방의 방장이라면 Google로 로그인해 주세요."
+    : user?.isAnonymous
+      ? "기존 익명 권한을 유지한 채 Google 계정에 연결할 수 있어요."
+      : "온라인 방을 만들고 다른 기기에서도 관리하려면 로그인해 주세요.";
+  if (options.preserveStatus !== true && !authBusy) {
+    setStatus(
+      elements.authStatus,
+      hasRoom
+        ? "참여자로 익명 연결됐어요. Google 로그인은 방장에게만 필요합니다."
+        : "방을 만들려면 Google 로그인이 필요합니다.",
+      hasRoom ? "success" : "warning",
+    );
+  }
+}
+
+function roomDate(value) {
+  if (typeof value?.toDate === "function") return value.toDate();
+  if (Number.isFinite(value?.seconds)) return new Date(value.seconds * 1000);
+  return null;
+}
+
+function formatRoomUpdated(value) {
+  const date = roomDate(value);
+  if (!date || Number.isNaN(date.getTime())) return "수정 시각 확인 중";
+  try {
+    return `${new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date)} 수정`;
+  } catch (_error) {
+    return `${date.toLocaleString()} 수정`;
+  }
+}
+
+function createOwnedRoomItem(room) {
+  const fragment = elements.ownedRoomTemplate.content.cloneNode(true);
+  const item = fragment.querySelector("li");
+  const url = cleanRoomUrl(room.id).toString();
+  const responseCount = Object.keys(room.responses).length;
+  const state = item.querySelector("[data-field='state']");
+  const title = item.querySelector("[data-field='title']");
+  const openButton = item.querySelector("[data-action='open-button']");
+  const copyButton = item.querySelector("[data-action='copy']");
+  const updated = item.querySelector("[data-field='updated']");
+  const updatedDate = roomDate(room.updatedAt);
+
+  state.textContent = room.locked ? "입력 마감" : "입력 중";
+  state.dataset.state = room.locked ? "locked" : "open";
+  item.querySelector("[data-field='participants']").textContent = `${responseCount} / 8명`;
+  title.textContent = room.title;
+  openButton.href = url;
+  openButton.setAttribute("aria-label", `‘${room.title}’ 온라인 방 열기`);
+  copyButton.dataset.roomId = room.id;
+  copyButton.setAttribute("aria-label", `‘${room.title}’ 온라인 방 링크 복사`);
+  item.querySelector("[data-field='meta']").textContent =
+    `${scheduleApi.DAYS[room.startDay].full}부터 · ${String(room.startHour).padStart(2, "0")}:00 시작 · ${room.timezone}`;
+  updated.textContent = formatRoomUpdated(room.updatedAt);
+  if (updatedDate && !Number.isNaN(updatedDate.getTime())) updated.dateTime = updatedDate.toISOString();
+  return item;
+}
+
+function renderOwnedRooms() {
+  elements.ownedRoomList.replaceChildren(...ownedRooms.map(createOwnedRoomItem));
+  elements.ownedRoomCount.textContent = String(ownedRooms.length);
+  elements.ownedRoomsEmpty.hidden = ownedRooms.length !== 0;
+}
+
+async function refreshOwnedRooms() {
+  if (!store || !googleAccountConnected() || currentRoomId) return;
+  const requestId = ++ownedRoomsRequest;
+  const requestedUid = store.user?.uid || "";
+  ownedRoomsBusy = true;
+  elements.ownedRoomsSection.setAttribute("aria-busy", "true");
+  syncAuthControls({ preserveStatus: true });
+  setStatus(elements.ownedRoomsStatus, "내 온라인 방을 불러오고 있어요.");
+  try {
+    const nextRooms = await store.listOwnedRooms();
+    if (requestId !== ownedRoomsRequest || requestedUid !== store.user?.uid || currentRoomId) return;
+    ownedRooms = nextRooms;
+    renderOwnedRooms();
+    setStatus(
+      elements.ownedRoomsStatus,
+      ownedRooms.length
+        ? `최근 온라인 방 ${ownedRooms.length}개를 불러왔어요.`
+        : "Google 계정에 저장된 온라인 방이 아직 없어요.",
+      ownedRooms.length ? "success" : "",
+    );
+  } catch (error) {
+    if (requestId !== ownedRoomsRequest) return;
+    const code = String(error?.code || "");
+    const message = code.includes("permission-denied")
+      ? "내 방 목록 권한이 아직 적용되지 않았어요. 저장소의 Firestore Rules를 배포해 주세요."
+      : code.includes("failed-precondition")
+        ? "내 방 목록 인덱스가 아직 준비되지 않았어요. 저장소의 Firestore 인덱스를 배포해 주세요."
+        : firebaseErrorMessage(error, "내 온라인 방 목록을 불러오지 못했어요.");
+    setStatus(elements.ownedRoomsStatus, message, "error");
+  } finally {
+    if (requestId === ownedRoomsRequest) {
+      ownedRoomsBusy = false;
+      elements.ownedRoomsSection.setAttribute("aria-busy", "false");
+      syncAuthControls({ preserveStatus: true });
+    }
+  }
+}
+
+function focusOwnedRooms() {
+  window.requestAnimationFrame(() => {
+    elements.ownedRoomsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    elements.ownedRoomsTitle.focus({ preventScroll: true });
+  });
+}
+
+function resetEditorForIdentityChange() {
+  editorInitialized = false;
+  editorDirty = false;
+  ownResponseSignature = responseSignature(null);
+  currentSnapshotMetadata = {};
+}
+
+async function applyIdentityChange(message) {
+  resetEditorForIdentityChange();
+  if (!googleAccountConnected()) {
+    ownedRoomsRequest += 1;
+    ownedRoomsBusy = false;
+    ownedRooms = [];
+    renderOwnedRooms();
+  }
+  syncAuthControls({ preserveStatus: true });
+  setStatus(elements.authStatus, message, "success");
+  if (currentRoomId) {
+    subscribeToRoom(currentRoomId);
+    return;
+  }
+  await refreshOwnedRooms();
+}
+
+async function reconcileIdentityAfterError(previousUid) {
+  const nextUid = store?.user?.uid || "";
+  if (nextUid === previousUid) return false;
+
+  resetEditorForIdentityChange();
+  ownedRoomsRequest += 1;
+  ownedRoomsBusy = false;
+  ownedRooms = [];
+  renderOwnedRooms();
+  syncAuthControls({ preserveStatus: true });
+
+  if (currentRoomId && store.user) {
+    subscribeToRoom(currentRoomId);
+  } else if (currentRoomId) {
+    globalThis.EonjepyoApp.setScheduleReadOnly(true);
+    elements.saveResponse.disabled = true;
+    elements.deleteResponse.disabled = true;
+    setStatus(elements.responseStatus, "참여자 연결이 끊겼어요. 페이지를 새로고침해 다시 연결해 주세요.", "warning");
+  } else if (googleAccountConnected()) {
+    await refreshOwnedRooms();
+  }
+  return true;
+}
+
 function showCreateMode(options = {}) {
   unsubscribeRoom?.();
   unsubscribeRoom = null;
@@ -177,6 +422,18 @@ function showCreateMode(options = {}) {
   elements.roomMissingActions.hidden = true;
   document.body.classList.remove("is-room-owner");
   document.title = "온라인 취합방 만들기 | 언제표";
+  syncAuthControls();
+  if (googleAccountConnected()) {
+    refreshOwnedRooms().finally(() => {
+      if (options.focusOwnedRooms === true) focusOwnedRooms();
+    });
+  } else if (options.focusOwnedRooms === true) {
+    setStatus(elements.authStatus, "내 온라인 방을 보려면 Google로 로그인해 주세요.", "warning");
+    window.requestAnimationFrame(() => {
+      elements.authCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      elements.googleSignIn.focus({ preventScroll: true });
+    });
+  }
   if (options.focus === true) {
     window.requestAnimationFrame(() => elements.createTitle.focus());
   }
@@ -201,6 +458,7 @@ function showWorkspaceLoading(roomId) {
   elements.saveResponse.disabled = true;
   elements.roomMissingActions.hidden = true;
   setStatus(elements.roomStatus, "Firebase에서 방 정보를 확인하고 있어요.");
+  syncAuthControls();
 }
 
 function syncParticipantRemoveButtons(isOwner) {
@@ -212,24 +470,30 @@ function syncParticipantRemoveButtons(isOwner) {
 
 function syncRoomControls(snapshotMetadata = currentSnapshotMetadata) {
   if (!currentRoom || !store) return;
+  const user = store.user;
   const responseEntries = Object.entries(currentRoom.responses);
-  const ownResponse = currentRoom.responses[store.user.uid] || null;
-  const isOwner = currentRoom.ownerUid === store.user.uid;
+  const ownResponse = user ? currentRoom.responses[user.uid] || null : null;
+  const isOwner = Boolean(user && currentRoom.ownerUid === user.uid);
   const isFull = responseEntries.length >= core.MAX_RESPONSES && !ownResponse;
 
   document.body.classList.toggle("is-room-owner", isOwner);
   elements.roomOwnerNote.hidden = !isOwner;
+  if (isOwner) {
+    elements.roomOwnerNote.textContent = googleAccountConnected()
+      ? "이 Google 계정이 방장입니다. 잘못 들어온 응답을 아래 참여자 목록에서 삭제하고, 일정이 끝난 방은 직접 정리해 주세요."
+      : "이 브라우저의 기존 익명 권한이 방장입니다. 위에서 Google로 로그인하면 이 방을 계정에 연결할 수 있어요.";
+  }
   elements.roomLock.hidden = !isOwner;
   elements.roomDelete.hidden = !isOwner;
   elements.roomLock.textContent = currentRoom.locked ? "방 다시 열기" : "입력 마감";
-  elements.roomLock.disabled = actionBusy;
-  elements.roomDelete.disabled = actionBusy;
-  elements.roomCopy.disabled = actionBusy;
+  elements.roomLock.disabled = actionBusy || authBusy;
+  elements.roomDelete.disabled = actionBusy || authBusy;
+  elements.roomCopy.disabled = actionBusy || authBusy;
 
-  elements.saveResponse.disabled = actionBusy || currentRoom.locked || isFull;
-  elements.deleteResponse.disabled = actionBusy || !ownResponse || (currentRoom.locked && !isOwner);
+  elements.saveResponse.disabled = actionBusy || authBusy || !user || currentRoom.locked || isFull;
+  elements.deleteResponse.disabled = actionBusy || authBusy || !ownResponse || (currentRoom.locked && !isOwner);
   elements.deleteResponse.hidden = !ownResponse;
-  globalThis.EonjepyoApp.setScheduleReadOnly(currentRoom.locked);
+  globalThis.EonjepyoApp.setScheduleReadOnly(currentRoom.locked || !user);
 
   if (currentRoom.locked) {
     setStatus(elements.responseStatus, isOwner
@@ -253,6 +517,7 @@ function syncRoomControls(snapshotMetadata = currentSnapshotMetadata) {
     setStatus(elements.roomStatus, `동기화됨 · ${shortTime()}`, "success");
   }
   syncParticipantRemoveButtons(isOwner);
+  syncAuthControls({ preserveStatus: true });
 }
 
 function applyRoomSnapshot(payload) {
@@ -306,7 +571,7 @@ function applyRoomSnapshot(payload) {
   currentSnapshotMetadata = payload;
   const responses = currentRoom.responses;
   const responseCount = Object.keys(responses).length;
-  const ownResponse = responses[store.user.uid] || null;
+  const ownResponse = store.user ? responses[store.user.uid] || null : null;
   const nextOwnSignature = responseSignature(ownResponse);
 
   elements.workspace.setAttribute("aria-busy", "false");
@@ -385,6 +650,7 @@ async function runAction(action, statusElement = elements.roomStatus, pendingMes
   } finally {
     actionBusy = false;
     syncRoomControls();
+    syncAuthControls({ preserveStatus: true });
     if (failureMessage) setStatus(statusElement, failureMessage, "error");
   }
 }
@@ -411,12 +677,18 @@ async function initialize() {
   await waitForAppController();
   globalThis.EonjepyoApp.setScheduleConfigurationLocked(true);
   globalThis.EonjepyoApp.setScheduleReadOnly(true);
+  const requestParameters = new URLSearchParams(window.location.search);
+  const requestedRoom = requestParameters.get("r");
+  const requestedOwnedRooms = !requestedRoom && requestParameters.get("view") === "mine";
 
   if (!core.firebaseConfigReady(firebaseConfig)) {
     elements.setupNotice.hidden = false;
     elements.createButton.disabled = true;
+    elements.authCard.setAttribute("aria-busy", "false");
+    elements.authTitle.textContent = "Firebase 연결이 필요합니다";
+    elements.authDescription.textContent = "공개 웹 설정과 Authentication 공급자를 먼저 연결해 주세요.";
     setStatus(elements.createStatus, "Firebase 공개 웹 설정을 연결하면 온라인 방을 만들 수 있어요.", "warning");
-    const requestedRoom = new URLSearchParams(window.location.search).get("r");
+    setStatus(elements.authStatus, "Firebase 공개 웹 설정을 먼저 연결해 주세요.", "warning");
     if (requestedRoom) {
       elements.createForm.hidden = true;
       elements.workspace.hidden = true;
@@ -425,21 +697,36 @@ async function initialize() {
   }
 
   try {
-    setStatus(elements.createStatus, "Firebase 익명 연결을 준비하고 있어요.");
+    setStatus(
+      elements.createStatus,
+      requestedRoom ? "Firebase 참여자 연결을 준비하고 있어요." : "Google 로그인 상태를 확인하고 있어요.",
+    );
     const { createFirebaseRoomStore } = await import("./firebase-room-store.js");
-    store = await createFirebaseRoomStore(firebaseConfig);
-    setStatus(elements.createStatus, "온라인 방을 만들 준비가 됐어요.", "success");
-    elements.createButton.disabled = false;
+    store = await createFirebaseRoomStore(firebaseConfig, { ensureAnonymous: Boolean(requestedRoom) });
+    syncAuthControls();
+    setStatus(
+      elements.createStatus,
+      googleAccountConnected()
+        ? "온라인 방을 만들 준비가 됐어요."
+        : "방을 만들려면 위에서 Google로 로그인해 주세요.",
+      googleAccountConnected() ? "success" : "warning",
+    );
   } catch (error) {
     elements.setupNotice.hidden = false;
     elements.createButton.disabled = true;
+    elements.authCard.setAttribute("aria-busy", "false");
+    elements.authTitle.textContent = "로그인 연결을 시작하지 못했어요";
+    elements.authDescription.textContent = "Firebase 설정과 네트워크 상태를 확인해 주세요.";
     setStatus(elements.createStatus, firebaseErrorMessage(error), "error");
+    setStatus(elements.authStatus, firebaseErrorMessage(error), "error");
     return;
   }
 
-  const requestedRoom = new URLSearchParams(window.location.search).get("r");
   if (!requestedRoom) {
-    showCreateMode();
+    showCreateMode({ focusOwnedRooms: requestedOwnedRooms });
+    if (requestedOwnedRooms) {
+      window.history.replaceState(null, "", new URL("./room.html", window.location.href).toString());
+    }
     return;
   }
   try {
@@ -450,9 +737,172 @@ async function initialize() {
   }
 }
 
+elements.googleSignIn.addEventListener("click", async () => {
+  if (!store || authBusy || actionBusy || googleAccountConnected()) return;
+  if (editorDirty && !window.confirm("저장하지 않은 시간 선택이 있어요. 저장하지 않고 Google 로그인을 진행할까요?")) {
+    return;
+  }
+
+  const previousUid = store.user?.uid || "";
+  const wasAnonymous = Boolean(store.user?.isAnonymous);
+  let switchedGoogleAccount = false;
+  authBusy = true;
+  syncAuthControls({ preserveStatus: true });
+  syncRoomControls();
+  setStatus(
+    elements.authStatus,
+    wasAnonymous ? "현재 익명 권한을 유지하며 Google 계정에 연결하고 있어요." : "Google 로그인 창을 열고 있어요.",
+  );
+
+  try {
+    try {
+      await store.signInCreatorWithGoogle();
+    } catch (error) {
+      if (!store.hasPendingGoogleAccount()) throw error;
+      const anonymousUser = store.user;
+      const ownsCurrentRoom = Boolean(
+        wasAnonymous && anonymousUser && currentRoom?.ownerUid === anonymousUser.uid,
+      );
+      const hasCurrentResponse = Boolean(
+        wasAnonymous && anonymousUser && currentRoom?.responses?.[anonymousUser.uid],
+      );
+      if (ownsCurrentRoom || hasCurrentResponse) {
+        store.clearPendingGoogleAccount();
+        const protectedData = ownsCurrentRoom ? "방장 권한" : "저장한 응답";
+        window.alert(
+          `현재 익명 계정에 이 방의 ${protectedData}이 연결되어 있어요.\n\n`
+          + "이미 사용 중인 Google 계정으로 전환하면 이 권한을 복구할 수 없어서 전환을 중단했습니다. "
+          + "아직 언제표에 연결하지 않은 다른 Google 계정을 선택해 주세요.",
+        );
+        setStatus(
+          elements.authStatus,
+          `익명 ${protectedData}을 보호하기 위해 Google 계정 전환을 중단했어요.`,
+          "warning",
+        );
+        return;
+      }
+      const confirmed = window.confirm(
+        "이 Google 계정은 이미 언제표에서 사용 중입니다.\n\n"
+        + "계정을 전환하면 이 브라우저의 기존 익명 방장 권한과 익명 응답을 더 이상 수정할 수 없고 복구할 수 없습니다. "
+        + "기존 Google 계정으로 전환할까요?",
+      );
+      if (!confirmed) {
+        store.clearPendingGoogleAccount();
+        setStatus(elements.authStatus, "계정 전환을 취소했어요. 기존 익명 권한은 그대로 유지됩니다.", "warning");
+        return;
+      }
+      await store.switchToPendingGoogleAccount();
+      switchedGoogleAccount = true;
+    }
+
+    await applyIdentityChange(
+      switchedGoogleAccount
+        ? "기존 Google 계정으로 전환했어요."
+        : wasAnonymous
+        ? "기존 권한을 유지하며 Google 계정에 연결했어요."
+        : "Google 계정으로 로그인했어요.",
+    );
+    setStatus(elements.createStatus, "온라인 방을 만들 준비가 됐어요.", "success");
+    showToast(
+      switchedGoogleAccount
+        ? "기존 Google 계정으로 전환했어요"
+        : wasAnonymous
+          ? "Google 계정에 기존 권한을 연결했어요"
+          : "Google 계정으로 로그인했어요",
+    );
+    if (!currentRoomId) window.requestAnimationFrame(() => elements.createTitle.focus());
+  } catch (error) {
+    try {
+      await reconcileIdentityAfterError(previousUid);
+    } catch (_identityError) {
+      // 원래 인증 오류를 유지하고, 현재 사용자 상태는 finally에서 다시 그린다.
+    }
+    setStatus(elements.authStatus, firebaseErrorMessage(error, "Google 로그인에 실패했어요."), "error");
+  } finally {
+    authBusy = false;
+    syncAuthControls({ preserveStatus: true });
+    syncRoomControls();
+  }
+});
+
+elements.googleSignOut.addEventListener("click", async () => {
+  if (!store || authBusy || actionBusy || !googleAccountConnected()) return;
+  const user = store.user;
+  const previousUid = user?.uid || "";
+  const ownsCurrentRoom = Boolean(currentRoom && user && currentRoom.ownerUid === user.uid);
+  const hasCurrentResponse = Boolean(currentRoom && user && currentRoom.responses[user.uid]);
+  if (currentRoomId && (ownsCurrentRoom || hasCurrentResponse || editorDirty)) {
+    const confirmed = window.confirm(
+      ownsCurrentRoom
+        ? "로그아웃하면 이 방의 방장 관리 버튼이 사라집니다. Google로 다시 로그인하면 복구할 수 있어요. 로그아웃할까요?"
+        : "로그아웃하면 이 Google 계정으로 저장한 현재 방의 응답을 수정할 수 없어요. 로그아웃할까요?",
+    );
+    if (!confirmed) return;
+  }
+
+  authBusy = true;
+  unsubscribeRoom?.();
+  unsubscribeRoom = null;
+  syncAuthControls({ preserveStatus: true });
+  syncRoomControls();
+  setStatus(elements.authStatus, "Google 계정에서 로그아웃하고 있어요.");
+  try {
+    await store.signOutCreator({ ensureAnonymous: Boolean(currentRoomId) });
+    await applyIdentityChange(
+      currentRoomId
+        ? "Google 계정에서 로그아웃하고 익명 참여자로 다시 연결했어요."
+        : "Google 계정에서 로그아웃했어요.",
+    );
+    if (!currentRoomId) {
+      setStatus(elements.createStatus, "방을 만들려면 위에서 Google로 로그인해 주세요.", "warning");
+      window.requestAnimationFrame(() => elements.googleSignIn.focus());
+    }
+    showToast("Google 계정에서 로그아웃했어요");
+  } catch (error) {
+    let reconciled = false;
+    try {
+      reconciled = await reconcileIdentityAfterError(previousUid);
+    } catch (_identityError) {
+      // 원래 로그아웃 오류를 유지한다.
+    }
+    if (!reconciled && currentRoomId && store.user) subscribeToRoom(currentRoomId);
+    setStatus(elements.authStatus, firebaseErrorMessage(error, "로그아웃하지 못했어요."), "error");
+  } finally {
+    authBusy = false;
+    syncAuthControls({ preserveStatus: true });
+    syncRoomControls();
+  }
+});
+
+elements.ownedRoomsRefresh.addEventListener("click", () => {
+  refreshOwnedRooms();
+});
+
+elements.ownedRoomList.addEventListener("click", async (event) => {
+  const copyButton = event.target.closest("[data-action='copy']");
+  if (!copyButton) return;
+  const room = ownedRooms.find((candidate) => candidate.id === copyButton.dataset.roomId);
+  if (!room) return;
+  copyButton.disabled = true;
+  try {
+    await copyPlainText(cleanRoomUrl(room.id).toString());
+    setStatus(elements.ownedRoomsStatus, `‘${room.title}’ 방 링크를 복사했어요.`, "success");
+    showToast("온라인 방 링크를 복사했어요");
+  } catch (_error) {
+    setStatus(elements.ownedRoomsStatus, "방 링크를 복사하지 못했어요.", "error");
+  } finally {
+    copyButton.disabled = false;
+  }
+});
+
 elements.createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!store || actionBusy) return;
+  if (!googleAccountConnected()) {
+    setStatus(elements.createStatus, "온라인 방을 만들려면 Google로 로그인해 주세요.", "warning");
+    elements.googleSignIn.focus();
+    return;
+  }
   let draft;
   try {
     draft = core.normalizeRoomDraft({
@@ -479,13 +929,13 @@ elements.createForm.addEventListener("submit", async (event) => {
     subscribeToRoom(roomId);
     showToast("온라인 취합방을 만들었어요");
   }, elements.createStatus, "온라인 방을 만들고 있어요.");
-  if (!success) elements.createButton.disabled = false;
+  if (!success) syncAuthControls({ preserveStatus: true });
 });
 
 elements.roomCopy.addEventListener("click", async () => {
   if (!currentRoomId) return;
   try {
-    await copyPlainText(cleanRoomUrl());
+    await copyPlainText(cleanRoomUrl().toString());
     showToast("8명에게 보낼 온라인 방 링크를 복사했어요");
     setStatus(elements.roomStatus, "온라인 방 링크를 복사했어요.", "success");
   } catch (_error) {
@@ -533,11 +983,12 @@ elements.saveResponse.addEventListener("click", async () => {
 });
 
 elements.deleteResponse.addEventListener("click", async () => {
-  if (!store || !currentRoom?.responses?.[store.user.uid]) return;
+  const user = store?.user;
+  if (!user || !currentRoom?.responses?.[user.uid]) return;
   if (!window.confirm("이 온라인 방에서 내 일정을 삭제할까요?")) return;
-  const isOwner = currentRoom.ownerUid === store.user.uid;
+  const isOwner = currentRoom.ownerUid === user.uid;
   const success = await runAction(
-    () => store.removeResponse(currentRoomId, store.user.uid, { asOwner: isOwner }),
+    () => store.removeResponse(currentRoomId, user.uid, { asOwner: isOwner }),
     elements.responseStatus,
     "온라인 방에서 내 일정을 삭제하고 있어요.",
   );
@@ -557,7 +1008,8 @@ elements.deleteResponse.addEventListener("click", async () => {
 });
 
 elements.roomLock.addEventListener("click", async () => {
-  if (!store || !currentRoom || currentRoom.ownerUid !== store.user.uid) return;
+  const user = store?.user;
+  if (!user || !currentRoom || currentRoom.ownerUid !== user.uid) return;
   const nextLocked = !currentRoom.locked;
   const success = await runAction(
     () => store.updateRoom(currentRoomId, { locked: nextLocked }),
@@ -568,7 +1020,8 @@ elements.roomLock.addEventListener("click", async () => {
 });
 
 elements.roomDelete.addEventListener("click", async () => {
-  if (!store || !currentRoom || currentRoom.ownerUid !== store.user.uid) return;
+  const user = store?.user;
+  if (!user || !currentRoom || currentRoom.ownerUid !== user.uid) return;
   if (!window.confirm(`'${currentRoom.title}' 온라인 방과 8명까지의 응답을 모두 삭제할까요?`)) return;
   const success = await runAction(
     () => store.removeRoom(currentRoomId),
@@ -584,7 +1037,8 @@ elements.roomDelete.addEventListener("click", async () => {
 
 elements.participantList.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-remote-participant-uid]");
-  if (!button || !store || currentRoom?.ownerUid !== store.user.uid) return;
+  const user = store?.user;
+  if (!button || !user || currentRoom?.ownerUid !== user.uid) return;
   const uid = button.dataset.remoteParticipantUid;
   const response = currentRoom.responses[uid];
   if (!response || !window.confirm(`'${response.nickname}' 응답을 이 방에서 삭제할까요?`)) return;
@@ -612,5 +1066,8 @@ window.addEventListener("beforeunload", (event) => {
 
 initialize().catch((error) => {
   elements.setupNotice.hidden = false;
+  elements.authCard.setAttribute("aria-busy", "false");
+  elements.authTitle.textContent = "온라인 방을 시작하지 못했어요";
   setStatus(elements.createStatus, firebaseErrorMessage(error, "온라인 방을 시작하지 못했습니다."), "error");
+  setStatus(elements.authStatus, firebaseErrorMessage(error, "온라인 방을 시작하지 못했습니다."), "error");
 });
