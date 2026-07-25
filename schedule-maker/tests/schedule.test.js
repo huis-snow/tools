@@ -28,6 +28,9 @@ const {
   displayHours,
   normalizeStartDay,
   displayDayIndexes,
+  visibleSlotCoordinates,
+  slotIndexAtVisibleCoordinates,
+  rectangleSlotIndexes,
   normalizeCalendarDate,
   addCalendarDays,
   calendarWeekday,
@@ -121,6 +124,26 @@ test("하루 시작이 8시면 8시부터 23시, 익일 0시부터 7시 순서�
 test("토요일부터 시작하면 토·일·월·화·수·목·금 순서로 표시한다", () => {
   assert.equal(normalizeStartDay(5), 5);
   assert.deepEqual(displayDayIndexes(5), [5, 6, 0, 1, 2, 3, 4]);
+});
+
+test("네모 영역은 회전된 시간·요일의 화면 좌표를 기준으로 칸을 계산한다", () => {
+  const basic = rectangleSlotIndexes(slotIndex(9, 0), slotIndex(11, 2), 0, 0);
+  assert.deepEqual(basic, [63, 64, 65, 70, 71, 72, 77, 78, 79]);
+  assert.deepEqual(
+    rectangleSlotIndexes(slotIndex(11, 2), slotIndex(9, 0), 0, 0),
+    basic,
+  );
+
+  assert.deepEqual(
+    rectangleSlotIndexes(slotIndex(23, 6), slotIndex(1, 1), 8, 5),
+    [167, 161, 162, 6, 0, 1, 13, 7, 8],
+    "08시·토요일 시작 화면에서 일요일 밤부터 화요일 새벽까지 3×3 영역이어야 한다",
+  );
+  assert.deepEqual(visibleSlotCoordinates(slotIndex(0, 0), 8, 5), { row: 16, column: 2 });
+  assert.equal(slotIndexAtVisibleCoordinates(16, 2, 8, 5), slotIndex(0, 0));
+  assert.equal(new Set(rectangleSlotIndexes(slotIndex(8, 5), slotIndex(7, 4), 8, 5)).size, 168);
+  assert.throws(() => visibleSlotCoordinates(-1, 8, 5), RangeError);
+  assert.throws(() => slotIndexAtVisibleCoordinates(24, 0, 8, 5), RangeError);
 });
 
 test("온라인 방 날짜는 7일 기간과 자정 이후 실제 날짜를 시간대와 무관하게 표시한다", () => {
@@ -444,9 +467,16 @@ class FakeElement {
       add: (...values) => values.forEach((value) => this.classList.values.add(value)),
       remove: (...values) => values.forEach((value) => this.classList.values.delete(value)),
       contains: (value) => this.classList.values.has(value),
+      toggle: (value, force) => {
+        const enabled = force === undefined ? !this.classList.values.has(value) : Boolean(force);
+        if (enabled) this.classList.values.add(value);
+        else this.classList.values.delete(value);
+        return enabled;
+      },
     };
     this.style = { setProperty(name, value) { this[name] = value; } };
     this.value = "";
+    this.checked = false;
     this.textContent = "";
     this.disabled = false;
     this.focused = false;
@@ -461,7 +491,11 @@ class FakeElement {
   removeAttribute(name) { this.attributes.delete(name); }
   focus() { this.focused = true; }
   scrollIntoView() {}
-  closest() { return null; }
+  setPointerCapture() {}
+  closest(selector) {
+    if (!selector.startsWith(".")) return null;
+    return String(this.className || "").split(/\s+/).includes(selector.slice(1)) ? this : null;
+  }
   cloneNode() {
     const clone = new FakeElement();
     clone.value = this.value;
@@ -491,6 +525,8 @@ function runWithPageDom(ids, hash = "#top", options = {}) {
   const historyCalls = [];
   const clipboardWrites = [];
   const timers = new Map();
+  const documentListeners = new Map();
+  let pointedElement = null;
   let nextTimerId = 1;
   const document = {
     readyState: "complete",
@@ -502,8 +538,8 @@ function runWithPageDom(ids, hash = "#top", options = {}) {
     createElement() { return new FakeElement(); },
     createDocumentFragment() { return new FakeElement(); },
     createTextNode(value) { return String(value); },
-    elementFromPoint() { return null; },
-    addEventListener() {},
+    elementFromPoint() { return pointedElement; },
+    addEventListener(type, listener) { documentListeners.set(type, listener); },
     execCommand() { return true; },
   };
   const location = {
@@ -587,6 +623,8 @@ function runWithPageDom(ids, hash = "#top", options = {}) {
     storageWrites,
     historyCalls,
     clipboardWrites,
+    documentListeners,
+    setPointedElement(element) { pointedElement = element; },
     location,
     api: context.module.exports,
     app: context.EonjepyoApp,
@@ -597,7 +635,8 @@ const WRITER_PAGE_IDS = [
   "titleInput", "startHourSelect", "startDaySelect", "timezoneInput", "rangeLabel",
   "scheduleGrid", "scheduleScroller", "selectedCount", "selectionProgress", "undoButton",
   "clearButton", "resetButton", "liveRegion", "linkButton", "linkLabel", "textButton",
-  "textLabel", "imageButton", "imageLabel", "pngButton", "toast",
+  "textLabel", "imageButton", "imageLabel", "pngButton", "paintModeBrush",
+  "paintModeRectangle", "paintModeHelpText", "toast",
 ];
 
 test("일정 이름 입력란은 기본 이름을 placeholder로 대신 표시하지 않는다", () => {
@@ -605,6 +644,18 @@ test("일정 이름 입력란은 기본 이름을 placeholder로 대신 표시�
   const titleInput = html.match(/<input\b[^>]*\bid=["']titleInput["'][^>]*>/i);
   assert.ok(titleInput, "일정 이름 입력란을 찾을 수 있어야 한다");
   assert.doesNotMatch(titleInput[0], /\bplaceholder\s*=/i);
+});
+
+test("일반 일정표와 온라인 방은 이어 칠하기·네모 영역 모드를 함께 제공한다", () => {
+  ["index.html", "room.html"].forEach((filename) => {
+    const html = fs.readFileSync(path.join(__dirname, `../${filename}`), "utf8");
+    assert.match(html, /role="radiogroup"[^>]*aria-labelledby="paintModeLabel"/);
+    assert.match(html, /id="paintModeBrush"[^>]*value="brush"[^>]*checked/);
+    assert.match(html, /id="paintModeRectangle"[^>]*value="rectangle"/);
+    assert.match(html, /id="paintModeHelpText"/);
+    assert.match(html, /이어 칠하기/);
+    assert.match(html, /네모 영역/);
+  });
 });
 
 test("일정을 편집하면 draft만 저장하고 현재 주소에는 공유 데이터를 붙이지 않는다", () => {
@@ -764,6 +815,137 @@ test("온라인 방 입력표는 실제 날짜 열과 자정 이후 날짜를 �
     (element) => element.dataset?.index === String(slotIndex(0, 2)),
   )[0];
   assert.match(midnight.title, /2026\. 7\. 23\.\(목\) 00:00–01:00/);
+});
+
+test("이어 칠하기는 지나간 칸만, 네모 영역은 화면 기준 직사각형 전체를 한 번에 칠한다", () => {
+  const result = runWithPageDom(WRITER_PAGE_IDS, "", { pathname: "/schedule-maker/" });
+  result.app.applySchedule({
+    title: "",
+    timezone: "Asia/Seoul",
+    startHour: 8,
+    startDay: 5,
+    slots: createSlots(),
+  });
+  const grid = result.elements.get("scheduleGrid");
+  const slotElement = (index) => descendantsMatching(
+    grid,
+    (element) => element.dataset?.index === String(index),
+  )[0];
+  const drag = (from, to, pointerId) => {
+    grid.listeners.get("pointerdown")({
+      target: slotElement(from),
+      button: 0,
+      pointerId,
+      preventDefault() {},
+    });
+    result.setPointedElement(slotElement(to));
+    result.documentListeners.get("pointermove")({
+      pointerId,
+      clientX: 1,
+      clientY: 1,
+      preventDefault() {},
+    });
+    result.documentListeners.get("pointerup")({ pointerId });
+  };
+  const anchor = slotIndex(23, 6);
+  const end = slotIndex(1, 1);
+
+  assert.equal(result.elements.get("paintModeBrush").checked, true);
+  assert.match(result.elements.get("paintModeHelpText").textContent, /이어서/);
+  drag(anchor, end, 1);
+  assert.equal(countSelected(result.app.getSchedule().slots), 2, "브러시는 실제로 지난 두 칸만 칠해야 한다");
+  result.elements.get("undoButton").listeners.get("click")();
+
+  result.elements.get("paintModeRectangle").checked = true;
+  result.elements.get("paintModeRectangle").listeners.get("change")();
+  assert.equal(result.elements.get("paintModeBrush").checked, false);
+  assert.match(result.elements.get("paintModeHelpText").textContent, /네모/);
+
+  grid.listeners.get("pointerdown")({
+    target: slotElement(anchor),
+    button: 0,
+    pointerId: 2,
+    preventDefault() {},
+  });
+  result.setPointedElement(slotElement(end));
+  result.documentListeners.get("pointermove")({
+    pointerId: 2,
+    clientX: 1,
+    clientY: 1,
+    preventDefault() {},
+  });
+  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+
+  const smallerEnd = slotIndex(0, 0);
+  result.setPointedElement(slotElement(smallerEnd));
+  result.documentListeners.get("pointermove")({
+    pointerId: 2,
+    clientX: 1,
+    clientY: 1,
+    preventDefault() {},
+  });
+  assert.equal(countSelected(result.app.getSchedule().slots), 4, "영역을 줄이면 빠진 칸은 원래 상태로 돌아가야 한다");
+
+  result.setPointedElement(slotElement(end));
+  result.documentListeners.get("pointermove")({
+    pointerId: 2,
+    clientX: 1,
+    clientY: 1,
+    preventDefault() {},
+  });
+  result.documentListeners.get("pointerup")({ pointerId: 2 });
+  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+  drag(anchor, end, 3);
+  assert.equal(countSelected(result.app.getSchedule().slots), 0, "칠해진 시작 칸에서 끌면 영역 전체를 지워야 한다");
+  result.elements.get("undoButton").listeners.get("click")();
+  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+  result.elements.get("undoButton").listeners.get("click")();
+  assert.equal(countSelected(result.app.getSchedule().slots), 0, "네모 영역 전체가 한 번의 되돌리기로 복원돼야 한다");
+});
+
+test("네모 영역 취소와 읽기 전용 전환은 미리보기를 원래 선택 상태로 되돌린다", () => {
+  const result = runWithPageDom(WRITER_PAGE_IDS, "", {
+    pathname: "/schedule-maker/room.html",
+    bodyClasses: ["online-room-page"],
+  });
+  const grid = result.elements.get("scheduleGrid");
+  const slotElement = (index) => descendantsMatching(
+    grid,
+    (element) => element.dataset?.index === String(index),
+  )[0];
+  const anchor = slotIndex(9, 0);
+  const end = slotIndex(11, 2);
+  result.elements.get("paintModeRectangle").checked = true;
+  result.elements.get("paintModeRectangle").listeners.get("change")();
+
+  grid.listeners.get("pointerdown")({
+    target: slotElement(anchor),
+    button: 0,
+    pointerId: 3,
+    preventDefault() {},
+  });
+  result.setPointedElement(slotElement(end));
+  result.documentListeners.get("pointermove")({
+    pointerId: 3,
+    clientX: 1,
+    clientY: 1,
+    preventDefault() {},
+  });
+  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+  result.documentListeners.get("pointercancel")({ pointerId: 3 });
+  assert.equal(countSelected(result.app.getSchedule().slots), 0);
+  assert.equal(result.elements.get("undoButton").disabled, true, "취소한 미리보기는 실행 취소 기록을 남기지 않아야 한다");
+
+  result.app.setScheduleReadOnly(true);
+  assert.equal(result.elements.get("paintModeBrush").disabled, true);
+  assert.equal(result.elements.get("paintModeRectangle").disabled, true);
+  grid.listeners.get("pointerdown")({
+    target: slotElement(anchor),
+    button: 0,
+    pointerId: 4,
+    preventDefault() {},
+  });
+  assert.equal(countSelected(result.app.getSchedule().slots), 0);
 });
 
 test("손상된 작성 초안은 원문을 격리하고 초기화 전 자동 저장으로 덮지 않는다", () => {

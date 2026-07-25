@@ -190,6 +190,46 @@
     return Array.from({ length: DAYS.length }, (_value, offset) => (start + offset) % DAYS.length);
   }
 
+  function visibleSlotCoordinates(index, startHour = 0, startDay = 0) {
+    if (!Number.isInteger(index) || index < 0 || index >= SLOT_COUNT) {
+      throw new RangeError("시간표 칸 인덱스가 범위를 벗어났습니다.");
+    }
+    const { hour, day } = slotCoordinates(index);
+    return {
+      row: (hour - normalizeStartHour(startHour) + HOURS) % HOURS,
+      column: (day - normalizeStartDay(startDay) + DAYS.length) % DAYS.length,
+    };
+  }
+
+  function slotIndexAtVisibleCoordinates(row, column, startHour = 0, startDay = 0) {
+    if (!Number.isInteger(row) || row < 0 || row >= HOURS) {
+      throw new RangeError("시간표 행 좌표가 범위를 벗어났습니다.");
+    }
+    if (!Number.isInteger(column) || column < 0 || column >= DAYS.length) {
+      throw new RangeError("시간표 열 좌표가 범위를 벗어났습니다.");
+    }
+    return slotIndex(
+      (normalizeStartHour(startHour) + row) % HOURS,
+      (normalizeStartDay(startDay) + column) % DAYS.length,
+    );
+  }
+
+  function rectangleSlotIndexes(anchorIndex, endIndex, startHour = 0, startDay = 0) {
+    const anchor = visibleSlotCoordinates(anchorIndex, startHour, startDay);
+    const end = visibleSlotCoordinates(endIndex, startHour, startDay);
+    const firstRow = Math.min(anchor.row, end.row);
+    const lastRow = Math.max(anchor.row, end.row);
+    const firstColumn = Math.min(anchor.column, end.column);
+    const lastColumn = Math.max(anchor.column, end.column);
+    const indexes = [];
+    for (let row = firstRow; row <= lastRow; row += 1) {
+      for (let column = firstColumn; column <= lastColumn; column += 1) {
+        indexes.push(slotIndexAtVisibleCoordinates(row, column, startHour, startDay));
+      }
+    }
+    return indexes;
+  }
+
   const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
   function calendarDateParts(value) {
@@ -961,6 +1001,9 @@
       clear: document.querySelector("#clearButton"),
       reset: document.querySelector("#resetButton"),
       live: document.querySelector("#liveRegion"),
+      paintModeBrush: document.querySelector("#paintModeBrush"),
+      paintModeRectangle: document.querySelector("#paintModeRectangle"),
+      paintModeHelp: document.querySelector("#paintModeHelpText"),
       linkButton: document.querySelector("#linkButton"),
       linkLabel: document.querySelector("#linkLabel"),
       textButton: document.querySelector("#textButton"),
@@ -1008,6 +1051,7 @@
     let timeButtons = [];
     let rovingIndex = slotIndex(9, 0);
     let dragging = null;
+    let paintMode = elements.paintModeRectangle?.checked ? "rectangle" : "brush";
     let toastTimer;
     let initialMessage = "";
     let draftRecoveryLocked = false;
@@ -1466,7 +1510,7 @@
     }
 
     function rebuildScheduleGrid() {
-      dragging = null;
+      if (dragging) cancelDrag();
       rovingIndex = slotIndex(currentStartHour(), currentStartDay());
       createGrid();
       renderAll();
@@ -1474,6 +1518,7 @@
     }
 
     async function resetSchedule() {
+      if (dragging) cancelDrag();
       const hasChanges = countSelected(slots) > 0 ||
         history.length > 0 ||
         elements.title.value.trim() !== "" ||
@@ -1495,7 +1540,6 @@
       slots = createSlots();
       activeSavedScheduleId = null;
       history = [];
-      dragging = null;
       elements.title.value = "";
       if (!onlineRoomMode) elements.timezone.value = detectedTimezone;
       elements.startHour.value = String(resetStartHour);
@@ -1547,8 +1591,16 @@
       return target?.closest?.(".slot") || null;
     }
 
+    function clearDragPresentation(indexes) {
+      indexes.forEach((index) => {
+        const element = slotElements[index];
+        if (!element) return;
+        element.classList.remove("drag-touched", "rectangle-preview", "erase-preview");
+      });
+    }
+
     function paintSlot(element) {
-      if (!dragging || !element) return;
+      if (!dragging || dragging.mode !== "brush" || !element) return;
       const index = Number(element.dataset.index);
       if (dragging.touched.has(index)) return;
       dragging.touched.add(index);
@@ -1558,38 +1610,112 @@
       updateStatus();
     }
 
+    function previewRectangle(element) {
+      if (!dragging || dragging.mode !== "rectangle" || !element) return;
+      const endIndex = Number(element.dataset.index);
+      if (dragging.currentIndex === endIndex) return;
+      const nextTouched = new Set(rectangleSlotIndexes(
+        dragging.anchorIndex,
+        endIndex,
+        currentStartHour(),
+        currentStartDay(),
+      ));
+      const affected = new Set([...dragging.touched, ...nextTouched]);
+      affected.forEach((index) => {
+        setSelected(slots, index, isSelected(dragging.before, index));
+      });
+      nextTouched.forEach((index) => {
+        setSelected(slots, index, dragging.paintValue);
+      });
+      affected.forEach((index) => {
+        const slot = slotElements[index];
+        updateSlotElement(index);
+        if (!slot) return;
+        slot.classList.toggle("drag-touched", nextTouched.has(index));
+        slot.classList.toggle("rectangle-preview", nextTouched.has(index));
+        slot.classList.toggle("erase-preview", nextTouched.has(index) && !dragging.paintValue);
+      });
+      dragging.currentIndex = endIndex;
+      dragging.touched = nextTouched;
+      updateStatus();
+    }
+
     function startDrag(event) {
       const slot = event.target.closest(".slot");
-      if (!slot || event.button !== 0) return;
+      if (!slot || event.button !== 0 || scheduleReadOnly || dragging) return;
       event.preventDefault();
       const index = Number(slot.dataset.index);
       setRovingFocus(index, false);
       slot.focus({ preventScroll: true });
       dragging = {
         pointerId: event.pointerId,
+        mode: paintMode,
+        anchorIndex: index,
+        currentIndex: null,
         paintValue: !isSelected(slots, index),
         before: slots.slice(),
         touched: new Set(),
       };
-      paintSlot(slot);
+      try {
+        slot.setPointerCapture?.(event.pointerId);
+      } catch (_error) {
+        // 문서 수준 포인터 이벤트로 계속 추적할 수 있다.
+      }
+      if (dragging.mode === "rectangle") previewRectangle(slot);
+      else paintSlot(slot);
     }
 
     function continueDrag(event) {
       if (!dragging || event.pointerId !== dragging.pointerId) return;
       event.preventDefault();
-      paintSlot(slotFromPoint(event));
+      const slot = slotFromPoint(event);
+      if (dragging.mode === "rectangle") previewRectangle(slot);
+      else paintSlot(slot);
     }
 
     function finishDrag(event) {
       if (!dragging || event.pointerId !== dragging.pointerId) return;
       const completed = dragging;
       dragging = null;
-      completed.touched.forEach((index) => slotElements[index].classList.remove("drag-touched"));
+      clearDragPresentation(completed.touched);
       if (!pushHistory(completed.before)) return;
       updateHeaders();
       updateStatus();
       saveDraft();
-      announce(`${completed.touched.size}칸을 ${completed.paintValue ? "선택했습니다" : "지웠습니다"}.`);
+      announce(
+        `${completed.mode === "rectangle" ? "네모 영역 " : ""}${completed.touched.size}칸을 ${
+          completed.paintValue ? "선택했습니다" : "지웠습니다"
+        }.`,
+      );
+    }
+
+    function cancelDrag(event) {
+      if (!dragging || (event?.pointerId !== undefined && event.pointerId !== dragging.pointerId)) return;
+      const cancelled = dragging;
+      dragging = null;
+      slots = cancelled.before.slice();
+      cancelled.touched.forEach((index) => updateSlotElement(index));
+      clearDragPresentation(cancelled.touched);
+      updateHeaders();
+      updateStatus();
+    }
+
+    function setPaintMode(nextMode, options = {}) {
+      const normalized = nextMode === "rectangle" ? "rectangle" : "brush";
+      if (dragging) cancelDrag();
+      paintMode = normalized;
+      if (elements.paintModeBrush) elements.paintModeBrush.checked = paintMode === "brush";
+      if (elements.paintModeRectangle) elements.paintModeRectangle.checked = paintMode === "rectangle";
+      if (elements.paintModeHelp) {
+        elements.paintModeHelp.textContent = paintMode === "rectangle"
+          ? "시작 칸부터 끝 칸까지 네모로 칠하거나 지워요"
+          : "지나는 칸을 이어서 칠하거나 지워요";
+      }
+      if (options.announce !== false) {
+        announce(paintMode === "rectangle"
+          ? "네모 영역 칠하기로 바꿨습니다."
+          : "이어 칠하기로 바꿨습니다.");
+      }
     }
 
     function applyPreset(preset) {
@@ -2620,6 +2746,7 @@
 
     function applyExternalSchedule(schedule = {}) {
       if (!elements.grid) return false;
+      if (dragging) cancelDrag();
       scheduleViewStartDate = normalizeCalendarDate(schedule.startDate);
       const nextSlots = schedule.slots instanceof Uint8Array
         ? schedule.slots.slice()
@@ -2628,7 +2755,6 @@
           : createSlots();
       slots = nextSlots;
       history = [];
-      dragging = null;
       if (elements.title) elements.title.value = String(schedule.title ?? "").trim().slice(0, 60);
       if (elements.timezone) {
         elements.timezone.value = cleanMeta(schedule.timezone, detectedTimezone, 40);
@@ -2657,8 +2783,11 @@
     }
 
     function setScheduleReadOnly(readOnly = true) {
+      if (readOnly && dragging) cancelDrag();
       scheduleReadOnly = Boolean(readOnly);
       if (elements.title) elements.title.readOnly = scheduleReadOnly;
+      if (elements.paintModeBrush) elements.paintModeBrush.disabled = scheduleReadOnly;
+      if (elements.paintModeRectangle) elements.paintModeRectangle.disabled = scheduleReadOnly;
       slotElements.forEach((element) => {
         element.disabled = scheduleReadOnly;
       });
@@ -2704,15 +2833,24 @@
         window.location.replace("./compare.html");
         return true;
       }
+      setPaintMode(paintMode, { announce: false });
       if (loadInitialState()) return true;
       rovingIndex = slotIndex(currentStartHour(), currentStartDay());
       createGrid();
       renderAll();
 
       elements.grid.addEventListener("pointerdown", startDrag);
+      elements.grid.addEventListener("lostpointercapture", cancelDrag);
       document.addEventListener("pointermove", continueDrag, { passive: false });
       document.addEventListener("pointerup", finishDrag);
-      document.addEventListener("pointercancel", finishDrag);
+      document.addEventListener("pointercancel", cancelDrag);
+
+      elements.paintModeBrush?.addEventListener("change", () => {
+        if (elements.paintModeBrush.checked) setPaintMode("brush");
+      });
+      elements.paintModeRectangle?.addEventListener("change", () => {
+        if (elements.paintModeRectangle.checked) setPaintMode("rectangle");
+      });
 
       document.querySelectorAll("[data-preset]").forEach((button) => {
         button.addEventListener("click", () => applyPreset(button.dataset.preset));
@@ -2907,6 +3045,9 @@
     displayHours,
     normalizeStartDay,
     displayDayIndexes,
+    visibleSlotCoordinates,
+    slotIndexAtVisibleCoordinates,
+    rectangleSlotIndexes,
     normalizeCalendarDate,
     addCalendarDays,
     calendarWeekday,
