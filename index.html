@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·BiS 현황표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음"
     />
     <meta name="theme-color" content="#f4f1e8" />
     <meta property="og:type" content="website" />
@@ -14,14 +14,14 @@
     <meta property="og:title" content="작은 도구함 | 한글 아스키 테이블·일정표 웹 도구" />
     <meta
       property="og:description"
-      content="한글 아스키 테이블 생성기부터 일정표와 생활 기록까지, 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 현황과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <meta property="og:url" content="https://huis-snow.github.io/tools/" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="작은 도구함 | 한글 아스키 테이블·일정표 웹 도구" />
     <meta
       name="twitter:description"
-      content="한글 아스키 테이블 생성기부터 일정표와 생활 기록까지, 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 현황과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <title>작은 도구함 | 한글 아스키 테이블·일정표 웹 도구</title>
     <link rel="canonical" href="https://huis-snow.github.io/tools/" />
@@ -33,7 +33,7 @@
         "@type": "WebSite",
         "name": "작은 도구함",
         "url": "https://huis-snow.github.io/tools/",
-        "description": "한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음",
+        "description": "한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·BiS 현황표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음",
         "inLanguage": "ko-KR"
       }
     </script>
@@ -197,7 +197,7 @@
       <section class="tools-section" id="tools" aria-labelledby="tools-title">
         <div class="section-heading">
           <div>
-            <p>TOOLS / 05</p>
+            <p>TOOLS / 06</p>
             <h2 id="tools-title">지금 쓸 수 있는 도구</h2>
           </div>
           <span>도구는 천천히 하나씩 늘어납니다.</span>
@@ -347,10 +347,40 @@
             </div>
           </a>
 
+          <a class="tool-card active-card" href="./bis-maker/">
+            <div class="card-topline">
+              <span class="status"><i></i> 사용 가능</span>
+              <span class="card-index">006</span>
+            </div>
+            <div class="card-preview bis-preview" aria-hidden="true">
+              <div class="mini-bis">
+                <div class="mini-bis-head">
+                  <strong>BiS PROGRESS</strong>
+                  <span>8명 취합</span>
+                </div>
+                <div class="mini-bis-grid">
+                  <b>부위</b><b>MT</b><b>ST</b><b>MH</b><b>SH</b><b>D1</b><b>D2</b><b>D3</b><b>D4</b>
+                  <em>무기</em><i class="done"></i><i class="raid"></i><i class="upgrade"></i><i class="done"></i><i class="raid"></i><i class="done"></i><i class="upgrade"></i><i class="raid"></i>
+                  <em>몸통</em><i class="raid"></i><i class="done"></i><i class="done"></i><i class="upgrade"></i><i class="done"></i><i class="raid"></i><i class="done"></i><i class="upgrade"></i>
+                  <em>반지</em><i class="done"></i><i class="upgrade"></i><i class="raid"></i><i class="done"></i><i class="upgrade"></i><i class="done"></i><i class="raid"></i><i class="done"></i>
+                </div>
+              </div>
+            </div>
+            <div class="card-content">
+              <p>FFXIV · BIS · LOOT</p>
+              <h3>비스표 <span aria-hidden="true">↗</span></h3>
+              <p class="description">8인 공대의 BiS 현황을 취합하고 이번 주 파밍 드랍을 자동 분배하는 도구</p>
+            </div>
+            <div class="card-footer">
+              <span>링크 하나로 8명 실시간 취합</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
+
           <article class="tool-card empty-card" aria-label="다음 도구를 준비 중입니다">
             <div class="card-topline">
               <span class="status waiting"><i></i> 다음 도구</span>
-              <span class="card-index">006</span>
+              <span class="card-index">007</span>
             </div>
             <div class="empty-mark" aria-hidden="true"><span>+</span></div>
             <div class="card-content">
@@ -367,7 +397,7 @@
         <div>
           <span><b>01</b> 설치 없이</span>
           <span><b>02</b> 설명서 없이</span>
-          <span><b>03</b> 데이터 전송 없이</span>
+          <span><b>03</b> 저장 위치를 투명하게</span>
         </div>
       </section>
     </main>

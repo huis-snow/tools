@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="파이널판타지14 8인 공대의 BiS 장비 현황을 한 표로 취합하고, 필요한 영식 장비와 보강 재료의 주간 분배를 자동으로 추천하는 비스표"
+    />
+    <meta name="theme-color" content="#edf2e8" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="FF14 8인 공대 BiS 현황·주간 분배 | 비스표" />
+    <meta
+      property="og:description"
+      content="8명의 BiS 진행 상황을 취합하고 이번 주 영식 드랍 아이템의 분배 대상을 자동으로 추천해요."
+    />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/bis-maker/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="FF14 8인 공대 BiS 현황·주간 분배 | 비스표" />
+    <meta
+      name="twitter:description"
+      content="파이널판타지14 8인 공대의 BiS 현황과 주간 파밍 드랍 분배를 한곳에서 관리하세요."
+    />
+    <title>파이널판타지14 공대 BiS 현황·주간 분배 | 비스표</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/bis-maker/" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "비스표",
+        "url": "https://huis-snow.github.io/tools/bis-maker/",
+        "description": "파이널판타지14 8인 공대 BiS 장비 현황 취합 및 주간 영식 드랍 분배 도구",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web"
+      }
+    </script>
+  </head>
+  <body id="top" class="bis-home-page">
+    <a class="skip-link" href="#bis-room-builder">비스표 만들기로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="비스표 홈">
+        <span class="brand-mark" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+        <span>비스표</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> 8인 장비 취합</span>
+    </header>
+
+    <main>
+      <section class="bis-hero" aria-labelledby="bis-hero-title">
+        <div class="bis-hero-copy">
+          <p class="eyebrow"><span></span> BEST IN SLOT, ALL IN ONE</p>
+          <h1 id="bis-hero-title">여덟 명의 장비를,<br /><em>한눈에.</em></h1>
+          <p>
+            각자 필요한 영식 장비와 보강 재료를 한 표에 모으세요.<br class="desktop-only" />
+            이번 주 드랍을 입력하면 누구에게 줄지도 자동으로 추천해요.
+          </p>
+          <a class="primary-link" href="#bis-room-builder">비스표 만들기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="bis-hero-board" aria-label="비스표의 세 가지 장비 상태 예시">
+          <div class="hero-board-head">
+            <span>FULL PARTY / BIS</span>
+            <strong>8 PEOPLE</strong>
+          </div>
+          <div class="hero-state-list">
+            <p><i class="state-complete" aria-hidden="true">✓</i><span><b>완료</b><small>더 이상 분배가 필요하지 않아요</small></span></p>
+            <p><i class="state-upgrade" aria-hidden="true">＋</i><span><b>보강템 필요</b><small>강화약·섬유·경화약이 필요해요</small></span></p>
+            <p><i class="state-raid" aria-hidden="true">◆</i><span><b>영식템 필요</b><small>해당 부위 장비 상자가 필요해요</small></span></p>
+          </div>
+          <div class="hero-flow" aria-hidden="true">
+            <span>8명 입력</span><i>→</i><span>현황 취합</span><i>→</i><span>분배 추천</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="bis-builder-section" id="bis-room-builder" aria-labelledby="bis-builder-title">
+        <div class="section-heading">
+          <div>
+            <p>01 / CREATE A BIS ROOM</p>
+            <h2 id="bis-builder-title">공대 비스표를 준비해요</h2>
+          </div>
+          <p>방장이 8명의 자리·닉네임·직업을 먼저 등록하면 공대원은 자기 자리의 장비 상태만 입력할 수 있어요.</p>
+        </div>
+
+        <aside class="setup-notice" id="bisSetupNotice" role="status" hidden>
+          <strong>Firebase 연결이 필요합니다</strong>
+          <p><a href="https://github.com/huis-snow/tools/blob/main/bis-maker/FIREBASE_SETUP.md">Firebase 연결 안내</a>를 따라 공개 웹 설정과 Google·익명 로그인을 연결해 주세요. 서비스 계정 키는 필요하지 않습니다.</p>
+        </aside>
+
+        <section class="auth-card" id="bisAuthCard" aria-labelledby="bisAuthTitle" aria-busy="true">
+          <div class="auth-identity">
+            <span class="google-mark" aria-hidden="true">G</span>
+            <div>
+              <p>ROOM OWNER ACCOUNT</p>
+              <strong id="bisAuthTitle">로그인 상태를 확인하고 있어요</strong>
+              <span id="bisAuthDescription">방을 만들고 관리할 때만 Google 로그인이 필요해요.</span>
+            </div>
+          </div>
+          <div class="auth-actions">
+            <a id="bisOwnedRoomsLink" href="#bis-owned-rooms" hidden>내 방 목록</a>
+            <button id="bisGoogleSignInButton" type="button" disabled>Google로 로그인</button>
+            <button id="bisGoogleSignOutButton" type="button" hidden>로그아웃</button>
+          </div>
+          <p class="action-status" id="bisAuthStatus" role="status" aria-live="polite" aria-atomic="true">
+            Firebase 인증 연결을 준비하고 있어요.
+          </p>
+        </section>
+
+        <form class="create-card" id="bisRoomCreateForm">
+          <div class="card-heading">
+            <span>STEP 01</span>
+            <div>
+              <h3>공대 정보</h3>
+              <p>레이드와 현재 주차는 나중에도 방장이 수정할 수 있어요.</p>
+            </div>
+          </div>
+
+          <div class="room-fields">
+            <label class="field" for="bisCreateTitle">
+              <span>공대명</span>
+              <input id="bisCreateTitle" name="title" type="text" maxlength="60" autocomplete="off" required />
+            </label>
+            <label class="field" for="bisCreateTier">
+              <span>레이드 / 시즌</span>
+              <input id="bisCreateTier" name="tier" type="text" maxlength="60" autocomplete="off" required />
+            </label>
+            <label class="field week-field" for="bisCreateWeek">
+              <span>현재 주차</span>
+              <span class="number-control"><input id="bisCreateWeek" name="week" type="number" min="1" max="99" value="1" required /><b>주차</b></span>
+            </label>
+          </div>
+
+          <div class="card-heading roster-heading">
+            <span>STEP 02</span>
+            <div>
+              <h3>8인 명단</h3>
+              <p>MT부터 D4까지 모든 자리에 닉네임과 직업을 입력해 주세요.</p>
+            </div>
+            <strong><span id="bisRosterFilledCount">0</span> / 8</strong>
+          </div>
+
+          <div class="roster-table-wrap">
+            <table class="roster-table">
+              <caption class="sr-only">자리별 공대원 닉네임과 직업 입력</caption>
+              <thead><tr><th scope="col">자리</th><th scope="col">닉네임</th><th scope="col">직업</th></tr></thead>
+              <tbody>
+                <tr data-seat="MT"><th scope="row"><b>MT</b><span>멘탱</span></th><td><label class="sr-only" for="bisRosterNicknameMT">MT 닉네임</label><input id="bisRosterNicknameMT" name="nickname-MT" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobMT">MT 직업</label><input id="bisRosterJobMT" name="job-MT" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="ST"><th scope="row"><b>ST</b><span>섭탱</span></th><td><label class="sr-only" for="bisRosterNicknameST">ST 닉네임</label><input id="bisRosterNicknameST" name="nickname-ST" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobST">ST 직업</label><input id="bisRosterJobST" name="job-ST" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="MH"><th scope="row"><b>MH</b><span>멘힐</span></th><td><label class="sr-only" for="bisRosterNicknameMH">MH 닉네임</label><input id="bisRosterNicknameMH" name="nickname-MH" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobMH">MH 직업</label><input id="bisRosterJobMH" name="job-MH" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="SH"><th scope="row"><b>SH</b><span>섭힐</span></th><td><label class="sr-only" for="bisRosterNicknameSH">SH 닉네임</label><input id="bisRosterNicknameSH" name="nickname-SH" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobSH">SH 직업</label><input id="bisRosterJobSH" name="job-SH" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D1"><th scope="row"><b>D1</b><span>근딜</span></th><td><label class="sr-only" for="bisRosterNicknameD1">D1 닉네임</label><input id="bisRosterNicknameD1" name="nickname-D1" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobD1">D1 직업</label><input id="bisRosterJobD1" name="job-D1" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D2"><th scope="row"><b>D2</b><span>근딜</span></th><td><label class="sr-only" for="bisRosterNicknameD2">D2 닉네임</label><input id="bisRosterNicknameD2" name="nickname-D2" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobD2">D2 직업</label><input id="bisRosterJobD2" name="job-D2" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D3"><th scope="row"><b>D3</b><span>유격대</span></th><td><label class="sr-only" for="bisRosterNicknameD3">D3 닉네임</label><input id="bisRosterNicknameD3" name="nickname-D3" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobD3">D3 직업</label><input id="bisRosterJobD3" name="job-D3" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D4"><th scope="row"><b>D4</b><span>캐스터</span></th><td><label class="sr-only" for="bisRosterNicknameD4">D4 닉네임</label><input id="bisRosterNicknameD4" name="nickname-D4" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="bisRosterJobD4">D4 직업</label><input id="bisRosterJobD4" name="job-D4" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="create-actions">
+            <p>방 링크를 아는 사람은 8명의 닉네임·직업·장비 현황을 볼 수 있어요.</p>
+            <button id="bisCreateButton" class="primary-button" type="submit" disabled>비스표 방 만들기 <span aria-hidden="true">→</span></button>
+          </div>
+          <p class="action-status" id="bisCreateStatus" role="status" aria-live="polite" aria-atomic="true">
+            Firebase 연결을 확인하고 있어요.
+          </p>
+        </form>
+
+        <section class="owned-rooms" id="bis-owned-rooms" aria-labelledby="bisOwnedRoomsTitle" aria-busy="false" hidden>
+          <div class="owned-heading">
+            <div>
+              <p>MY BIS ROOMS</p>
+              <h3 id="bisOwnedRoomsTitle" tabindex="-1">내 비스표 방</h3>
+              <span>이 Google 계정으로 만든 방을 다른 기기에서도 다시 열 수 있어요.</span>
+            </div>
+            <div><strong>최근 <span id="bisOwnedRoomCount">0</span>개</strong><button id="bisOwnedRoomsRefreshButton" type="button">새로고침</button></div>
+          </div>
+          <ul class="owned-list" id="bisOwnedRoomList"></ul>
+          <div class="owned-empty" id="bisOwnedRoomsEmpty" hidden><strong>아직 만든 비스표 방이 없어요</strong><p>위에서 8인 명단을 입력해 첫 방을 만들어 보세요.</p></div>
+          <p class="action-status" id="bisOwnedRoomsStatus" role="status" aria-live="polite" aria-atomic="true">내 방을 불러올 준비가 됐어요.</p>
+        </section>
+      </section>
+
+      <section class="how-section" aria-labelledby="bis-how-title">
+        <div class="section-heading">
+          <div><p>02 / HOW IT WORKS</p><h2 id="bis-how-title">입력부터 분배까지</h2></div>
+          <p>복잡한 장비 이름 대신 세 가지 상태만 고르면 돼요.</p>
+        </div>
+        <ol class="how-list">
+          <li><span>01</span><strong>방장이 8인 명단 등록</strong><p>MT·ST·MH·SH·D1·D2·D3·D4 자리를 먼저 정해요.</p></li>
+          <li><span>02</span><strong>각자 11개 부위 입력</strong><p>완료, 보강템 필요, 영식템 필요 중 하나를 골라 저장해요.</p></li>
+          <li><span>03</span><strong>주간 드랍 자동 분배</strong><p>드랍 수량을 넣으면 아직 필요한 공대원을 우선 추천해요.</p></li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./" aria-label="비스표 홈">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+        <span>비스표</span>
+      </a>
+      <p>FFXIV 8인 공대 BiS 현황 · 주간 분배</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <template id="bisOwnedRoomTemplate">
+      <li>
+        <article class="owned-item">
+          <div>
+            <p><span data-field="state">입력 중</span><span data-field="progress">0 / 8명</span></p>
+            <h4 data-field="title">비스표 방</h4>
+            <span data-field="meta"></span>
+            <time data-field="updated"></time>
+          </div>
+          <nav aria-label="비스표 방 바로가기">
+            <a data-action="input" href="./room.html">입력 열기</a>
+            <a data-action="summary" href="./summary.html">전체 현황</a>
+            <button data-action="copy" type="button">링크 복사</button>
+          </nav>
+        </article>
+      </li>
+    </template>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./firebase-room-store.js"></script>
+    <script type="module" src="./index-page.js"></script>
+  </body>
+</html>

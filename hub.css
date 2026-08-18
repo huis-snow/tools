@@ -1206,6 +1206,93 @@ footer {
   font-style: normal;
 }
 
+.bis-preview {
+  padding: 20px 22px;
+}
+
+.mini-bis {
+  width: min(100%, 390px);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.mini-bis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: var(--mono);
+}
+
+.mini-bis-head strong {
+  color: #fffdf6;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.mini-bis-head span {
+  color: #f9946f;
+  font-size: 7px;
+}
+
+.mini-bis-grid {
+  display: grid;
+  grid-template-columns: 38px repeat(8, minmax(0, 1fr));
+}
+
+.mini-bis-grid b,
+.mini-bis-grid em,
+.mini-bis-grid i {
+  min-width: 0;
+  min-height: 25px;
+  display: grid;
+  place-items: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #a7b7b0;
+  font: 6px var(--mono);
+  font-style: normal;
+}
+
+.mini-bis-grid > :nth-child(9n) {
+  border-right: 0;
+}
+
+.mini-bis-grid > :nth-last-child(-n + 9) {
+  border-bottom: 0;
+}
+
+.mini-bis-grid em {
+  justify-content: start;
+  padding-left: 6px;
+  color: #d7e2dc;
+}
+
+.mini-bis-grid i::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+
+.mini-bis-grid i.done {
+  color: #83c992;
+}
+
+.mini-bis-grid i.done::before {
+  background: currentColor;
+}
+
+.mini-bis-grid i.upgrade {
+  color: #e5c96d;
+}
+
+.mini-bis-grid i.raid {
+  color: #f9946f;
+}
+
 .card-content > p:first-child {
   margin: 0 0 8px;
   font-size: 9px;

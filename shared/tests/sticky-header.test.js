@@ -12,6 +12,7 @@ const STYLE_FILES = [
   "schedule-maker/styles.css",
   "habit-maker/styles.css",
   "raid-maker/styles.css",
+  "bis-maker/styles.css",
   "daily-log/styles.css",
 ];
 const PAGE_FILES = [
@@ -23,6 +24,9 @@ const PAGE_FILES = [
   "schedule-maker/saved.html",
   "habit-maker/index.html",
   "raid-maker/index.html",
+  "bis-maker/index.html",
+  "bis-maker/room.html",
+  "bis-maker/summary.html",
   "daily-log/index.html",
 ];
 

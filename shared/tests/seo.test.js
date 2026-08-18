@@ -27,6 +27,17 @@ const PAGES = [
   },
   { file: "habit-maker/index.html", url: "https://huis-snow.github.io/tools/habit-maker/", indexed: true },
   { file: "raid-maker/index.html", url: "https://huis-snow.github.io/tools/raid-maker/", indexed: true },
+  { file: "bis-maker/index.html", url: "https://huis-snow.github.io/tools/bis-maker/", indexed: true },
+  {
+    file: "bis-maker/room.html",
+    url: "https://huis-snow.github.io/tools/bis-maker/room.html",
+    indexed: false,
+  },
+  {
+    file: "bis-maker/summary.html",
+    url: "https://huis-snow.github.io/tools/bis-maker/summary.html",
+    indexed: false,
+  },
   { file: "daily-log/index.html", url: "https://huis-snow.github.io/tools/daily-log/", indexed: true },
 ];
 

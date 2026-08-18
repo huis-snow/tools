@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="공대원이 자신의 11개 BiS 장비 부위를 완료·보강템 필요·영식템 필요로 입력하는 비스표 방" />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#edf2e8" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="내 BiS 입력 | 비스표" />
+    <meta property="og:description" content="내 자리를 고르고 11개 장비 부위의 BiS 진행 상황을 입력하세요." />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/bis-maker/room.html" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="내 BiS 입력 | 비스표" />
+    <meta name="twitter:description" content="내 자리를 고르고 11개 장비 부위의 BiS 진행 상황을 입력하세요." />
+    <title>내 BiS 입력 | 비스표</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/bis-maker/room.html" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body id="top" class="bis-room-page">
+    <a class="skip-link" href="#bisMemberEditor">내 BiS 입력으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="./"><span aria-hidden="true">←</span> 비스표 홈</a>
+      <a class="brand" href="./" aria-label="비스표 홈">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+        <span>비스표</span>
+      </a>
+      <a class="header-link" id="bisHeaderSummaryLink" href="./summary.html">전체 현황 <span aria-hidden="true">→</span></a>
+    </header>
+
+    <main class="room-main">
+      <section class="room-banner" id="bisRoomBanner" aria-labelledby="bisRoomTitle" aria-busy="true">
+        <div class="room-banner-copy">
+          <p>PARTY BIS ROOM <span id="bisRoomState" data-state="loading">연결 중</span></p>
+          <h1 id="bisRoomTitle" tabindex="-1">비스표 방을 불러오는 중</h1>
+          <p id="bisRoomMeta">레이드와 주차 정보를 확인하고 있어요.</p>
+        </div>
+        <div class="room-progress" aria-label="장비 현황을 저장한 공대원 수">
+          <strong id="bisSubmittedMemberCount">0</strong><span>/ 8명 입력</span>
+        </div>
+        <div class="room-banner-actions">
+          <a class="primary-button" id="bisSummaryLink" href="./summary.html">전체 현황 보기 <span aria-hidden="true">→</span></a>
+        </div>
+        <p class="action-status" id="bisRoomStatus" role="status" aria-live="polite" aria-atomic="true">Firebase에서 방 정보를 확인하고 있어요.</p>
+        <div class="missing-actions" id="bisRoomMissingActions" hidden>
+          <a href="./">새 비스표 방 만들기</a>
+          <a href="../">작은 도구함으로 돌아가기</a>
+        </div>
+      </section>
+
+      <div class="room-workspace" id="bisRoomWorkspace" hidden>
+        <section class="member-picker-section" aria-labelledby="bisMemberPickerTitle">
+          <div class="section-heading compact-heading">
+            <div><p>01 / CHOOSE YOUR SEAT</p><h2 id="bisMemberPickerTitle">내 자리를 골라요</h2></div>
+            <p>다른 사람이 사용 중인 자리는 선택할 수 없어요. 이전에 입력한 자리는 이 브라우저에서 자동으로 찾아요.</p>
+          </div>
+          <div class="member-picker" id="bisMemberPicker" role="radiogroup" aria-labelledby="bisMemberPickerTitle">
+            <button type="button" role="radio" aria-checked="false" data-seat="MT"><b>MT</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+            <button type="button" role="radio" aria-checked="false" data-seat="ST"><b>ST</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+            <button type="button" role="radio" aria-checked="false" data-seat="MH"><b>MH</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+            <button type="button" role="radio" aria-checked="false" data-seat="SH"><b>SH</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+            <button type="button" role="radio" aria-checked="false" data-seat="D1"><b>D1</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+            <button type="button" role="radio" aria-checked="false" data-seat="D2"><b>D2</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+            <button type="button" role="radio" aria-checked="false" data-seat="D3"><b>D3</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+            <button type="button" role="radio" aria-checked="false" data-seat="D4"><b>D4</b><span data-field="nickname">—</span><small data-field="job">—</small><i data-field="claim-state">선택 가능</i></button>
+          </div>
+          <p class="action-status" id="bisMemberPickerStatus" role="status" aria-live="polite" aria-atomic="true">공대 명단을 불러오고 있어요.</p>
+        </section>
+
+        <section class="gear-editor-section" id="bisMemberEditor" aria-labelledby="bisMemberEditorTitle">
+          <div class="section-heading compact-heading">
+            <div><p>02 / MARK YOUR GEAR</p><h2 id="bisMemberEditorTitle">11개 부위의 상태를 골라요</h2></div>
+            <p>각 부위의 최종 BiS 기준으로 하나씩 선택해 주세요. 모든 부위를 선택해야 저장할 수 있어요.</p>
+          </div>
+
+          <div class="selected-member" id="bisSelectedMember" hidden>
+            <span id="bisSelectedSeat">—</span>
+            <div><strong id="bisSelectedNickname">자리를 먼저 선택해 주세요</strong><small id="bisSelectedJob"></small></div>
+            <button id="bisChangeMemberButton" type="button">자리 다시 선택</button>
+          </div>
+
+          <form class="gear-form" id="bisGearForm" aria-describedby="bisGearLegend">
+            <div class="gear-legend" id="bisGearLegend">
+              <span class="complete"><i aria-hidden="true">✓</i><b>완료</b></span>
+              <span class="upgrade"><i aria-hidden="true">＋</i><b>보강템 필요</b></span>
+              <span class="raid"><i aria-hidden="true">◆</i><b>영식템 필요</b></span>
+            </div>
+
+            <div class="gear-grid" id="bisGearGrid">
+              <fieldset class="gear-card" data-slot="weapon"><legend><span aria-hidden="true">⚔</span><b>무기</b></legend><div class="gear-options"><label><input type="radio" name="gear-weapon" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-weapon" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-weapon" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="head"><legend><span aria-hidden="true">◇</span><b>머리</b></legend><div class="gear-options"><label><input type="radio" name="gear-head" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-head" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-head" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="body"><legend><span aria-hidden="true">▣</span><b>몸통</b></legend><div class="gear-options"><label><input type="radio" name="gear-body" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-body" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-body" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="hands"><legend><span aria-hidden="true">✦</span><b>손</b></legend><div class="gear-options"><label><input type="radio" name="gear-hands" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-hands" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-hands" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="legs"><legend><span aria-hidden="true">▥</span><b>다리</b></legend><div class="gear-options"><label><input type="radio" name="gear-legs" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-legs" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-legs" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="feet"><legend><span aria-hidden="true">⌟</span><b>발</b></legend><div class="gear-options"><label><input type="radio" name="gear-feet" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-feet" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-feet" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="earrings"><legend><span aria-hidden="true">◉</span><b>귀걸이</b></legend><div class="gear-options"><label><input type="radio" name="gear-earrings" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-earrings" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-earrings" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="necklace"><legend><span aria-hidden="true">○</span><b>목걸이</b></legend><div class="gear-options"><label><input type="radio" name="gear-necklace" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-necklace" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-necklace" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="bracelets"><legend><span aria-hidden="true">◎</span><b>팔찌</b></legend><div class="gear-options"><label><input type="radio" name="gear-bracelets" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-bracelets" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-bracelets" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="ring1"><legend><span aria-hidden="true">◌</span><b>반지 1</b></legend><div class="gear-options"><label><input type="radio" name="gear-ring1" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-ring1" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-ring1" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+              <fieldset class="gear-card" data-slot="ring2"><legend><span aria-hidden="true">◌</span><b>반지 2</b></legend><div class="gear-options"><label><input type="radio" name="gear-ring2" value="complete" required /><span>완료</span></label><label><input type="radio" name="gear-ring2" value="upgrade" /><span>보강템 필요</span></label><label><input type="radio" name="gear-ring2" value="raid" /><span>영식템 필요</span></label></div></fieldset>
+            </div>
+
+            <div class="save-bar">
+              <div><strong><span id="bisSelectedGearCount">0</span> / 11개 선택</strong><p>저장한 뒤에도 같은 브라우저에서 다시 수정할 수 있어요.</p></div>
+              <button class="primary-button" id="bisMemberSaveButton" type="submit" disabled>내 자리로 선택하고 저장 <span aria-hidden="true">→</span></button>
+            </div>
+            <p class="action-status" id="bisMemberSaveStatus" role="status" aria-live="polite" aria-atomic="true">내 자리를 먼저 선택해 주세요.</p>
+          </form>
+
+          <p class="privacy-note"><span aria-hidden="true">●</span> 닉네임·직업과 선택한 장비 상태는 Firebase에 저장됩니다. 방 링크를 아는 사람은 8명의 전체 현황을 볼 수 있어요.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./" aria-label="비스표 홈"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span><span>비스표</span></a>
+      <p>내 BiS 장비 현황 입력</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./firebase-room-store.js"></script>
+    <script type="module" src="./room-page.js"></script>
+  </body>
+</html>

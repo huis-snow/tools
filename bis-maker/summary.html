@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="파이널판타지14 8인 공대의 11개 BiS 장비 부위 현황과 주간 영식 드랍 분배를 확인하는 비스표 취합 페이지" />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#edf2e8" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="8인 BiS 전체 현황·주간 분배 | 비스표" />
+    <meta property="og:description" content="8명의 장비 상태를 한 표에서 확인하고 이번 주 드랍 아이템의 분배 대상을 추천받으세요." />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/bis-maker/summary.html" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="8인 BiS 전체 현황·주간 분배 | 비스표" />
+    <meta name="twitter:description" content="8명의 장비 상태를 한 표에서 확인하고 이번 주 드랍 분배를 정하세요." />
+    <title>8인 BiS 전체 현황·주간 분배 | 비스표</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/bis-maker/summary.html" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body id="top" class="bis-summary-page">
+    <a class="skip-link" href="#bisSummaryTableSection">전체 BiS 현황으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" id="bisHeaderInputLink" href="./room.html"><span aria-hidden="true">←</span> 내 현황 입력</a>
+      <a class="brand" href="./" aria-label="비스표 홈"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span><span>비스표</span></a>
+      <a class="header-link" href="#bisDistributionSection">주간 분배 <span aria-hidden="true">↓</span></a>
+    </header>
+
+    <main class="summary-main">
+      <section class="room-banner summary-banner" id="bisSummaryBanner" aria-labelledby="bisSummaryTitle" aria-busy="true">
+        <div class="room-banner-copy">
+          <p>PARTY BIS SUMMARY <span id="bisSummaryRoomState" data-state="loading">연결 중</span></p>
+          <h1 id="bisSummaryTitle" tabindex="-1">전체 현황을 불러오는 중</h1>
+          <p id="bisSummaryMeta">레이드와 주차 정보를 확인하고 있어요.</p>
+        </div>
+        <div class="room-progress" aria-label="장비 현황을 저장한 공대원 수"><strong id="bisSummarySubmittedCount">0</strong><span>/ 8명 입력</span></div>
+        <p class="action-status" id="bisSummaryStatus" role="status" aria-live="polite" aria-atomic="true">Firebase에서 방 정보를 확인하고 있어요.</p>
+        <div class="missing-actions" id="bisSummaryMissingActions" hidden><a href="./">새 비스표 방 만들기</a><a href="../">작은 도구함으로 돌아가기</a></div>
+      </section>
+
+      <div class="summary-workspace" id="bisSummaryWorkspace" hidden>
+        <section class="owner-panel" id="bisOwnerPanel" aria-labelledby="bisOwnerPanelTitle" hidden>
+          <div class="owner-panel-copy"><p>ROOM OWNER</p><h2 id="bisOwnerPanelTitle">방장 관리</h2><span>입력 링크와 전체 현황 링크를 구분해서 공유할 수 있어요.</span></div>
+          <div class="owner-actions">
+            <button id="bisRoomLockButton" type="button">입력 마감</button>
+            <button id="bisCopyInputLinkButton" type="button">입력 링크 복사</button>
+            <button id="bisCopySummaryLinkButton" type="button">현황 링크 복사</button>
+          </div>
+          <form class="owner-settings-form" id="bisRoomSettingsForm">
+            <label for="bisOwnerTitleInput"><span>공대명</span><input id="bisOwnerTitleInput" type="text" maxlength="60" required /></label>
+            <label for="bisOwnerTierInput"><span>레이드 / 시즌</span><input id="bisOwnerTierInput" type="text" maxlength="60" required /></label>
+            <label class="owner-week-field" for="bisOwnerWeekInput"><span>현재 주차</span><input id="bisOwnerWeekInput" type="number" min="1" max="99" required /></label>
+            <button id="bisRoomSettingsSaveButton" type="submit">방 정보 저장</button>
+          </form>
+          <div class="release-claim-control">
+            <label for="bisReleaseMemberSelect">자리 점유 해제</label>
+            <select id="bisReleaseMemberSelect"><option value="">공대원 선택</option></select>
+            <button id="bisReleaseClaimButton" type="button" disabled>해제</button>
+          </div>
+          <button class="danger-button" id="bisRoomDeleteButton" type="button">방 삭제</button>
+          <p class="action-status" id="bisOwnerStatus" role="status" aria-live="polite" aria-atomic="true">방장 권한을 확인하고 있어요.</p>
+        </section>
+
+        <section class="summary-table-section" id="bisSummaryTableSection" aria-labelledby="bisSummaryTableTitle">
+          <div class="section-heading compact-heading">
+            <div><p>01 / PARTY PROGRESS</p><h2 id="bisSummaryTableTitle">8인 BiS 현황</h2></div>
+            <p>가로로 스크롤해 8명을 모두 확인할 수 있어요. 첫 열과 공대원 이름은 화면에 고정돼요.</p>
+          </div>
+
+          <div class="summary-toolbar">
+            <div class="overall-progress">
+              <div><span>전체 완료율</span><strong id="bisOverallProgressText">0%</strong></div>
+              <progress id="bisOverallProgress" max="88" value="0">0 / 88</progress>
+              <small><b id="bisCompletedGearCount">0</b> / 88개 부위 완료</small>
+            </div>
+            <div class="status-filter" role="group" aria-labelledby="bisFilterLabel">
+              <span id="bisFilterLabel">표 필터</span>
+              <button type="button" data-filter="all" aria-pressed="true">전체</button>
+              <button type="button" data-filter="incomplete" aria-pressed="false">필요한 것만</button>
+              <button type="button" data-filter="raid" aria-pressed="false">영식템</button>
+              <button type="button" data-filter="upgrade" aria-pressed="false">보강템</button>
+            </div>
+            <div class="summary-legend" aria-label="장비 상태 범례"><span class="complete"><i aria-hidden="true">✓</i> 완료</span><span class="upgrade"><i aria-hidden="true">＋</i> 보강템 필요</span><span class="raid"><i aria-hidden="true">◆</i> 영식템 필요</span><span class="empty"><i aria-hidden="true">·</i> 미입력</span></div>
+          </div>
+
+          <div class="bis-table-wrap" tabindex="0" role="region" aria-label="8인 BiS 현황표, 가로로 스크롤할 수 있음">
+            <table class="bis-table" id="bisSummaryTable">
+              <caption class="sr-only">장비 11개 부위와 MT부터 D4까지 8명의 BiS 진행 상태</caption>
+              <thead>
+                <tr>
+                  <th scope="col">장비 부위</th>
+                  <th scope="col" data-seat="MT"><b>MT</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                  <th scope="col" data-seat="ST"><b>ST</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                  <th scope="col" data-seat="MH"><b>MH</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                  <th scope="col" data-seat="SH"><b>SH</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                  <th scope="col" data-seat="D1"><b>D1</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                  <th scope="col" data-seat="D2"><b>D2</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                  <th scope="col" data-seat="D3"><b>D3</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                  <th scope="col" data-seat="D4"><b>D4</b><span data-field="nickname">—</span><small data-field="job">—</small></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-slot="weapon"><th scope="row"><span aria-hidden="true">⚔</span>무기</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="head"><th scope="row"><span aria-hidden="true">◇</span>머리</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="body"><th scope="row"><span aria-hidden="true">▣</span>몸통</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="hands"><th scope="row"><span aria-hidden="true">✦</span>손</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="legs"><th scope="row"><span aria-hidden="true">▥</span>다리</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="feet"><th scope="row"><span aria-hidden="true">⌟</span>발</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="earrings"><th scope="row"><span aria-hidden="true">◉</span>귀걸이</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="necklace"><th scope="row"><span aria-hidden="true">○</span>목걸이</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="bracelets"><th scope="row"><span aria-hidden="true">◎</span>팔찌</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="ring1"><th scope="row"><span aria-hidden="true">◌</span>반지 1</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+                <tr data-slot="ring2"><th scope="row"><span aria-hidden="true">◌</span>반지 2</th><td data-seat="MT"><span data-state="empty">미입력</span></td><td data-seat="ST"><span data-state="empty">미입력</span></td><td data-seat="MH"><span data-state="empty">미입력</span></td><td data-seat="SH"><span data-state="empty">미입력</span></td><td data-seat="D1"><span data-state="empty">미입력</span></td><td data-seat="D2"><span data-state="empty">미입력</span></td><td data-seat="D3"><span data-state="empty">미입력</span></td><td data-seat="D4"><span data-state="empty">미입력</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="image-actions">
+            <p>8인 전체 현황표와 저장된 주간 분배안을 이미지로 나눌 수 있어요.</p>
+            <button id="bisCopyImageButton" type="button"><span aria-hidden="true">▧</span><span id="bisCopyImageLabel">이미지 복사</span></button>
+            <button id="bisSavePngButton" type="button"><span aria-hidden="true">↓</span> PNG 저장</button>
+          </div>
+          <p class="action-status" id="bisImageStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+        </section>
+
+        <section class="distribution-section" id="bisDistributionSection" aria-labelledby="bisDistributionTitle">
+          <div class="section-heading compact-heading">
+            <div><p>02 / WEEKLY LOOT</p><h2 id="bisDistributionTitle">이번 주 드랍 분배</h2></div>
+            <p>실제로 나온 아이템 수를 입력하면 현재 BiS 상태에 맞는 공대원을 추천해요. 최종 배정은 직접 바꿀 수 있어요.</p>
+          </div>
+
+          <form id="bisDropForm" class="drop-panel">
+            <div class="drop-heading"><div><span>WEEKLY DROP</span><h3><b id="bisDistributionWeek">—</b>주차 드랍 입력</h3></div><button id="bisClearDropCountsButton" type="button">수량 초기화</button></div>
+            <div class="drop-grid" id="bisDropGrid">
+              <label data-drop-type="raid_weapon"><span><b>무기상자</b><small>무기</small></span><input name="drop-raid_weapon" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_head"><span><b>머리상자</b><small>머리</small></span><input name="drop-raid_head" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_body"><span><b>몸통상자</b><small>몸통</small></span><input name="drop-raid_body" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_hands"><span><b>손상자</b><small>손</small></span><input name="drop-raid_hands" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_legs"><span><b>다리상자</b><small>다리</small></span><input name="drop-raid_legs" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_feet"><span><b>발상자</b><small>발</small></span><input name="drop-raid_feet" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_earrings"><span><b>귀걸이상자</b><small>귀걸이</small></span><input name="drop-raid_earrings" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_necklace"><span><b>목걸이상자</b><small>목걸이</small></span><input name="drop-raid_necklace" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_bracelets"><span><b>팔찌상자</b><small>팔찌</small></span><input name="drop-raid_bracelets" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label data-drop-type="raid_ring"><span><b>반지상자</b><small>반지 1·2</small></span><input name="drop-raid_ring" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label class="upgrade-drop" data-drop-type="upgrade_weapon"><span><b>강화약</b><small>무기 보강</small></span><input name="drop-upgrade_weapon" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label class="upgrade-drop" data-drop-type="upgrade_armor"><span><b>강화섬유</b><small>방어구 보강</small></span><input name="drop-upgrade_armor" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+              <label class="upgrade-drop" data-drop-type="upgrade_accessory"><span><b>경화약</b><small>장신구 보강</small></span><input name="drop-upgrade_accessory" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
+            </div>
+            <div class="recommend-action"><p><strong id="bisDropTotalCount">0</strong>개 드랍 입력됨</p><button class="primary-button" id="bisRecommendButton" type="submit">분배 대상 자동 추천 <span aria-hidden="true">→</span></button></div>
+            <p class="action-status" id="bisDropStatus" role="status" aria-live="polite" aria-atomic="true">드랍된 아이템 수량을 입력해 주세요.</p>
+          </form>
+
+          <section class="recommendation-panel" id="bisRecommendationPanel" aria-labelledby="bisRecommendationTitle" hidden>
+            <div class="recommendation-heading"><div><p>AUTO RECOMMENDATION</p><h3 id="bisRecommendationTitle">추천 분배안</h3><span>필요 상태와 이번 주 중복 배정을 고려해 자동으로 채웠어요. 받는 사람과 적용 부위는 직접 바꿀 수 있어요.</span></div><strong><span id="bisAssignedDropCount">0</span> / <span id="bisRecommendationTotalCount">0</span>개 배정</strong></div>
+            <form id="bisDistributionForm">
+              <ol class="recommendation-list" id="bisRecommendationList"></ol>
+              <div class="recommendation-empty" id="bisRecommendationEmpty" hidden><strong>배정할 수 있는 대상이 없어요</strong><p>아직 장비 현황을 입력하지 않았거나, 해당 아이템이 필요한 공대원이 없어요.</p></div>
+              <div class="distribution-save"><p>저장한 분배안은 이 방의 전체 현황을 보는 사람에게 공개돼요.</p><button class="primary-button" id="bisSaveDistributionButton" type="submit">이번 주 분배안 저장 <span aria-hidden="true">→</span></button></div>
+              <p class="action-status" id="bisDistributionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+            </form>
+          </section>
+        </section>
+
+        <p class="privacy-note"><span aria-hidden="true">●</span> 방 링크를 아는 사람은 8명의 닉네임·직업·장비 상태와 저장된 분배안을 볼 수 있어요. 방장만 입력 마감, 점유 해제, 분배 저장, 방 삭제를 할 수 있어요.</p>
+      </div>
+    </main>
+
+    <footer><a class="brand footer-brand" href="./" aria-label="비스표 홈"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span><span>비스표</span></a><p>8인 BiS 전체 현황 · 주간 분배</p><a href="#top">맨 위로 ↑</a></footer>
+
+    <template id="bisDistributionRowTemplate">
+      <li class="recommendation-item">
+        <span class="recommendation-index" data-field="index">01</span>
+        <div class="recommendation-drop"><strong data-field="drop-label">드랍 아이템</strong><small data-field="drop-category">적용 장비</small></div>
+        <label><span>받는 사람</span><select data-field="recipient" required><option value="">미배정</option></select></label>
+        <label><span>적용 부위</span><select data-field="gear-slot" required><option value="">부위 선택</option></select></label>
+        <button data-action="remove-assignment" type="button" aria-label="이 분배에서 제외">제외</button>
+      </li>
+    </template>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js"></script>
+    <script src="./image-renderer.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./firebase-room-store.js"></script>
+    <script type="module" src="./summary-page.js"></script>
+  </body>
+</html>

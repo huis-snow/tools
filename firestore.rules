@@ -87,6 +87,235 @@ service cloud.firestore {
         data.updatedAt == request.time;
     }
 
+    function validBisSeat(seat) {
+      return seat == 'MT' ||
+        seat == 'ST' ||
+        seat == 'MH' ||
+        seat == 'SH' ||
+        seat == 'D1' ||
+        seat == 'D2' ||
+        seat == 'D3' ||
+        seat == 'D4';
+    }
+
+    function validBisDropCounts(data) {
+      return data is map &&
+        data.keys().hasAll([
+          'raid_weapon',
+          'raid_head',
+          'raid_body',
+          'raid_hands',
+          'raid_legs',
+          'raid_feet',
+          'raid_earrings',
+          'raid_necklace',
+          'raid_bracelets',
+          'raid_ring',
+          'upgrade_weapon',
+          'upgrade_armor',
+          'upgrade_accessory'
+        ]) &&
+        data.keys().hasOnly([
+          'raid_weapon',
+          'raid_head',
+          'raid_body',
+          'raid_hands',
+          'raid_legs',
+          'raid_feet',
+          'raid_earrings',
+          'raid_necklace',
+          'raid_bracelets',
+          'raid_ring',
+          'upgrade_weapon',
+          'upgrade_armor',
+          'upgrade_accessory'
+        ]) &&
+        data.raid_weapon is int && data.raid_weapon >= 0 && data.raid_weapon <= 99 &&
+        data.raid_head is int && data.raid_head >= 0 && data.raid_head <= 99 &&
+        data.raid_body is int && data.raid_body >= 0 && data.raid_body <= 99 &&
+        data.raid_hands is int && data.raid_hands >= 0 && data.raid_hands <= 99 &&
+        data.raid_legs is int && data.raid_legs >= 0 && data.raid_legs <= 99 &&
+        data.raid_feet is int && data.raid_feet >= 0 && data.raid_feet <= 99 &&
+        data.raid_earrings is int && data.raid_earrings >= 0 && data.raid_earrings <= 99 &&
+        data.raid_necklace is int && data.raid_necklace >= 0 && data.raid_necklace <= 99 &&
+        data.raid_bracelets is int && data.raid_bracelets >= 0 && data.raid_bracelets <= 99 &&
+        data.raid_ring is int && data.raid_ring >= 0 && data.raid_ring <= 99 &&
+        data.upgrade_weapon is int && data.upgrade_weapon >= 0 && data.upgrade_weapon <= 99 &&
+        data.upgrade_armor is int && data.upgrade_armor >= 0 && data.upgrade_armor <= 99 &&
+        data.upgrade_accessory is int && data.upgrade_accessory >= 0 && data.upgrade_accessory <= 99;
+    }
+
+    function validBisAssignment(value) {
+      return value is string &&
+        value.size() <= 255 &&
+        value.matches('((MT|ST|MH|SH|D1|D2|D3|D4)@(weapon|head|body|hands|legs|feet|earrings|necklace|bracelets|ring1|ring2)(,(MT|ST|MH|SH|D1|D2|D3|D4)@(weapon|head|body|hands|legs|feet|earrings|necklace|bracelets|ring1|ring2))*)?');
+    }
+
+    function validBisAssignments(data) {
+      return data is map &&
+        data.keys().hasAll([
+          'raid_weapon',
+          'raid_head',
+          'raid_body',
+          'raid_hands',
+          'raid_legs',
+          'raid_feet',
+          'raid_earrings',
+          'raid_necklace',
+          'raid_bracelets',
+          'raid_ring',
+          'upgrade_weapon',
+          'upgrade_armor',
+          'upgrade_accessory'
+        ]) &&
+        data.keys().hasOnly([
+          'raid_weapon',
+          'raid_head',
+          'raid_body',
+          'raid_hands',
+          'raid_legs',
+          'raid_feet',
+          'raid_earrings',
+          'raid_necklace',
+          'raid_bracelets',
+          'raid_ring',
+          'upgrade_weapon',
+          'upgrade_armor',
+          'upgrade_accessory'
+        ]) &&
+        validBisAssignment(data.raid_weapon) &&
+        validBisAssignment(data.raid_head) &&
+        validBisAssignment(data.raid_body) &&
+        validBisAssignment(data.raid_hands) &&
+        validBisAssignment(data.raid_legs) &&
+        validBisAssignment(data.raid_feet) &&
+        validBisAssignment(data.raid_earrings) &&
+        validBisAssignment(data.raid_necklace) &&
+        validBisAssignment(data.raid_bracelets) &&
+        validBisAssignment(data.raid_ring) &&
+        validBisAssignment(data.upgrade_weapon) &&
+        validBisAssignment(data.upgrade_armor) &&
+        validBisAssignment(data.upgrade_accessory);
+    }
+
+    function validBisDistribution(data) {
+      return data is map &&
+        data.keys().hasAll(['week', 'dropCounts', 'assignments']) &&
+        data.keys().hasOnly(['week', 'dropCounts', 'assignments']) &&
+        data.week is int &&
+        data.week >= 1 &&
+        data.week <= 99 &&
+        validBisDropCounts(data.dropCounts) &&
+        validBisAssignments(data.assignments);
+    }
+
+    function validBisRoom(data) {
+      return data.keys().hasAll([
+          'version',
+          'title',
+          'tier',
+          'week',
+          'ownerUid',
+          'locked',
+          'distribution',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'version',
+          'title',
+          'tier',
+          'week',
+          'ownerUid',
+          'locked',
+          'distribution',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.version is int &&
+        data.version == 1 &&
+        data.title is string &&
+        data.title == data.title.trim() &&
+        data.title.size() > 0 &&
+        data.title.size() <= 60 &&
+        data.tier is string &&
+        data.tier == data.tier.trim() &&
+        data.tier.size() > 0 &&
+        data.tier.size() <= 60 &&
+        data.week is int &&
+        data.week >= 1 &&
+        data.week <= 99 &&
+        data.ownerUid is string &&
+        data.ownerUid.size() > 0 &&
+        data.ownerUid.size() <= 128 &&
+        data.locked is bool &&
+        validBisDistribution(data.distribution) &&
+        data.distribution.week == data.week &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validBisMember(data, seat) {
+      return data.keys().hasAll([
+          'seat',
+          'nickname',
+          'job',
+          'editorUid',
+          'gear',
+          'submitted',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'seat',
+          'nickname',
+          'job',
+          'editorUid',
+          'gear',
+          'submitted',
+          'updatedAt'
+        ]) &&
+        validBisSeat(seat) &&
+        data.seat is string &&
+        data.seat == seat &&
+        data.nickname is string &&
+        data.nickname == data.nickname.trim() &&
+        data.nickname.size() > 0 &&
+        data.nickname.size() <= 30 &&
+        data.job is string &&
+        data.job == data.job.trim() &&
+        data.job.size() > 0 &&
+        data.job.size() <= 30 &&
+        data.editorUid is string &&
+        data.editorUid.size() <= 128 &&
+        data.gear is string &&
+        data.gear.matches('[XCUR]{11}') &&
+        data.submitted is bool &&
+        (data.submitted == false || !data.gear.matches('.*X.*')) &&
+        data.updatedAt is timestamp;
+    }
+
+    function allBisMembersExistAfter(roomId) {
+      return existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/MT) &&
+        existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/ST) &&
+        existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/MH) &&
+        existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/SH) &&
+        existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D1) &&
+        existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D2) &&
+        existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D3) &&
+        existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D4);
+    }
+
+    function noBisMembersExistAfter(roomId) {
+      return !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/MT) &&
+        !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/ST) &&
+        !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/MH) &&
+        !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/SH) &&
+        !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D1) &&
+        !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D2) &&
+        !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D3) &&
+        !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D4);
+    }
+
     match /rooms/{roomId} {
       function owner() {
         return signedIn() && resource.data.ownerUid == request.auth.uid;
@@ -150,6 +379,121 @@ service cloud.firestore {
         ownerResponseRemoval();
 
       allow delete: if owner();
+    }
+
+    match /bisRooms/{roomId} {
+      function bisOwner() {
+        return signedIn() && resource.data.ownerUid == request.auth.uid;
+      }
+
+      function bisOwnerUpdate() {
+        let changes = request.resource.data.diff(resource.data).affectedKeys();
+        return bisOwner() &&
+          validBisRoom(request.resource.data) &&
+          changes.hasOnly(['title', 'tier', 'week', 'locked', 'distribution', 'updatedAt']) &&
+          changes.hasAll(['updatedAt']) &&
+          request.resource.data.updatedAt == request.time;
+      }
+
+      allow get: if signedIn() && validRoomId(roomId);
+      allow list: if googleAccount() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.query.limit <= 30;
+
+      allow create: if googleAccount() &&
+        validRoomId(roomId) &&
+        validBisRoom(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.locked == false &&
+        request.resource.data.distribution.week == request.resource.data.week &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time &&
+        allBisMembersExistAfter(roomId);
+
+      allow update: if bisOwnerUpdate();
+
+      allow delete: if bisOwner() && noBisMembersExistAfter(roomId);
+
+      match /members/{seat} {
+        function parentBefore() {
+          return get(/databases/$(database)/documents/bisRooms/$(roomId));
+        }
+
+        function parentAfter() {
+          return getAfter(/databases/$(database)/documents/bisRooms/$(roomId));
+        }
+
+        function parentOwner() {
+          return signedIn() && parentBefore().data.ownerUid == request.auth.uid;
+        }
+
+        function noOtherBisSeatClaimedByRequester() {
+          return (seat == 'MT' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/MT).data.editorUid != request.auth.uid) &&
+            (seat == 'ST' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/ST).data.editorUid != request.auth.uid) &&
+            (seat == 'MH' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/MH).data.editorUid != request.auth.uid) &&
+            (seat == 'SH' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/SH).data.editorUid != request.auth.uid) &&
+            (seat == 'D1' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D1).data.editorUid != request.auth.uid) &&
+            (seat == 'D2' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D2).data.editorUid != request.auth.uid) &&
+            (seat == 'D3' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D3).data.editorUid != request.auth.uid) &&
+            (seat == 'D4' || getAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D4).data.editorUid != request.auth.uid);
+        }
+
+        function participantMemberUpdate() {
+          let changes = request.resource.data.diff(resource.data).affectedKeys();
+          return signedIn() &&
+            parentBefore().data.locked == false &&
+            validBisMember(request.resource.data, seat) &&
+            request.resource.data.seat == resource.data.seat &&
+            request.resource.data.nickname == resource.data.nickname &&
+            request.resource.data.job == resource.data.job &&
+            changes.hasOnly(['editorUid', 'gear', 'submitted', 'updatedAt']) &&
+            changes.hasAll(['updatedAt']) &&
+            (
+              (
+                resource.data.editorUid == '' &&
+                request.resource.data.editorUid == request.auth.uid &&
+                noOtherBisSeatClaimedByRequester()
+              ) ||
+              (
+                resource.data.editorUid == request.auth.uid &&
+                request.resource.data.editorUid == request.auth.uid
+              )
+            ) &&
+            request.resource.data.updatedAt == request.time;
+        }
+
+        function ownerMemberUpdate() {
+          let changes = request.resource.data.diff(resource.data).affectedKeys();
+          return parentOwner() &&
+            validBisMember(request.resource.data, seat) &&
+            request.resource.data.seat == resource.data.seat &&
+            request.resource.data.nickname == resource.data.nickname &&
+            request.resource.data.job == resource.data.job &&
+            changes.hasOnly(['editorUid', 'gear', 'submitted', 'updatedAt']) &&
+            changes.hasAll(['updatedAt']) &&
+            request.resource.data.updatedAt == request.time;
+        }
+
+        allow get: if signedIn() && validRoomId(roomId) && validBisSeat(seat);
+        allow list: if signedIn() &&
+          validRoomId(roomId) &&
+          request.query.limit <= 8;
+
+        allow create: if googleAccount() &&
+          validRoomId(roomId) &&
+          validBisMember(request.resource.data, seat) &&
+          request.resource.data.editorUid == '' &&
+          request.resource.data.gear == 'XXXXXXXXXXX' &&
+          request.resource.data.submitted == false &&
+          request.resource.data.updatedAt == request.time &&
+          !exists(/databases/$(database)/documents/bisRooms/$(roomId)) &&
+          parentAfter().data.ownerUid == request.auth.uid;
+
+        allow update: if participantMemberUpdate() || ownerMemberUpdate();
+
+        allow delete: if parentOwner() &&
+          !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId));
+      }
     }
 
     match /{document=**} {
