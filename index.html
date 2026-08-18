@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·BiS 현황표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·일회성 BiS·8주 파밍 분배표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음"
     />
     <meta name="theme-color" content="#f4f1e8" />
     <meta property="og:type" content="website" />
@@ -14,14 +14,14 @@
     <meta property="og:title" content="작은 도구함 | 한글 아스키 테이블·일정표 웹 도구" />
     <meta
       property="og:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 현황과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 취합과 8주 파밍 기록, 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <meta property="og:url" content="https://huis-snow.github.io/tools/" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="작은 도구함 | 한글 아스키 테이블·일정표 웹 도구" />
     <meta
       name="twitter:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 현황과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 취합과 8주 파밍 기록, 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <title>작은 도구함 | 한글 아스키 테이블·일정표 웹 도구</title>
     <link rel="canonical" href="https://huis-snow.github.io/tools/" />
@@ -33,7 +33,7 @@
         "@type": "WebSite",
         "name": "작은 도구함",
         "url": "https://huis-snow.github.io/tools/",
-        "description": "한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·BiS 현황표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음",
+        "description": "한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·일회성 BiS·8주 파밍 분배표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음",
         "inLanguage": "ko-KR"
       }
     </script>
@@ -197,7 +197,7 @@
       <section class="tools-section" id="tools" aria-labelledby="tools-title">
         <div class="section-heading">
           <div>
-            <p>TOOLS / 06</p>
+            <p>TOOLS / 07</p>
             <h2 id="tools-title">지금 쓸 수 있는 도구</h2>
           </div>
           <span>도구는 천천히 하나씩 늘어납니다.</span>
@@ -367,9 +367,9 @@
               </div>
             </div>
             <div class="card-content">
-              <p>FFXIV · BIS · LOOT</p>
+              <p>FFXIV · BIS · QUICK</p>
               <h3>비스표 <span aria-hidden="true">↗</span></h3>
-              <p class="description">8인 공대의 BiS 현황을 취합하고 이번 주 파밍 드랍을 자동 분배하는 도구</p>
+              <p class="description">8명의 BiS 필요 상태를 한 번 취합하고 당일 드랍을 빠르게 나누는 도구</p>
             </div>
             <div class="card-footer">
               <span>링크 하나로 8명 실시간 취합</span>
@@ -377,10 +377,34 @@
             </div>
           </a>
 
+          <a class="tool-card active-card" href="./raid-loot-maker/">
+            <div class="card-topline">
+              <span class="status"><i></i> 사용 가능</span>
+              <span class="card-index">007</span>
+            </div>
+            <div class="card-preview raid-loot-preview" aria-hidden="true">
+              <div class="mini-loot-weeks">
+                <div class="mini-loot-head"><strong>8 WEEK FARM</strong><span>3주차</span></div>
+                <div class="mini-week-strip"><i class="done">1</i><i class="done">2</i><i class="now">3</i><i>4</i><i>5</i><i>6</i><i>7</i><i>8</i></div>
+                <div class="mini-loot-row"><b>3F · 몸통상자</b><span>D4</span><em>누적 1개</em></div>
+                <div class="mini-loot-row"><b>3F · 강화섬유</b><span>MT</span><em>누적 0개</em></div>
+              </div>
+            </div>
+            <div class="card-content">
+              <p>FFXIV · 8 WEEKS · HISTORY</p>
+              <h3>공대 파밍표 <span aria-hidden="true">↗</span></h3>
+              <p class="description">8주 동안 층별 드랍과 수령 이력을 쌓아 누적 우선순위를 추천하는 공대 전용 분배표</p>
+            </div>
+            <div class="card-footer">
+              <span>링크 하나로 8명 입력 · 이력은 계속 보존</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
+
           <article class="tool-card empty-card" aria-label="다음 도구를 준비 중입니다">
             <div class="card-topline">
               <span class="status waiting"><i></i> 다음 도구</span>
-              <span class="card-index">007</span>
+              <span class="card-index">008</span>
             </div>
             <div class="empty-mark" aria-hidden="true"><span>+</span></div>
             <div class="card-content">

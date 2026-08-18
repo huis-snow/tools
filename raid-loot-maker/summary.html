@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="파이널판타지14 8인 고정 공대의 8주 BiS 진행 상태와 실제 영식 드랍 분배 이력을 관리하는 공대 파밍표" />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#142f36" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="8주 파밍 현황·실제 분배 | 공대 파밍표" />
+    <meta property="og:description" content="1주차부터 8주차까지 BiS 진행과 실제 드랍 수령 이력을 확인하세요." />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/raid-loot-maker/summary.html" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="8주 파밍 현황·실제 분배 | 공대 파밍표" />
+    <meta name="twitter:description" content="누적 수령 이력을 반영한 추천과 8주 실제 분배 원장을 확인하세요." />
+    <title>8주 파밍 현황·실제 분배 | 공대 파밍표</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/raid-loot-maker/summary.html" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body id="top" class="raid-loot-summary-page">
+    <a class="skip-link" href="#raidLootWeekWorkspace">선택 주차 파밍 기록으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" id="raidLootHeaderInputLink" href="./room.html"><span aria-hidden="true">←</span> 내 BiS 입력</a>
+      <a class="brand" href="./" aria-label="공대 파밍표 홈"><span class="brand-mark" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></span><span>공대 파밍표</span></a>
+      <a class="header-link" href="#raidLootEventSection">드랍 기록 <span aria-hidden="true">↓</span></a>
+    </header>
+
+    <main class="summary-main">
+      <section class="room-banner summary-banner" id="raidLootSummaryBanner" aria-labelledby="raidLootSummaryTitle" aria-busy="true">
+        <div class="room-banner-copy">
+          <p>RAID FARMING LEDGER <span id="raidLootSummaryRoomState" data-state="loading">연결 중</span></p>
+          <h1 id="raidLootSummaryTitle" tabindex="-1">8주 파밍 현황을 불러오는 중</h1>
+          <p id="raidLootSummaryMeta">레이드와 1주차 시작일을 확인하고 있어요.</p>
+        </div>
+        <div class="room-week"><span>CURRENT WEEK</span><strong id="raidLootSummaryCurrentWeek">—</strong><small>/ 8주차</small></div>
+        <div class="room-progress" aria-label="장비 현황을 저장한 공대원 수"><strong id="raidLootSummarySubmittedCount">0</strong><span>/ 8명 입력</span></div>
+        <p class="action-status" id="raidLootSummaryStatus" role="status" aria-live="polite" aria-atomic="true">Firebase에서 공대 기록을 확인하고 있어요.</p>
+        <div class="missing-actions" id="raidLootSummaryMissingActions" hidden><a href="./">새 8주 공대 만들기</a><a href="../">작은 도구함으로 돌아가기</a></div>
+      </section>
+
+      <div class="summary-workspace" id="raidLootSummaryWorkspace" hidden>
+        <section class="owner-panel" id="raidLootOwnerPanel" aria-labelledby="raidLootOwnerPanelTitle" hidden>
+          <div class="owner-panel-copy"><p>RAID OWNER</p><h2 id="raidLootOwnerPanelTitle">방장 관리</h2><span>공대원 입력, 현재 주차, 분배 정책과 공유 링크를 관리해요.</span></div>
+          <div class="owner-actions">
+            <button id="raidLootRoomLockButton" type="button">공대원 입력 마감</button>
+            <button id="raidLootCopyInputLinkButton" type="button">입력 링크 복사</button>
+            <button id="raidLootCopySummaryLinkButton" type="button">현황 링크 복사</button>
+          </div>
+          <form class="owner-settings-form" id="raidLootRoomSettingsForm">
+            <label for="raidLootOwnerTitleInput"><span>공대명</span><input id="raidLootOwnerTitleInput" type="text" maxlength="60" required /></label>
+            <label for="raidLootOwnerTierInput"><span>레이드 / 시즌</span><input id="raidLootOwnerTierInput" type="text" maxlength="60" required /></label>
+            <label for="raidLootOwnerStartDateInput"><span>1주차 시작일</span><input id="raidLootOwnerStartDateInput" type="date" required /></label>
+            <label for="raidLootOwnerCurrentWeekSelect"><span>현재 주차</span><select id="raidLootOwnerCurrentWeekSelect" required><option value="1">1주차</option><option value="2">2주차</option><option value="3">3주차</option><option value="4">4주차</option><option value="5">5주차</option><option value="6">6주차</option><option value="7">7주차</option><option value="8">8주차</option></select></label>
+            <button id="raidLootRoomSettingsSaveButton" type="submit">공대 정보 저장</button>
+          </form>
+          <form class="policy-form" id="raidLootPolicyForm">
+            <label for="raidLootPriorityPolicySelect"><span>자동 추천 정책</span><select id="raidLootPriorityPolicySelect" required><option value="fair">누적 균등 분배</option><option value="progression">진도 우선 분배</option><option value="manual">수동 분배</option></select></label>
+            <p id="raidLootPolicyDescription">8주 누적 수령 수가 적은 공대원을 먼저 추천해요.</p>
+            <button id="raidLootPolicySaveButton" type="submit">정책 저장</button>
+          </form>
+          <div class="release-claim-control"><label for="raidLootReleaseMemberSelect">자리 연결 해제</label><select id="raidLootReleaseMemberSelect"><option value="">공대원 선택</option></select><button id="raidLootReleaseClaimButton" type="button" disabled>해제</button></div>
+          <button class="danger-button" id="raidLootRoomDeleteButton" type="button">8주 공대 삭제</button>
+          <p class="action-status" id="raidLootOwnerStatus" role="status" aria-live="polite" aria-atomic="true">방장 권한을 확인하고 있어요.</p>
+        </section>
+
+        <nav class="week-navigation" aria-labelledby="raidLootWeekNavigationTitle">
+          <div class="week-navigation-heading"><div><p>01 / EIGHT-WEEK TIMELINE</p><h2 id="raidLootWeekNavigationTitle">파밍 주차</h2></div><p>주차를 고르면 해당 주의 분배 기록과 누적 현황을 함께 보여줘요.</p></div>
+          <div class="week-tabs" id="raidLootWeekTabs" role="tablist" aria-label="1주차부터 8주차">
+            <button id="raidLootWeekTab1" type="button" role="tab" aria-selected="true" aria-controls="raidLootWeekWorkspace" data-week="1"><b>01</b><span data-field="date">1주차</span><small><i data-field="count">0</i>개 기록</small></button>
+            <button id="raidLootWeekTab2" type="button" role="tab" aria-selected="false" aria-controls="raidLootWeekWorkspace" data-week="2"><b>02</b><span data-field="date">2주차</span><small><i data-field="count">0</i>개 기록</small></button>
+            <button id="raidLootWeekTab3" type="button" role="tab" aria-selected="false" aria-controls="raidLootWeekWorkspace" data-week="3"><b>03</b><span data-field="date">3주차</span><small><i data-field="count">0</i>개 기록</small></button>
+            <button id="raidLootWeekTab4" type="button" role="tab" aria-selected="false" aria-controls="raidLootWeekWorkspace" data-week="4"><b>04</b><span data-field="date">4주차</span><small><i data-field="count">0</i>개 기록</small></button>
+            <button id="raidLootWeekTab5" type="button" role="tab" aria-selected="false" aria-controls="raidLootWeekWorkspace" data-week="5"><b>05</b><span data-field="date">5주차</span><small><i data-field="count">0</i>개 기록</small></button>
+            <button id="raidLootWeekTab6" type="button" role="tab" aria-selected="false" aria-controls="raidLootWeekWorkspace" data-week="6"><b>06</b><span data-field="date">6주차</span><small><i data-field="count">0</i>개 기록</small></button>
+            <button id="raidLootWeekTab7" type="button" role="tab" aria-selected="false" aria-controls="raidLootWeekWorkspace" data-week="7"><b>07</b><span data-field="date">7주차</span><small><i data-field="count">0</i>개 기록</small></button>
+            <button id="raidLootWeekTab8" type="button" role="tab" aria-selected="false" aria-controls="raidLootWeekWorkspace" data-week="8"><b>08</b><span data-field="date">8주차</span><small><i data-field="count">0</i>개 기록</small></button>
+          </div>
+        </nav>
+
+        <div id="raidLootWeekWorkspace" role="tabpanel" aria-labelledby="raidLootWeekTab1" tabindex="0">
+          <section class="week-overview" aria-labelledby="raidLootSelectedWeekTitle">
+            <div><p>SELECTED WEEK</p><h2 id="raidLootSelectedWeekTitle"><span id="raidLootSelectedWeekNumber">1</span>주차 파밍</h2><span id="raidLootSelectedWeekDate">날짜 확인 중</span></div>
+            <dl><div><dt>이번 주 배정</dt><dd><b id="raidLootSelectedWeekAssignedCount">0</b>개</dd></div><div><dt>누적 배정</dt><dd><b id="raidLootCumulativeAssignedCount">0</b>개</dd></div><div><dt>BiS 완료</dt><dd><b id="raidLootCompletedGearCount">0</b> / 88</dd></div></dl>
+            <button id="raidLootSetCurrentWeekButton" type="button" hidden>이 주차를 현재로 설정</button>
+          </section>
+
+          <section class="summary-table-section" id="raidLootSummaryTableSection" aria-labelledby="raidLootSummaryTableTitle">
+            <div class="section-heading compact-heading"><div><p>02 / PARTY PROGRESS</p><h2 id="raidLootSummaryTableTitle">8인 누적 BiS 현황</h2></div><p>기존 입력과 이 주차까지 실제로 받은 아이템을 합쳐 표시해요.</p></div>
+            <div class="summary-toolbar">
+              <div class="overall-progress"><div><span>누적 완료율</span><strong id="raidLootOverallProgressText">0%</strong></div><progress id="raidLootOverallProgress" max="88" value="0">0 / 88</progress><small><b id="raidLootOverallProgressCount">0</b> / 88개 부위 완료</small></div>
+              <div class="status-filter" role="group" aria-labelledby="raidLootFilterLabel"><span id="raidLootFilterLabel">표 필터</span><button type="button" data-filter="all" aria-pressed="true">전체</button><button type="button" data-filter="incomplete" aria-pressed="false">필요한 것만</button><button type="button" data-filter="raid" aria-pressed="false">영식템</button><button type="button" data-filter="upgrade" aria-pressed="false">보강템</button></div>
+              <div class="summary-legend" aria-label="장비 상태 범례"><span class="complete"><i aria-hidden="true">✓</i> 완료</span><span class="received"><i aria-hidden="true">●</i> 파밍으로 획득</span><span class="upgrade"><i aria-hidden="true">＋</i> 보강템 필요</span><span class="raid"><i aria-hidden="true">◆</i> 영식템 필요</span><span class="empty"><i aria-hidden="true">·</i> 미입력</span></div>
+            </div>
+
+            <div class="bis-table-wrap" tabindex="0" role="region" aria-label="8인 누적 BiS 현황표, 가로로 스크롤할 수 있음">
+              <table class="bis-table" id="raidLootSummaryTable">
+                <caption class="sr-only">장비 11개 부위와 MT부터 D4까지 8명의 누적 BiS 진행 상태</caption>
+                <thead><tr><th scope="col">장비 부위</th><th scope="col" data-seat="MT"><b>MT</b><span data-field="nickname">—</span><small data-field="job">—</small></th><th scope="col" data-seat="ST"><b>ST</b><span data-field="nickname">—</span><small data-field="job">—</small></th><th scope="col" data-seat="MH"><b>MH</b><span data-field="nickname">—</span><small data-field="job">—</small></th><th scope="col" data-seat="SH"><b>SH</b><span data-field="nickname">—</span><small data-field="job">—</small></th><th scope="col" data-seat="D1"><b>D1</b><span data-field="nickname">—</span><small data-field="job">—</small></th><th scope="col" data-seat="D2"><b>D2</b><span data-field="nickname">—</span><small data-field="job">—</small></th><th scope="col" data-seat="D3"><b>D3</b><span data-field="nickname">—</span><small data-field="job">—</small></th><th scope="col" data-seat="D4"><b>D4</b><span data-field="nickname">—</span><small data-field="job">—</small></th></tr></thead>
+                <tbody>
+                  <tr data-slot="weapon"><th scope="row"><span aria-hidden="true">⚔</span>무기</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="head"><th scope="row"><span aria-hidden="true">◇</span>머리</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="body"><th scope="row"><span aria-hidden="true">▣</span>몸통</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="hands"><th scope="row"><span aria-hidden="true">✦</span>손</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="legs"><th scope="row"><span aria-hidden="true">▥</span>다리</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="feet"><th scope="row"><span aria-hidden="true">⌟</span>발</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="earrings"><th scope="row"><span aria-hidden="true">◉</span>귀걸이</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="necklace"><th scope="row"><span aria-hidden="true">○</span>목걸이</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="bracelets"><th scope="row"><span aria-hidden="true">◎</span>팔찌</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="ring1"><th scope="row"><span aria-hidden="true">◌</span>반지 1</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                  <tr data-slot="ring2"><th scope="row"><span aria-hidden="true">◌</span>반지 2</th><td data-seat="MT"></td><td data-seat="ST"></td><td data-seat="MH"></td><td data-seat="SH"></td><td data-seat="D1"></td><td data-seat="D2"></td><td data-seat="D3"></td><td data-seat="D4"></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="image-actions"><p>선택한 주차까지의 현황과 누적 수령 수를 이미지로 공유할 수 있어요.</p><button id="raidLootCopyImageButton" type="button"><span aria-hidden="true">▧</span> 이미지 복사</button><button id="raidLootSavePngButton" type="button"><span aria-hidden="true">↓</span> PNG 저장</button></div>
+            <p class="action-status" id="raidLootImageStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+          </section>
+
+          <section class="fairness-section" aria-labelledby="raidLootFairnessTitle">
+            <div class="section-heading compact-heading"><div><p>03 / LOOT BALANCE</p><h2 id="raidLootFairnessTitle">누적 수령 현황</h2></div><p>공정성 계산에 포함된 실제 배정만 셉니다. 자유 분배는 원장에는 남지만 균등 계산에서 제외할 수 있어요.</p></div>
+            <ol class="fairness-list" id="raidLootFairnessList"></ol>
+            <div class="fairness-empty" id="raidLootFairnessEmpty"><strong>아직 실제 분배 기록이 없어요</strong><p>첫 드랍을 기록하면 공대원별 누적 수령 수가 표시됩니다.</p></div>
+          </section>
+
+          <section class="event-section" id="raidLootEventSection" aria-labelledby="raidLootEventSectionTitle">
+            <div class="section-heading compact-heading"><div><p>04 / RECORD ONE DROP</p><h2 id="raidLootEventSectionTitle">실제 드랍 한 개 기록</h2></div><p>계획이 아니라 실제로 나온 아이템만 하나씩 저장해요. 저장할 때마다 다음 추천 순위가 다시 계산됩니다.</p></div>
+
+            <form class="event-picker" id="raidLootEventPickerForm">
+              <div class="event-picker-heading"><div><span>STEP 01</span><h3>나온 아이템 선택</h3></div><strong><b id="raidLootEventWeekLabel">1</b>주차 기록</strong></div>
+              <div class="event-fields">
+                <label for="raidLootEventFloorSelect"><span>클리어 층</span><select id="raidLootEventFloorSelect" required><option value="">층 선택</option><option value="1">1층</option><option value="2">2층</option><option value="3">3층</option><option value="4">4층</option></select></label>
+                <label for="raidLootEventDropTypeSelect"><span>드랍 아이템</span><select id="raidLootEventDropTypeSelect" required><option value="">아이템 선택</option><optgroup label="영식 장비 상자"><option value="raid_earrings">귀걸이상자</option><option value="raid_necklace">목걸이상자</option><option value="raid_bracelets">팔찌상자</option><option value="raid_ring">반지상자</option><option value="raid_head">머리상자</option><option value="raid_hands">손상자</option><option value="raid_feet">발상자</option><option value="raid_body">몸통상자</option><option value="raid_legs">다리상자</option><option value="raid_weapon">무기상자</option></optgroup><optgroup label="보강·무기 재료"><option value="upgrade_accessory">경화약</option><option value="tome_weapon_token">석판 무기 토큰</option><option value="upgrade_armor">강화섬유</option><option value="upgrade_weapon">강화약</option></optgroup><optgroup label="4층 추가 드랍"><option value="direct_weapon">직접 무기</option><option value="music">오케스트리온 악보</option><option value="mount">탈것</option></optgroup></select></label>
+                <label id="raidLootDirectWeaponJobField" for="raidLootDirectWeaponJobSelect" hidden><span>직접 무기 직업</span><select id="raidLootDirectWeaponJobSelect"><option value="">직업 선택</option></select></label>
+                <button class="primary-button" id="raidLootFindCandidatesButton" type="submit">받을 사람 추천 <span aria-hidden="true">→</span></button>
+              </div>
+              <p class="action-status" id="raidLootEventPickerStatus" role="status" aria-live="polite" aria-atomic="true">층과 실제로 나온 아이템을 선택해 주세요.</p>
+            </form>
+
+            <section class="candidate-panel" id="raidLootCandidatePanel" aria-labelledby="raidLootCandidateTitle" hidden>
+              <div class="candidate-heading"><div><span>STEP 02</span><h3 id="raidLootCandidateTitle">추천 순위와 이유</h3><p id="raidLootCandidateSummary">현재 BiS 필요 상태와 누적 수령 이력을 함께 비교했어요.</p></div><span class="policy-badge" id="raidLootCandidatePolicyLabel">누적 균등 분배</span></div>
+              <ol class="candidate-list" id="raidLootCandidateList"></ol>
+              <div class="candidate-empty" id="raidLootCandidateEmpty" hidden><strong>이 아이템이 필요한 공대원이 없어요</strong><p>미분배로 기록하거나 다른 아이템을 선택할 수 있어요.</p></div>
+
+              <form class="allocation-form" id="raidLootAllocationForm">
+                <div class="allocation-heading"><span>STEP 03</span><h3>실제 수령자 확정</h3><p>추천과 다르게 배정해도 원장에 그대로 남아요.</p></div>
+                <div class="allocation-fields">
+                  <label for="raidLootRecipientSelect"><span>받는 사람</span><select id="raidLootRecipientSelect" required><option value="">미분배</option></select></label>
+                  <label for="raidLootGearSlotSelect"><span>적용 부위</span><select id="raidLootGearSlotSelect"><option value="">부위 없음</option></select></label>
+                  <label for="raidLootDecisionSelect"><span>배정 구분</span><select id="raidLootDecisionSelect" required><option value="recommended">추천대로</option><option value="manual">수동 변경</option><option value="free">자유 분배</option></select></label>
+                  <label class="note-field" for="raidLootEventNoteInput"><span>메모 <small>선택</small></span><input id="raidLootEventNoteInput" type="text" maxlength="200" autocomplete="off" placeholder="주사위, 부직, 외부인 등" /></label>
+                </div>
+                <label class="fairness-check"><input id="raidLootCountsForFairnessInput" type="checkbox" checked /><span><b>누적 공정성 계산에 포함</b><small>자유 분배나 외부인 수령이면 해제할 수 있어요.</small></span></label>
+                <div class="allocation-actions"><button id="raidLootRecordUnassignedButton" type="button">미분배로 기록</button><button class="primary-button" id="raidLootRecordEventButton" type="submit">실제 분배 기록 <span aria-hidden="true">→</span></button></div>
+                <p class="action-status" id="raidLootAllocationStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+              </form>
+            </section>
+          </section>
+
+          <section class="history-section" id="raidLootHistorySection" aria-labelledby="raidLootHistoryTitle">
+            <div class="section-heading compact-heading"><div><p>05 / ACTUAL LOOT LOG</p><h2 id="raidLootHistoryTitle"><span id="raidLootHistoryWeekLabel">1</span>주차 실제 분배 원장</h2></div><p>기록 순서대로 표시합니다. 방장은 잘못 입력한 최근 기록을 되돌릴 수 있어요.</p></div>
+            <div class="history-toolbar"><span>총 <b id="raidLootHistoryCount">0</b>개 기록</span><label for="raidLootHistoryFloorFilter">층 필터<select id="raidLootHistoryFloorFilter"><option value="all">전체 층</option><option value="1">1층</option><option value="2">2층</option><option value="3">3층</option><option value="4">4층</option></select></label></div>
+            <ol class="history-list" id="raidLootHistoryList"></ol>
+            <div class="history-empty" id="raidLootHistoryEmpty"><strong>선택한 주차에 기록이 없어요</strong><p>실제 드랍을 한 개씩 기록하면 여기에 시간순으로 쌓입니다.</p></div>
+            <p class="action-status" id="raidLootHistoryStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+          </section>
+        </div>
+
+        <p class="privacy-note"><span aria-hidden="true">●</span> 공대 링크를 아는 사람은 명단·장비 상태·8주 실제 분배 이력을 볼 수 있어요. 방장만 분배 기록, 되돌리기, 정책 수정과 방 삭제를 할 수 있습니다.</p>
+      </div>
+    </main>
+
+    <footer><a class="brand footer-brand" href="./" aria-label="공대 파밍표 홈"><span class="brand-mark" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></span><span>공대 파밍표</span></a><p>8주 누적 BiS 현황 · 실제 드랍 분배 원장</p><a href="#top">맨 위로 ↑</a></footer>
+
+    <template id="raidLootFairnessItemTemplate">
+      <li class="fairness-item"><span class="seat" data-field="seat">MT</span><div><strong data-field="nickname">공대원</strong><small data-field="job">직업</small></div><span class="fairness-meter"><i data-field="bar"></i></span><b><span data-field="count">0</span>개</b></li>
+    </template>
+    <template id="raidLootCandidateItemTemplate">
+      <li class="candidate-item"><span class="candidate-rank" data-field="rank">1</span><div class="candidate-person"><b data-field="seat">MT</b><strong data-field="nickname">공대원</strong><small data-field="job">직업</small></div><p data-field="reason">누적 0개 · 같은 종류 0개 · 이번 주 0개</p><span data-field="gear-slot">적용 부위</span><button data-action="select-candidate" type="button">이 사람 선택</button></li>
+    </template>
+    <template id="raidLootHistoryItemTemplate">
+      <li class="history-item"><time data-field="time">00:00</time><span class="floor" data-field="floor">1층</span><div class="history-drop"><strong data-field="drop-label">드랍 아이템</strong><small data-field="gear-slot">적용 부위</small></div><div class="history-recipient" data-field="recipient"><b data-field="seat">MT</b><span data-field="nickname">공대원</span></div><span class="decision" data-field="decision">추천대로</span><p data-field="note" hidden></p><button data-action="undo-event" type="button">되돌리기</button></li>
+    </template>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js"></script>
+    <script src="./image-renderer.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./summary-page.js"></script>
+  </body>
+</html>

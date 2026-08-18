@@ -38,6 +38,17 @@ const PAGES = [
     url: "https://huis-snow.github.io/tools/bis-maker/summary.html",
     indexed: false,
   },
+  { file: "raid-loot-maker/index.html", url: "https://huis-snow.github.io/tools/raid-loot-maker/", indexed: true },
+  {
+    file: "raid-loot-maker/room.html",
+    url: "https://huis-snow.github.io/tools/raid-loot-maker/room.html",
+    indexed: false,
+  },
+  {
+    file: "raid-loot-maker/summary.html",
+    url: "https://huis-snow.github.io/tools/raid-loot-maker/summary.html",
+    indexed: false,
+  },
   { file: "daily-log/index.html", url: "https://huis-snow.github.io/tools/daily-log/", indexed: true },
 ];
 

@@ -1,0 +1,86 @@
+export function firebaseErrorMessage(error, fallback = "Firebase 연결 중 문제가 생겼습니다.") {
+  const code = String(error?.code || "");
+  if (code.includes("permission-denied")) return "권한이 없습니다. 방이 잠겼거나 공대 파밍표 보안 규칙을 확인해 주세요.";
+  if (code.includes("google-sign-in-required")) return "방을 만들거나 관리하려면 Google 로그인이 필요합니다.";
+  if (code.includes("popup-closed-by-user") || code.includes("cancelled-popup-request")) return "Google 로그인을 취소했어요.";
+  if (code.includes("popup-blocked")) return "Google 로그인 창이 차단됐어요. 팝업을 허용한 뒤 다시 시도해 주세요.";
+  if (code.includes("unauthorized-domain")) return "이 주소에서는 Google 로그인을 사용할 수 없어요. Firebase 승인 도메인을 확인해 주세요.";
+  if (code.includes("operation-not-allowed")) return "Firebase Authentication에서 Google과 익명 로그인을 활성화해 주세요.";
+  if (code.includes("credential-already-in-use") || code.includes("account-exists-with-different-credential")) {
+    return "이 Google 계정은 이미 사용 중입니다.";
+  }
+  if (code.includes("unauthenticated")) return "로그인 연결이 끊겼어요. 페이지를 새로고침해 다시 연결해 주세요.";
+  if (code.includes("unavailable") || code.includes("network-request-failed") || code.includes("network")) {
+    return "네트워크에 연결할 수 없습니다. 연결 상태를 확인해 주세요.";
+  }
+  if (code.includes("resource-exhausted")) return "오늘의 Firebase 무료 사용 한도를 초과했습니다.";
+  if (code.includes("event-limit")) return "이 방의 드랍 기록 한도에 도달했습니다. 필요한 화면을 보관한 뒤 새 방을 만들어 주세요.";
+  if (code.includes("not-found")) return "공대 파밍 방을 찾지 못했습니다.";
+  return error?.message || fallback;
+}
+
+export function setStatus(element, message, state = "") {
+  if (!element) return;
+  element.textContent = message;
+  if (state) element.dataset.state = state;
+  else delete element.dataset.state;
+}
+
+export function roomIdFromLocation(core, locationValue = window.location) {
+  const search = typeof locationValue === "string" ? new URL(locationValue).searchParams : new URLSearchParams(locationValue.search);
+  return core.validateRoomId(search.get("r") || "");
+}
+
+export function roomUrl(page, roomId, baseUrl = window.location.href) {
+  const url = new URL(`./${page}`, baseUrl);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("r", String(roomId));
+  return url;
+}
+
+export async function copyText(value) {
+  const text = String(value);
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const helper = document.createElement("textarea");
+  helper.value = text;
+  helper.style.position = "fixed";
+  helper.style.opacity = "0";
+  document.body.append(helper);
+  helper.select();
+  document.execCommand("copy");
+  helper.remove();
+}
+
+export function timestampDate(value) {
+  if (typeof value?.toDate === "function") return value.toDate();
+  if (Number.isFinite(value?.seconds)) return new Date(value.seconds * 1000);
+  if (value instanceof Date) return value;
+  return null;
+}
+
+export function formatTimestamp(value, options = {}) {
+  const date = timestampDate(value);
+  if (!date || Number.isNaN(date.getTime())) return "시각 확인 중";
+  const format = new Intl.DateTimeFormat("ko-KR", {
+    month: options.long ? "long" : "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return format.format(date);
+}
+
+export function createToast(element) {
+  let timer = 0;
+  return (message) => {
+    if (!element) return;
+    window.clearTimeout(timer);
+    element.textContent = message;
+    element.classList.add("show");
+    timer = window.setTimeout(() => element.classList.remove("show"), 2400);
+  };
+}

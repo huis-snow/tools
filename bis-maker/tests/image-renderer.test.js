@@ -70,13 +70,13 @@ test("비스표 이미지는 8명·11부위 현황과 진행률을 고해상도 
   assert.equal(canvas.width, 2960);
   assert.ok(canvas.height > 1600);
   assert.ok(canvas.context.calls.includes("테스트 공대 비스표"));
-  assert.ok(canvas.context.calls.includes("새로운 영식 · 3주차"));
+  assert.ok(canvas.context.calls.includes("새로운 영식 · 일회성 취합"));
   assert.ok(canvas.context.calls.some((value) => value.includes("88 / 88개 완료")));
   core.SEATS.forEach((seat) => assert.ok(canvas.context.calls.includes(seat)));
   core.GEAR_SLOTS.forEach((slot) => assert.ok(canvas.context.calls.includes(core.GEAR_LABELS[slot])));
 });
 
-test("저장된 주간 드랍 분배도 현황 이미지 아래에 표시한다", () => {
+test("저장된 일회성 드랍 분배도 현황 이미지 아래에 표시한다", () => {
   const members = core.SEATS.map((seat) => member(seat, seat === "MT" ? `R${"C".repeat(10)}` : "C".repeat(11)));
   const distribution = core.normalizeDistribution({
     week: 3,
@@ -86,7 +86,7 @@ test("저장된 주간 드랍 분배도 현황 이미지 아래에 표시한다"
   const canvas = fakeCanvas();
   renderBisSummaryImage(room(distribution), members, { createCanvas: () => canvas, scale: 1 });
 
-  assert.ok(canvas.context.calls.includes("3주차 드랍 분배"));
+  assert.ok(canvas.context.calls.includes("드랍 분배"));
   assert.ok(canvas.context.calls.includes("영식 무기 × 1"));
   assert.ok(canvas.context.calls.some((value) => value.includes("MT MT 공대원 · 무기")));
 });

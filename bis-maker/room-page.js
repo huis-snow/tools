@@ -158,7 +158,7 @@ function renderRoom() {
   if (!room) return;
   elements.banner.setAttribute("aria-busy", String(!rosterReady() && (!membersResolved || membersFromCache)));
   elements.title.textContent = room.title;
-  elements.meta.textContent = `${room.tier} · ${room.week}주차`;
+  elements.meta.textContent = `${room.tier} · 일회성 취합`;
   elements.state.textContent = room.locked ? "입력 마감" : "입력 중";
   elements.state.dataset.state = room.locked ? "locked" : "open";
   elements.submittedCount.textContent = String(members.filter((member) => member.submitted).length);

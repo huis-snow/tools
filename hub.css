@@ -1293,6 +1293,84 @@ footer {
   color: #f9946f;
 }
 
+.raid-loot-preview {
+  padding: 20px 22px;
+}
+
+.mini-loot-weeks {
+  width: min(100%, 390px);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.035);
+  font-family: var(--mono);
+}
+
+.mini-loot-head,
+.mini-loot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.mini-loot-head strong {
+  color: #fffdf6;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.mini-loot-head span,
+.mini-loot-row span {
+  color: #f9946f;
+  font-size: 7px;
+}
+
+.mini-week-strip {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.mini-week-strip i {
+  min-height: 21px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #8fa098;
+  font-size: 7px;
+  font-style: normal;
+}
+
+.mini-week-strip i.done {
+  color: #83c992;
+  background: rgba(131, 201, 146, 0.12);
+}
+
+.mini-week-strip i.now {
+  border-color: #f9946f;
+  color: #fffdf6;
+  background: rgba(249, 148, 111, 0.2);
+}
+
+.mini-loot-row:last-child {
+  border-bottom: 0;
+}
+
+.mini-loot-row b {
+  color: #d7e2dc;
+  font-size: 7px;
+  font-weight: 500;
+}
+
+.mini-loot-row em {
+  color: #8fa098;
+  font-size: 6px;
+  font-style: normal;
+}
+
 .card-content > p:first-child {
   margin: 0 0 8px;
   font-size: 9px;

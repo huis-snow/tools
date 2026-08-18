@@ -316,6 +316,429 @@ service cloud.firestore {
         !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId)/members/D4);
     }
 
+    function validRaidLootSeat(seat) {
+      return seat == 'MT' ||
+        seat == 'ST' ||
+        seat == 'MH' ||
+        seat == 'SH' ||
+        seat == 'D1' ||
+        seat == 'D2' ||
+        seat == 'D3' ||
+        seat == 'D4';
+    }
+
+    function validRaidLootPolicy(data) {
+      return data is map &&
+        data.keys().hasAll(['preset', 'seatOrder']) &&
+        data.keys().hasOnly(['preset', 'seatOrder']) &&
+        data.preset is string &&
+        (
+          data.preset == 'manual' ||
+          data.preset == 'fair' ||
+          data.preset == 'progression' ||
+          data.preset == 'custom'
+        ) &&
+        data.seatOrder is list &&
+        data.seatOrder.size() == 8 &&
+        'MT' in data.seatOrder &&
+        'ST' in data.seatOrder &&
+        'MH' in data.seatOrder &&
+        'SH' in data.seatOrder &&
+        'D1' in data.seatOrder &&
+        'D2' in data.seatOrder &&
+        'D3' in data.seatOrder &&
+        'D4' in data.seatOrder;
+    }
+
+    function validRaidLootRoom(data) {
+      return data.keys().hasAll([
+          'version',
+          'title',
+          'tier',
+          'startDate',
+          'currentWeek',
+          'ownerUid',
+          'locked',
+          'policy',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'version',
+          'title',
+          'tier',
+          'startDate',
+          'currentWeek',
+          'ownerUid',
+          'locked',
+          'policy',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.version is int &&
+        data.version == 1 &&
+        data.title is string &&
+        data.title == data.title.trim() &&
+        data.title.size() > 0 &&
+        data.title.size() <= 60 &&
+        data.tier is string &&
+        data.tier == data.tier.trim() &&
+        data.tier.size() > 0 &&
+        data.tier.size() <= 60 &&
+        data.startDate is string &&
+        data.startDate.matches('[1-9][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])') &&
+        data.currentWeek is int &&
+        data.currentWeek >= 1 &&
+        data.currentWeek <= 8 &&
+        data.ownerUid is string &&
+        data.ownerUid.size() > 0 &&
+        data.ownerUid.size() <= 128 &&
+        data.locked is bool &&
+        validRaidLootPolicy(data.policy) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validRaidLootMember(data, seat) {
+      return data.keys().hasAll([
+          'seat',
+          'nickname',
+          'job',
+          'editorUid',
+          'gear',
+          'submitted',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'seat',
+          'nickname',
+          'job',
+          'editorUid',
+          'gear',
+          'submitted',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        validRaidLootSeat(seat) &&
+        data.seat is string &&
+        data.seat == seat &&
+        data.nickname is string &&
+        data.nickname == data.nickname.trim() &&
+        data.nickname.size() > 0 &&
+        data.nickname.size() <= 30 &&
+        data.job is string &&
+        data.job == data.job.trim() &&
+        data.job.size() > 0 &&
+        data.job.size() <= 30 &&
+        data.editorUid is string &&
+        data.editorUid.size() <= 128 &&
+        data.gear is string &&
+        data.gear.matches('[XCUR]{11}') &&
+        data.submitted is bool &&
+        (data.submitted == false || !data.gear.matches('.*X.*')) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function allRaidLootMembersExistAfter(roomId) {
+      return existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/MT) &&
+        existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/ST) &&
+        existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/MH) &&
+        existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/SH) &&
+        existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D1) &&
+        existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D2) &&
+        existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D3) &&
+        existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D4);
+    }
+
+    function noRaidLootMembersExistAfter(roomId) {
+      return !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/MT) &&
+        !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/ST) &&
+        !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/MH) &&
+        !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/SH) &&
+        !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D1) &&
+        !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D2) &&
+        !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D3) &&
+        !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D4);
+    }
+
+    function validRaidLootEventId(eventId) {
+      return eventId.matches('[A-Za-z0-9_-]{22}');
+    }
+
+    function validRaidLootGearSlot(slot) {
+      return slot == 'weapon' ||
+        slot == 'head' ||
+        slot == 'body' ||
+        slot == 'hands' ||
+        slot == 'legs' ||
+        slot == 'feet' ||
+        slot == 'earrings' ||
+        slot == 'necklace' ||
+        slot == 'bracelets' ||
+        slot == 'ring1' ||
+        slot == 'ring2';
+    }
+
+    function validRaidLootDropType(dropType) {
+      return dropType == 'raid_earrings' ||
+        dropType == 'raid_necklace' ||
+        dropType == 'raid_bracelets' ||
+        dropType == 'raid_ring' ||
+        dropType == 'raid_head' ||
+        dropType == 'raid_hands' ||
+        dropType == 'raid_feet' ||
+        dropType == 'upgrade_accessory' ||
+        dropType == 'tome_weapon_token' ||
+        dropType == 'raid_body' ||
+        dropType == 'raid_legs' ||
+        dropType == 'upgrade_armor' ||
+        dropType == 'upgrade_weapon' ||
+        dropType == 'raid_weapon' ||
+        dropType == 'direct_weapon' ||
+        dropType == 'music' ||
+        dropType == 'mount';
+    }
+
+    function validRaidLootDropFloor(data) {
+      return (
+          data.floor == 1 &&
+          (
+            data.dropType == 'raid_earrings' ||
+            data.dropType == 'raid_necklace' ||
+            data.dropType == 'raid_bracelets' ||
+            data.dropType == 'raid_ring'
+          )
+        ) ||
+        (
+          data.floor == 2 &&
+          (
+            data.dropType == 'raid_head' ||
+            data.dropType == 'raid_hands' ||
+            data.dropType == 'raid_feet' ||
+            data.dropType == 'upgrade_accessory' ||
+            data.dropType == 'tome_weapon_token'
+          )
+        ) ||
+        (
+          data.floor == 3 &&
+          (
+            data.dropType == 'raid_body' ||
+            data.dropType == 'raid_legs' ||
+            data.dropType == 'upgrade_armor' ||
+            data.dropType == 'upgrade_weapon'
+          )
+        ) ||
+        (
+          data.floor == 4 &&
+          (
+            data.dropType == 'raid_weapon' ||
+            data.dropType == 'direct_weapon' ||
+            data.dropType == 'music' ||
+            data.dropType == 'mount'
+          )
+        );
+    }
+
+    function validRaidLootGearTarget(data) {
+      return (data.dropType == 'raid_earrings' && data.gearSlot == 'earrings') ||
+        (data.dropType == 'raid_necklace' && data.gearSlot == 'necklace') ||
+        (data.dropType == 'raid_bracelets' && data.gearSlot == 'bracelets') ||
+        (data.dropType == 'raid_ring' && (data.gearSlot == 'ring1' || data.gearSlot == 'ring2')) ||
+        (data.dropType == 'raid_head' && data.gearSlot == 'head') ||
+        (data.dropType == 'raid_hands' && data.gearSlot == 'hands') ||
+        (data.dropType == 'raid_feet' && data.gearSlot == 'feet') ||
+        (
+          data.dropType == 'upgrade_accessory' &&
+          (
+            data.gearSlot == 'earrings' ||
+            data.gearSlot == 'necklace' ||
+            data.gearSlot == 'bracelets' ||
+            data.gearSlot == 'ring1' ||
+            data.gearSlot == 'ring2'
+          )
+        ) ||
+        (data.dropType == 'raid_body' && data.gearSlot == 'body') ||
+        (data.dropType == 'raid_legs' && data.gearSlot == 'legs') ||
+        (
+          data.dropType == 'upgrade_armor' &&
+          (
+            data.gearSlot == 'head' ||
+            data.gearSlot == 'body' ||
+            data.gearSlot == 'hands' ||
+            data.gearSlot == 'legs' ||
+            data.gearSlot == 'feet'
+          )
+        ) ||
+        (data.dropType == 'upgrade_weapon' && data.gearSlot == 'weapon') ||
+        (data.dropType == 'raid_weapon' && data.gearSlot == 'weapon') ||
+        (data.dropType == 'direct_weapon' && data.gearSlot == 'weapon') ||
+        (
+          (
+            data.dropType == 'tome_weapon_token' ||
+            data.dropType == 'music' ||
+            data.dropType == 'mount'
+          ) &&
+          data.gearSlot == ''
+        );
+    }
+
+    function validRaidLootDropJob(data) {
+      return (
+          data.dropType == 'direct_weapon' &&
+          data.job.size() > 0
+        ) ||
+        (
+          data.dropType != 'direct_weapon' &&
+          data.job == ''
+        );
+    }
+
+    function validRaidLootEventBase(data) {
+      return data.week is int &&
+        data.week >= 1 &&
+        data.week <= 8 &&
+        data.floor is int &&
+        data.floor >= 1 &&
+        data.floor <= 4 &&
+        validRaidLootDropType(data.dropType) &&
+        validRaidLootDropFloor(data) &&
+        data.note is string &&
+        data.note == data.note.trim() &&
+        data.note.size() <= 200 &&
+        data.createdBy is string &&
+        data.createdBy.size() > 0 &&
+        data.createdBy.size() <= 128 &&
+        data.createdAt is timestamp;
+    }
+
+    function validRaidLootAward(data) {
+      return data.keys().hasAll([
+          'action',
+          'week',
+          'floor',
+          'dropType',
+          'seat',
+          'gearSlot',
+          'job',
+          'source',
+          'decision',
+          'countsForFairness',
+          'note',
+          'createdBy',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'action',
+          'week',
+          'floor',
+          'dropType',
+          'seat',
+          'gearSlot',
+          'job',
+          'source',
+          'decision',
+          'countsForFairness',
+          'note',
+          'createdBy',
+          'createdAt'
+        ]) &&
+        data.action == 'award' &&
+        validRaidLootEventBase(data) &&
+        validRaidLootSeat(data.seat) &&
+        data.gearSlot is string &&
+        (data.gearSlot == '' || validRaidLootGearSlot(data.gearSlot)) &&
+        validRaidLootGearTarget(data) &&
+        data.job is string &&
+        data.job == data.job.trim() &&
+        data.job.size() <= 30 &&
+        validRaidLootDropJob(data) &&
+        (
+          data.source == 'raid' ||
+          data.source == 'book' ||
+          data.source == 'external' ||
+          data.source == 'other'
+        ) &&
+        (
+          data.decision == 'recommended' ||
+          data.decision == 'manual' ||
+          data.decision == 'free'
+        ) &&
+        data.countsForFairness is bool;
+    }
+
+    function validRaidLootSkip(data) {
+      return data.keys().hasAll([
+          'action',
+          'week',
+          'floor',
+          'dropType',
+          'job',
+          'reason',
+          'note',
+          'createdBy',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'action',
+          'week',
+          'floor',
+          'dropType',
+          'job',
+          'reason',
+          'note',
+          'createdBy',
+          'createdAt'
+        ]) &&
+        data.action == 'skip' &&
+        validRaidLootEventBase(data) &&
+        data.job is string &&
+        data.job == data.job.trim() &&
+        data.job.size() <= 30 &&
+        validRaidLootDropJob(data) &&
+        (
+          data.reason == 'unclaimed' ||
+          data.reason == 'external' ||
+          data.reason == 'deferred'
+        );
+    }
+
+    function validRaidLootUndo(data) {
+      return data.keys().hasAll([
+          'action',
+          'targetEventId',
+          'note',
+          'createdBy',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'action',
+          'targetEventId',
+          'note',
+          'createdBy',
+          'createdAt'
+        ]) &&
+        data.action == 'undo' &&
+        validRaidLootEventId(data.targetEventId) &&
+        data.note is string &&
+        data.note == data.note.trim() &&
+        data.note.size() <= 200 &&
+        data.createdBy is string &&
+        data.createdBy.size() > 0 &&
+        data.createdBy.size() <= 128 &&
+        data.createdAt is timestamp;
+    }
+
+    function validRaidLootEvent(data) {
+      return data is map &&
+        (
+          validRaidLootAward(data) ||
+          validRaidLootSkip(data) ||
+          validRaidLootUndo(data)
+        );
+    }
+
     match /rooms/{roomId} {
       function owner() {
         return signedIn() && resource.data.ownerUid == request.auth.uid;
@@ -493,6 +916,175 @@ service cloud.firestore {
 
         allow delete: if parentOwner() &&
           !existsAfter(/databases/$(database)/documents/bisRooms/$(roomId));
+      }
+    }
+
+    match /raidLootRooms/{roomId} {
+      function raidLootOwner() {
+        return signedIn() && resource.data.ownerUid == request.auth.uid;
+      }
+
+      function raidLootOwnerUpdate() {
+        let changes = request.resource.data.diff(resource.data).affectedKeys();
+        return raidLootOwner() &&
+          validRaidLootRoom(request.resource.data) &&
+          changes.hasOnly(['title', 'tier', 'startDate', 'currentWeek', 'locked', 'policy', 'updatedAt']) &&
+          changes.hasAll(['updatedAt']) &&
+          request.resource.data.updatedAt == request.time;
+      }
+
+      allow get: if signedIn() && validRoomId(roomId);
+      allow list: if googleAccount() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.query.limit <= 30;
+
+      allow create: if googleAccount() &&
+        validRoomId(roomId) &&
+        validRaidLootRoom(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.locked == false &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time &&
+        allRaidLootMembersExistAfter(roomId);
+
+      allow update: if raidLootOwnerUpdate();
+
+      allow delete: if raidLootOwner() && noRaidLootMembersExistAfter(roomId);
+
+      match /members/{seat} {
+        function raidLootParentBefore() {
+          return get(/databases/$(database)/documents/raidLootRooms/$(roomId));
+        }
+
+        function raidLootParentAfter() {
+          return getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId));
+        }
+
+        function raidLootParentOwner() {
+          return signedIn() && raidLootParentBefore().data.ownerUid == request.auth.uid;
+        }
+
+        function noOtherRaidLootSeatClaimedByRequester() {
+          return (seat == 'MT' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/MT).data.editorUid != request.auth.uid) &&
+            (seat == 'ST' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/ST).data.editorUid != request.auth.uid) &&
+            (seat == 'MH' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/MH).data.editorUid != request.auth.uid) &&
+            (seat == 'SH' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/SH).data.editorUid != request.auth.uid) &&
+            (seat == 'D1' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D1).data.editorUid != request.auth.uid) &&
+            (seat == 'D2' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D2).data.editorUid != request.auth.uid) &&
+            (seat == 'D3' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D3).data.editorUid != request.auth.uid) &&
+            (seat == 'D4' || getAfter(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/D4).data.editorUid != request.auth.uid);
+        }
+
+        function raidLootParticipantMemberUpdate() {
+          let changes = request.resource.data.diff(resource.data).affectedKeys();
+          return signedIn() &&
+            raidLootParentBefore().data.locked == false &&
+            validRaidLootMember(request.resource.data, seat) &&
+            request.resource.data.seat == resource.data.seat &&
+            request.resource.data.nickname == resource.data.nickname &&
+            request.resource.data.job == resource.data.job &&
+            request.resource.data.createdAt == resource.data.createdAt &&
+            changes.hasOnly(['editorUid', 'gear', 'submitted', 'updatedAt']) &&
+            changes.hasAll(['updatedAt']) &&
+            (
+              (
+                resource.data.editorUid == '' &&
+                request.resource.data.editorUid == request.auth.uid &&
+                noOtherRaidLootSeatClaimedByRequester()
+              ) ||
+              (
+                resource.data.editorUid == request.auth.uid &&
+                request.resource.data.editorUid == request.auth.uid
+              )
+            ) &&
+            request.resource.data.updatedAt == request.time;
+        }
+
+        function raidLootOwnerMemberUpdate() {
+          let changes = request.resource.data.diff(resource.data).affectedKeys();
+          return raidLootParentOwner() &&
+            validRaidLootMember(request.resource.data, seat) &&
+            request.resource.data.seat == resource.data.seat &&
+            request.resource.data.nickname == resource.data.nickname &&
+            request.resource.data.job == resource.data.job &&
+            request.resource.data.createdAt == resource.data.createdAt &&
+            changes.hasOnly(['editorUid', 'gear', 'submitted', 'updatedAt']) &&
+            changes.hasAll(['updatedAt']) &&
+            request.resource.data.updatedAt == request.time;
+        }
+
+        allow get: if signedIn() && validRoomId(roomId) && validRaidLootSeat(seat);
+        allow list: if signedIn() &&
+          validRoomId(roomId) &&
+          request.query.limit <= 8;
+
+        allow create: if googleAccount() &&
+          validRoomId(roomId) &&
+          validRaidLootMember(request.resource.data, seat) &&
+          request.resource.data.editorUid == '' &&
+          request.resource.data.gear == 'XXXXXXXXXXX' &&
+          request.resource.data.submitted == false &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.updatedAt == request.time &&
+          !exists(/databases/$(database)/documents/raidLootRooms/$(roomId)) &&
+          raidLootParentAfter().data.ownerUid == request.auth.uid;
+
+        allow update: if raidLootParticipantMemberUpdate() || raidLootOwnerMemberUpdate();
+
+        allow delete: if raidLootParentOwner() &&
+          !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId));
+      }
+
+      match /events/{eventId} {
+        function raidLootEventParentBefore() {
+          return get(/databases/$(database)/documents/raidLootRooms/$(roomId));
+        }
+
+        function raidLootEventParentOwner() {
+          return signedIn() && raidLootEventParentBefore().data.ownerUid == request.auth.uid;
+        }
+
+        function validRaidLootUndoTarget() {
+          let target = get(/databases/$(database)/documents/raidLootRooms/$(roomId)/events/$(request.resource.data.targetEventId));
+          return target.data.action != 'undo' &&
+            (
+              target.data.action == 'award' ||
+              target.data.action == 'skip'
+            );
+        }
+
+        function validRaidLootDirectWeaponRecipient() {
+          return request.resource.data.action != 'award' ||
+            request.resource.data.dropType != 'direct_weapon' ||
+            get(/databases/$(database)/documents/raidLootRooms/$(roomId)/members/$(request.resource.data.seat)).data.job == request.resource.data.job;
+        }
+
+        allow get: if signedIn() &&
+          validRoomId(roomId) &&
+          validRaidLootEventId(eventId) &&
+          exists(/databases/$(database)/documents/raidLootRooms/$(roomId));
+        allow list: if signedIn() &&
+          validRoomId(roomId) &&
+          exists(/databases/$(database)/documents/raidLootRooms/$(roomId)) &&
+          request.query.limit <= 480;
+
+        allow create: if googleAccount() &&
+          validRoomId(roomId) &&
+          validRaidLootEventId(eventId) &&
+          raidLootEventParentOwner() &&
+          validRaidLootEvent(request.resource.data) &&
+          validRaidLootDirectWeaponRecipient() &&
+          (
+            request.resource.data.action != 'undo' ||
+            validRaidLootUndoTarget()
+          ) &&
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.createdAt == request.time;
+
+        allow update: if false;
+
+        allow delete: if raidLootEventParentOwner() &&
+          !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId));
       }
     }
 

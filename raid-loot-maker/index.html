@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="파이널판타지14 8인 공대의 BiS 장비와 실제 드랍 분배를 1주차부터 8주차까지 누적 기록하고 공정하게 추천하는 공대 파밍표"
+    />
+    <meta name="theme-color" content="#142f36" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="FF14 8주 공대 BiS·드랍 분배 | 공대 파밍표" />
+    <meta
+      property="og:description"
+      content="8명의 BiS 필요 상태와 실제 수령 이력을 8주 동안 기록하고, 누적 이력을 반영한 다음 분배 대상을 확인하세요."
+    />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/raid-loot-maker/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="FF14 8주 공대 BiS·드랍 분배 | 공대 파밍표" />
+    <meta
+      name="twitter:description"
+      content="파이널판타지14 고정 공대의 8주 파밍 현황과 실제 드랍 분배 이력을 한곳에서 관리하세요."
+    />
+    <title>파이널판타지14 8주 공대 BiS·드랍 분배 | 공대 파밍표</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/raid-loot-maker/" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "공대 파밍표",
+        "url": "https://huis-snow.github.io/tools/raid-loot-maker/",
+        "description": "파이널판타지14 8인 고정 공대의 8주 BiS 진행 및 실제 영식 드랍 분배 기록 도구",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "ko-KR",
+        "isAccessibleForFree": true
+      }
+    </script>
+  </head>
+  <body id="top" class="raid-loot-home-page">
+    <a class="skip-link" href="#raid-loot-room-builder">공대 파밍표 만들기로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="공대 파밍표 홈">
+        <span class="brand-mark" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></span>
+        <span>공대 파밍표</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> 8주 누적 기록</span>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="raid-loot-hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span> EIGHT WEEKS, ONE FAIR LOG</p>
+          <h1 id="raid-loot-hero-title">여덟 주의 파밍을,<br /><em>하나의 기록으로.</em></h1>
+          <p>
+            누가 무엇을 받았는지 잊지 않도록 실제 드랍을 하나씩 남기세요.<br class="desktop-only" />
+            누적 수령 이력과 현재 BiS 필요 상태를 함께 보고 다음 대상을 추천해요.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#raid-loot-room-builder">8주 공대 만들기 <span aria-hidden="true">↓</span></a>
+            <a class="secondary-link" href="../bis-maker/">한 번만 취합한다면 비스표 →</a>
+          </div>
+        </div>
+
+        <div class="hero-ledger" aria-label="8주 파밍 기록 예시">
+          <div class="ledger-head"><span>FARMING LEDGER</span><strong>01 — 08</strong></div>
+          <ol class="week-preview">
+            <li class="done"><b>01</b><span>7개 배정</span><i>✓</i></li>
+            <li class="done"><b>02</b><span>8개 배정</span><i>✓</i></li>
+            <li class="active"><b>03</b><span>현재 주차</span><i>●</i></li>
+            <li><b>04</b><span>예정</span><i>·</i></li>
+            <li><b>05</b><span>예정</span><i>·</i></li>
+            <li><b>06</b><span>예정</span><i>·</i></li>
+            <li><b>07</b><span>예정</span><i>·</i></li>
+            <li><b>08</b><span>예정</span><i>·</i></li>
+          </ol>
+          <div class="ledger-summary"><span><b>15</b> 누적 드랍</span><span><b>8</b> 공대원</span><span><b>88</b> BiS 부위</span></div>
+        </div>
+      </section>
+
+      <section class="builder-section" id="raid-loot-room-builder" aria-labelledby="raidLootBuilderTitle">
+        <div class="section-heading">
+          <div><p>01 / CREATE A FARMING ROOM</p><h2 id="raidLootBuilderTitle">8주 공대의 명단을 준비해요</h2></div>
+          <p>방장이 명단과 1주차 시작일을 등록하면, 공대원은 공유 링크에서 자기 BiS 상태만 입력할 수 있어요.</p>
+        </div>
+
+        <aside class="setup-notice" id="raidLootSetupNotice" role="status" hidden>
+          <strong>Firebase 연결이 필요합니다</strong>
+          <p><a href="./FIREBASE_SETUP.md">Firebase 연결 안내</a>에 따라 공개 웹 설정과 Google·익명 로그인을 연결해 주세요. 서비스 계정 키는 필요하지 않습니다.</p>
+        </aside>
+
+        <section class="auth-card" id="raidLootAuthCard" aria-labelledby="raidLootAuthTitle" aria-busy="true">
+          <div class="auth-identity">
+            <span class="google-mark" aria-hidden="true">G</span>
+            <div>
+              <p>RAID OWNER ACCOUNT</p>
+              <strong id="raidLootAuthTitle">로그인 상태를 확인하고 있어요</strong>
+              <span id="raidLootAuthDescription">공대를 만들고 8주 기록을 관리할 때만 Google 로그인이 필요해요.</span>
+            </div>
+          </div>
+          <div class="auth-actions">
+            <a id="raidLootOwnedRoomsLink" href="#raid-loot-owned-rooms" hidden>내 공대 목록</a>
+            <button id="raidLootGoogleSignInButton" type="button" disabled>Google로 로그인</button>
+            <button id="raidLootGoogleSignOutButton" type="button" hidden>로그아웃</button>
+          </div>
+          <p class="action-status" id="raidLootAuthStatus" role="status" aria-live="polite" aria-atomic="true">Firebase 인증 연결을 준비하고 있어요.</p>
+        </section>
+
+        <form class="create-card" id="raidLootRoomCreateForm">
+          <div class="card-heading">
+            <span>STEP 01</span>
+            <div><h3>공대 정보</h3><p>1주차 시작일을 기준으로 8주 날짜를 자동으로 표시해요.</p></div>
+          </div>
+
+          <div class="room-fields">
+            <label class="field" for="raidLootCreateTitle"><span>공대명</span><input id="raidLootCreateTitle" name="title" type="text" maxlength="60" autocomplete="off" required /></label>
+            <label class="field" for="raidLootCreateTier"><span>레이드 / 시즌</span><input id="raidLootCreateTier" name="tier" type="text" maxlength="60" autocomplete="off" required /></label>
+            <label class="field" for="raidLootCreateStartDate"><span>1주차 시작일</span><input id="raidLootCreateStartDate" name="startDate" type="date" required /></label>
+          </div>
+
+          <div class="card-heading roster-heading">
+            <span>STEP 02</span>
+            <div><h3>고정 8인 명단</h3><p>MT부터 D4까지 닉네임과 주직업을 입력해 주세요.</p></div>
+            <strong><span id="raidLootRosterFilledCount">0</span> / 8</strong>
+          </div>
+
+          <div class="roster-table-wrap">
+            <table class="roster-table">
+              <caption class="sr-only">자리별 공대원 닉네임과 직업 입력</caption>
+              <thead><tr><th scope="col">자리</th><th scope="col">닉네임</th><th scope="col">주직업</th></tr></thead>
+              <tbody>
+                <tr data-seat="MT"><th scope="row"><b>MT</b><span>멘탱</span></th><td><label class="sr-only" for="raidLootRosterNicknameMT">MT 닉네임</label><input id="raidLootRosterNicknameMT" name="nickname-MT" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobMT">MT 직업</label><input id="raidLootRosterJobMT" name="job-MT" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="ST"><th scope="row"><b>ST</b><span>섭탱</span></th><td><label class="sr-only" for="raidLootRosterNicknameST">ST 닉네임</label><input id="raidLootRosterNicknameST" name="nickname-ST" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobST">ST 직업</label><input id="raidLootRosterJobST" name="job-ST" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="MH"><th scope="row"><b>MH</b><span>멘힐</span></th><td><label class="sr-only" for="raidLootRosterNicknameMH">MH 닉네임</label><input id="raidLootRosterNicknameMH" name="nickname-MH" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobMH">MH 직업</label><input id="raidLootRosterJobMH" name="job-MH" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="SH"><th scope="row"><b>SH</b><span>섭힐</span></th><td><label class="sr-only" for="raidLootRosterNicknameSH">SH 닉네임</label><input id="raidLootRosterNicknameSH" name="nickname-SH" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobSH">SH 직업</label><input id="raidLootRosterJobSH" name="job-SH" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D1"><th scope="row"><b>D1</b><span>근딜</span></th><td><label class="sr-only" for="raidLootRosterNicknameD1">D1 닉네임</label><input id="raidLootRosterNicknameD1" name="nickname-D1" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobD1">D1 직업</label><input id="raidLootRosterJobD1" name="job-D1" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D2"><th scope="row"><b>D2</b><span>근딜</span></th><td><label class="sr-only" for="raidLootRosterNicknameD2">D2 닉네임</label><input id="raidLootRosterNicknameD2" name="nickname-D2" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobD2">D2 직업</label><input id="raidLootRosterJobD2" name="job-D2" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D3"><th scope="row"><b>D3</b><span>유격대</span></th><td><label class="sr-only" for="raidLootRosterNicknameD3">D3 닉네임</label><input id="raidLootRosterNicknameD3" name="nickname-D3" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobD3">D3 직업</label><input id="raidLootRosterJobD3" name="job-D3" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+                <tr data-seat="D4"><th scope="row"><b>D4</b><span>캐스터</span></th><td><label class="sr-only" for="raidLootRosterNicknameD4">D4 닉네임</label><input id="raidLootRosterNicknameD4" name="nickname-D4" type="text" maxlength="30" autocomplete="off" required /></td><td><label class="sr-only" for="raidLootRosterJobD4">D4 직업</label><input id="raidLootRosterJobD4" name="job-D4" type="text" maxlength="30" autocomplete="off" required /></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="create-actions">
+            <p>방 링크를 아는 사람은 명단·BiS 현황·8주 분배 이력을 볼 수 있어요.</p>
+            <button id="raidLootCreateButton" class="primary-button" type="submit" disabled>8주 공대 만들기 <span aria-hidden="true">→</span></button>
+          </div>
+          <p class="action-status" id="raidLootCreateStatus" role="status" aria-live="polite" aria-atomic="true">Firebase 연결을 확인하고 있어요.</p>
+        </form>
+
+        <section class="owned-rooms" id="raid-loot-owned-rooms" aria-labelledby="raidLootOwnedRoomsTitle" aria-busy="false" hidden>
+          <div class="owned-heading">
+            <div><p>MY RAID FARMING ROOMS</p><h3 id="raidLootOwnedRoomsTitle" tabindex="-1">내 공대 파밍표</h3><span>이 Google 계정으로 만든 8주 공대를 다른 기기에서도 이어서 관리할 수 있어요.</span></div>
+            <div><strong>최근 <span id="raidLootOwnedRoomCount">0</span>개</strong><button id="raidLootOwnedRoomsRefreshButton" type="button">새로고침</button></div>
+          </div>
+          <ul class="owned-list" id="raidLootOwnedRoomList"></ul>
+          <div class="owned-empty" id="raidLootOwnedRoomsEmpty" hidden><strong>아직 만든 8주 공대가 없어요</strong><p>위에서 고정 명단을 입력해 첫 공대 파밍표를 만들어 보세요.</p></div>
+          <p class="action-status" id="raidLootOwnedRoomsStatus" role="status" aria-live="polite" aria-atomic="true">내 공대 목록을 불러올 준비가 됐어요.</p>
+        </section>
+      </section>
+
+      <section class="how-section" aria-labelledby="raidLootHowTitle">
+        <div class="section-heading"><div><p>02 / EIGHT-WEEK FLOW</p><h2 id="raidLootHowTitle">입력은 한 번, 기록은 여덟 주</h2></div><p>계획과 실제 수령을 섞지 않고, 나온 아이템을 하나씩 원장에 남겨요.</p></div>
+        <ol class="how-list">
+          <li><span>01</span><strong>8명이 BiS 필요 상태 입력</strong><p>완료·보강템 필요·영식템 필요만 고르면 준비가 끝나요.</p></li>
+          <li><span>02</span><strong>실제 드랍을 하나씩 기록</strong><p>층과 아이템을 고르면 누적 이력에 맞춰 받을 사람을 추천해요.</p></li>
+          <li><span>03</span><strong>8주 동안 공정성 유지</strong><p>이전 주차 수령 기록까지 반영하고 잘못 기록한 항목은 되돌릴 수 있어요.</p></li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./" aria-label="공대 파밍표 홈"><span class="brand-mark" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></span><span>공대 파밍표</span></a>
+      <p>FFXIV 8인 고정 공대 · 8주 누적 분배</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <template id="raidLootOwnedRoomTemplate">
+      <li>
+        <article class="owned-item">
+          <div><p><span data-field="state">진행 중</span><span data-field="week">1 / 8주차</span></p><h4 data-field="title">공대 파밍표</h4><span data-field="meta"></span><time data-field="updated"></time></div>
+          <nav aria-label="공대 파밍표 바로가기"><a data-action="input" href="./room.html">BiS 입력</a><a data-action="summary" href="./summary.html">파밍 현황</a><button data-action="copy" type="button">입력 링크 복사</button></nav>
+        </article>
+      </li>
+    </template>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./index-page.js"></script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ const STYLE_FILES = [
   "habit-maker/styles.css",
   "raid-maker/styles.css",
   "bis-maker/styles.css",
+  "raid-loot-maker/styles.css",
   "daily-log/styles.css",
 ];
 const PAGE_FILES = [
@@ -27,6 +28,9 @@ const PAGE_FILES = [
   "bis-maker/index.html",
   "bis-maker/room.html",
   "bis-maker/summary.html",
+  "raid-loot-maker/index.html",
+  "raid-loot-maker/room.html",
+  "raid-loot-maker/summary.html",
   "daily-log/index.html",
 ];
 

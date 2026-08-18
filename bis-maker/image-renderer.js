@@ -109,7 +109,7 @@
     context.fillText(truncateText(context, room.title, 900), margin, 103);
     context.fillStyle = "#5f716a";
     context.font = "600 20px system-ui, sans-serif";
-    context.fillText(`${room.tier} · ${room.week}주차`, margin, 145);
+    context.fillText(`${room.tier} · 일회성 취합`, margin, 145);
 
     const submittedCount = members.filter((member) => member.submitted).length;
     const completedCount = members.reduce((total, member) => {
@@ -187,7 +187,7 @@
       const lootTop = tableTop + tableHeight + 45;
       context.fillStyle = "#153c34";
       context.font = "800 23px system-ui, sans-serif";
-      context.fillText(`${room.week}주차 드랍 분배`, tableLeft, lootTop);
+      context.fillText("드랍 분배", tableLeft, lootTop);
       context.fillStyle = "#6a7772";
       context.font = "500 13px system-ui, sans-serif";
       context.fillText("분배표에 저장된 현재 권장안", tableLeft + 210, lootTop);

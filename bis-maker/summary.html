@@ -3,19 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="파이널판타지14 8인 공대의 11개 BiS 장비 부위 현황과 주간 영식 드랍 분배를 확인하는 비스표 취합 페이지" />
+    <meta name="description" content="파이널판타지14 8인의 11개 BiS 장비 필요 상태를 한 번 취합하고 당일 영식 드랍을 분배하는 비스표 페이지" />
     <meta name="robots" content="noindex, follow" />
     <meta name="theme-color" content="#edf2e8" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ko_KR" />
     <meta property="og:site_name" content="작은 도구함" />
-    <meta property="og:title" content="8인 BiS 전체 현황·주간 분배 | 비스표" />
-    <meta property="og:description" content="8명의 장비 상태를 한 표에서 확인하고 이번 주 드랍 아이템의 분배 대상을 추천받으세요." />
+    <meta property="og:title" content="8인 BiS 전체 현황·당일 분배 | 비스표" />
+    <meta property="og:description" content="8명의 장비 상태를 한 표에서 확인하고 오늘 나온 드랍 아이템의 분배 대상을 추천받으세요." />
     <meta property="og:url" content="https://huis-snow.github.io/tools/bis-maker/summary.html" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="8인 BiS 전체 현황·주간 분배 | 비스표" />
-    <meta name="twitter:description" content="8명의 장비 상태를 한 표에서 확인하고 이번 주 드랍 분배를 정하세요." />
-    <title>8인 BiS 전체 현황·주간 분배 | 비스표</title>
+    <meta name="twitter:title" content="8인 BiS 전체 현황·당일 분배 | 비스표" />
+    <meta name="twitter:description" content="8명의 장비 상태를 한 표에서 확인하고 오늘 나온 드랍 분배를 정하세요." />
+    <title>8인 BiS 전체 현황·당일 분배 | 비스표</title>
     <link rel="canonical" href="https://huis-snow.github.io/tools/bis-maker/summary.html" />
     <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
@@ -26,7 +26,7 @@
     <header class="site-header">
       <a class="back-link" id="bisHeaderInputLink" href="./room.html"><span aria-hidden="true">←</span> 내 현황 입력</a>
       <a class="brand" href="./" aria-label="비스표 홈"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span><span>비스표</span></a>
-      <a class="header-link" href="#bisDistributionSection">주간 분배 <span aria-hidden="true">↓</span></a>
+      <a class="header-link" href="#bisDistributionSection">드랍 분배 <span aria-hidden="true">↓</span></a>
     </header>
 
     <main class="summary-main">
@@ -34,7 +34,7 @@
         <div class="room-banner-copy">
           <p>PARTY BIS SUMMARY <span id="bisSummaryRoomState" data-state="loading">연결 중</span></p>
           <h1 id="bisSummaryTitle" tabindex="-1">전체 현황을 불러오는 중</h1>
-          <p id="bisSummaryMeta">레이드와 주차 정보를 확인하고 있어요.</p>
+          <p id="bisSummaryMeta">레이드 정보를 확인하고 있어요.</p>
         </div>
         <div class="room-progress" aria-label="장비 현황을 저장한 공대원 수"><strong id="bisSummarySubmittedCount">0</strong><span>/ 8명 입력</span></div>
         <p class="action-status" id="bisSummaryStatus" role="status" aria-live="polite" aria-atomic="true">Firebase에서 방 정보를 확인하고 있어요.</p>
@@ -52,7 +52,7 @@
           <form class="owner-settings-form" id="bisRoomSettingsForm">
             <label for="bisOwnerTitleInput"><span>공대명</span><input id="bisOwnerTitleInput" type="text" maxlength="60" required /></label>
             <label for="bisOwnerTierInput"><span>레이드 / 시즌</span><input id="bisOwnerTierInput" type="text" maxlength="60" required /></label>
-            <label class="owner-week-field" for="bisOwnerWeekInput"><span>현재 주차</span><input id="bisOwnerWeekInput" type="number" min="1" max="99" required /></label>
+            <label class="owner-week-field" for="bisOwnerWeekInput" hidden><span>내부 주차</span><input id="bisOwnerWeekInput" type="number" min="1" max="99" required /></label>
             <button id="bisRoomSettingsSaveButton" type="submit">방 정보 저장</button>
           </form>
           <div class="release-claim-control">
@@ -119,7 +119,7 @@
           </div>
 
           <div class="image-actions">
-            <p>8인 전체 현황표와 저장된 주간 분배안을 이미지로 나눌 수 있어요.</p>
+            <p>8인 전체 현황표와 저장된 당일 분배안을 이미지로 나눌 수 있어요.</p>
             <button id="bisCopyImageButton" type="button"><span aria-hidden="true">▧</span><span id="bisCopyImageLabel">이미지 복사</span></button>
             <button id="bisSavePngButton" type="button"><span aria-hidden="true">↓</span> PNG 저장</button>
           </div>
@@ -128,12 +128,12 @@
 
         <section class="distribution-section" id="bisDistributionSection" aria-labelledby="bisDistributionTitle">
           <div class="section-heading compact-heading">
-            <div><p>02 / WEEKLY LOOT</p><h2 id="bisDistributionTitle">이번 주 드랍 분배</h2></div>
+            <div><p>02 / ONE-TIME LOOT</p><h2 id="bisDistributionTitle">오늘의 드랍 분배</h2></div>
             <p>실제로 나온 아이템 수를 입력하면 현재 BiS 상태에 맞는 공대원을 추천해요. 최종 배정은 직접 바꿀 수 있어요.</p>
           </div>
 
           <form id="bisDropForm" class="drop-panel">
-            <div class="drop-heading"><div><span>WEEKLY DROP</span><h3><b id="bisDistributionWeek">—</b>주차 드랍 입력</h3></div><button id="bisClearDropCountsButton" type="button">수량 초기화</button></div>
+            <div class="drop-heading"><div><span>ACTUAL DROP</span><h3><b id="bisDistributionWeek" hidden>—</b>나온 드랍 입력</h3></div><button id="bisClearDropCountsButton" type="button">수량 초기화</button></div>
             <div class="drop-grid" id="bisDropGrid">
               <label data-drop-type="raid_weapon"><span><b>무기상자</b><small>무기</small></span><input name="drop-raid_weapon" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
               <label data-drop-type="raid_head"><span><b>머리상자</b><small>머리</small></span><input name="drop-raid_head" type="number" min="0" max="8" value="0" inputmode="numeric" /></label>
@@ -154,11 +154,11 @@
           </form>
 
           <section class="recommendation-panel" id="bisRecommendationPanel" aria-labelledby="bisRecommendationTitle" hidden>
-            <div class="recommendation-heading"><div><p>AUTO RECOMMENDATION</p><h3 id="bisRecommendationTitle">추천 분배안</h3><span>필요 상태와 이번 주 중복 배정을 고려해 자동으로 채웠어요. 받는 사람과 적용 부위는 직접 바꿀 수 있어요.</span></div><strong><span id="bisAssignedDropCount">0</span> / <span id="bisRecommendationTotalCount">0</span>개 배정</strong></div>
+            <div class="recommendation-heading"><div><p>AUTO RECOMMENDATION</p><h3 id="bisRecommendationTitle">추천 분배안</h3><span>필요 상태와 이번 분배의 중복을 고려해 자동으로 채웠어요. 받는 사람과 적용 부위는 직접 바꿀 수 있어요.</span></div><strong><span id="bisAssignedDropCount">0</span> / <span id="bisRecommendationTotalCount">0</span>개 배정</strong></div>
             <form id="bisDistributionForm">
               <ol class="recommendation-list" id="bisRecommendationList"></ol>
               <div class="recommendation-empty" id="bisRecommendationEmpty" hidden><strong>배정할 수 있는 대상이 없어요</strong><p>아직 장비 현황을 입력하지 않았거나, 해당 아이템이 필요한 공대원이 없어요.</p></div>
-              <div class="distribution-save"><p>저장한 분배안은 이 방의 전체 현황을 보는 사람에게 공개돼요.</p><button class="primary-button" id="bisSaveDistributionButton" type="submit">이번 주 분배안 저장 <span aria-hidden="true">→</span></button></div>
+              <div class="distribution-save"><p>저장한 분배안은 이 방의 전체 현황을 보는 사람에게 공개돼요.</p><button class="primary-button" id="bisSaveDistributionButton" type="submit">분배안 저장 <span aria-hidden="true">→</span></button></div>
               <p class="action-status" id="bisDistributionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
             </form>
           </section>
@@ -168,7 +168,7 @@
       </div>
     </main>
 
-    <footer><a class="brand footer-brand" href="./" aria-label="비스표 홈"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span><span>비스표</span></a><p>8인 BiS 전체 현황 · 주간 분배</p><a href="#top">맨 위로 ↑</a></footer>
+    <footer><a class="brand footer-brand" href="./" aria-label="비스표 홈"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span><span>비스표</span></a><p>8인 BiS 전체 현황 · 일회성 분배</p><a href="#top">맨 위로 ↑</a></footer>
 
     <template id="bisDistributionRowTemplate">
       <li class="recommendation-item">

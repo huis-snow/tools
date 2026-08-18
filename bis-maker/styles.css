@@ -249,6 +249,18 @@ footer {
   line-height: 1.85;
 }
 
+.bis-hero-copy > .version-switch {
+  margin: 20px 0 0;
+  font-size: 12px;
+}
+
+.version-switch a {
+  color: var(--orange-dark);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .primary-link,
 .primary-button {
   display: inline-flex;
@@ -564,6 +576,10 @@ footer {
   margin-bottom: 37px;
   padding-bottom: 37px;
   border-bottom: 1px solid var(--line);
+}
+
+.bis-home-page .room-fields {
+  grid-template-columns: 1fr 1fr;
 }
 
 .field {

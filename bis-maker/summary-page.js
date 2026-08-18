@@ -200,7 +200,7 @@ function renderRoomHeader() {
   elements.workspace.hidden = false;
   elements.missingActions.hidden = true;
   elements.title.textContent = room.title;
-  elements.meta.textContent = `${room.tier} · ${room.week}주차`;
+  elements.meta.textContent = `${room.tier} · 일회성 취합`;
   elements.roomState.textContent = room.locked ? "입력 마감" : "입력 중";
   elements.roomState.dataset.state = room.locked ? "locked" : "open";
   elements.submittedCount.textContent = String(submittedMembersCount());
@@ -550,7 +550,7 @@ function renderRecommendation(options = {}) {
     }
     emptyTitle.textContent = noDrops ? "입력된 드랍이 없어요" : "배정할 수 있는 대상이 없어요";
     emptyDescription.textContent = noDrops
-      ? "이번 주 분배안을 비우려면 아래 저장 버튼을 눌러 주세요."
+      ? "분배안을 비우려면 아래 저장 버튼을 눌러 주세요."
       : "해당 아이템이 필요한 공대원이 없어요.";
   }
   elements.saveDistributionButton.hidden = !owner;
@@ -577,7 +577,7 @@ function loadDistribution(distribution, options = {}) {
   if (options.announce === true) {
     setStatus(
       elements.distributionStatus,
-      planVisible ? `${normalized.week}주차에 저장된 분배안을 불러왔어요.` : "아직 저장된 주간 분배안이 없어요.",
+      planVisible ? "저장된 일회성 분배안을 불러왔어요." : "아직 저장된 분배안이 없어요.",
       "success",
     );
   }
@@ -719,7 +719,7 @@ function downloadBlob(blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${filenamePart(room?.title)}-${room?.week || 1}주차-bis.png`;
+  link.download = `${filenamePart(room?.title)}-bis.png`;
   document.body.append(link);
   link.click();
   link.remove();
@@ -827,7 +827,7 @@ elements.roomSettingsForm.addEventListener("submit", async (event) => {
   }
   const saved = await runOwnerAction(
     () => store.updateRoom(roomId, changes),
-    "방 이름과 파밍 주차를 저장하고 있어요.",
+    "방 정보를 저장하고 있어요.",
     weekChanged ? `${requestedSettings.week}주차로 바꾸고 분배안을 초기화했어요` : "방 정보를 저장했어요",
   );
   if (saved) {
@@ -919,7 +919,7 @@ elements.dropForm.addEventListener("submit", (event) => {
         : `${assigned}개 드랍의 분배 대상을 모두 추천했어요.`,
       unassigned ? "warning" : "success",
     );
-    setStatus(elements.distributionStatus, "추천 결과를 확인하고 이번 주 분배안을 저장해 주세요.", "warning");
+    setStatus(elements.distributionStatus, "추천 결과를 확인하고 분배안을 저장해 주세요.", "warning");
     elements.recommendationPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     setStatus(elements.dropStatus, error.message, "error");
@@ -975,7 +975,7 @@ elements.distributionForm.addEventListener("submit", async (event) => {
   distributionBusy = true;
   syncDistributionControls();
   syncOwnerPanel({ preserveStatus: true });
-  setStatus(elements.distributionStatus, "이번 주 분배안을 저장하고 있어요.");
+  setStatus(elements.distributionStatus, "분배안을 저장하고 있어요.");
   try {
     const dropCounts = dropCountsFromInputs();
     const plan = currentPlan();
@@ -992,9 +992,9 @@ elements.distributionForm.addEventListener("submit", async (event) => {
     });
     loadedDistributionSignature = distributionSignature(distribution);
     distributionDirty = false;
-    setStatus(elements.distributionStatus, `${room.week}주차 분배안을 저장했어요.`, "success");
+    setStatus(elements.distributionStatus, "분배안을 저장했어요.", "success");
     setStatus(elements.dropStatus, "저장된 드랍 수량과 분배안을 표시하고 있어요.", "success");
-    showToast("이번 주 분배안을 저장했어요");
+    showToast("분배안을 저장했어요");
   } catch (error) {
     setStatus(elements.distributionStatus, firebaseErrorMessage(error, "분배안을 저장하지 못했어요."), "error");
   } finally {
