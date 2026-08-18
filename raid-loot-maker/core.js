@@ -45,9 +45,9 @@
     weapon: "무기",
     head: "머리",
     body: "몸통",
-    hands: "손",
-    legs: "다리",
-    feet: "발",
+    hands: "장갑",
+    legs: "바지",
+    feet: "신발",
     earrings: "귀걸이",
     necklace: "목걸이",
     bracelets: "팔찌",
@@ -107,10 +107,10 @@
       label: "영식 머리 상자", floor: 2, category: "raidGear", needStatus: "raid", gearSlots: ["head"], consumesNeed: true,
     }),
     raid_hands: freezeSpec({
-      label: "영식 손 상자", floor: 2, category: "raidGear", needStatus: "raid", gearSlots: ["hands"], consumesNeed: true,
+      label: "영식 장갑 상자", floor: 2, category: "raidGear", needStatus: "raid", gearSlots: ["hands"], consumesNeed: true,
     }),
     raid_feet: freezeSpec({
-      label: "영식 발 상자", floor: 2, category: "raidGear", needStatus: "raid", gearSlots: ["feet"], consumesNeed: true,
+      label: "영식 신발 상자", floor: 2, category: "raidGear", needStatus: "raid", gearSlots: ["feet"], consumesNeed: true,
     }),
     upgrade_accessory: freezeSpec({
       label: "장신구 보강재", floor: 2, category: "upgrade", needStatus: "upgrade", gearSlots: ACCESSORY_SLOTS, consumesNeed: true,
@@ -122,7 +122,7 @@
       label: "영식 몸통 상자", floor: 3, category: "raidGear", needStatus: "raid", gearSlots: ["body"], consumesNeed: true,
     }),
     raid_legs: freezeSpec({
-      label: "영식 다리 상자", floor: 3, category: "raidGear", needStatus: "raid", gearSlots: ["legs"], consumesNeed: true,
+      label: "영식 바지 상자", floor: 3, category: "raidGear", needStatus: "raid", gearSlots: ["legs"], consumesNeed: true,
     }),
     upgrade_armor: freezeSpec({
       label: "방어구 보강재", floor: 3, category: "upgrade", needStatus: "upgrade", gearSlots: ARMOR_SLOTS, consumesNeed: true,

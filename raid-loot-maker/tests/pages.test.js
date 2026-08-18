@@ -11,6 +11,55 @@ function read(file) {
   return fs.readFileSync(path.join(APP_ROOT, file), "utf8");
 }
 
+function attribute(tag, name) {
+  return tag.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? null;
+}
+
+function gearCards(html) {
+  return [...html.matchAll(/<fieldset\b[^>]*class="[^"]*\bgear-card\b[^"]*"[^>]*>[\s\S]*?<\/fieldset>/g)].map(
+    (match) => ({
+      html: match[0],
+      slot: attribute(match[0].match(/^<fieldset\b[^>]*>/)?.[0] ?? "", "data-slot"),
+    }),
+  );
+}
+
+function assertGearCardLayout(html) {
+  const expectedSlots = [
+    "weapon", "head", "earrings", "body", "necklace", "hands",
+    "bracelets", "legs", "ring1", "feet", "ring2",
+  ];
+  const expectedIconIds = [
+    "060102", "060124", "060133", "060126", "060132", "060129",
+    "060134", "060128", "060135", "060130", "060135",
+  ];
+  const expectedLabels = [
+    "무기", "머리", "귀걸이", "몸통", "목걸이", "장갑",
+    "팔찌", "바지", "반지 1", "신발", "반지 2",
+  ];
+  const cards = gearCards(html);
+
+  assert.deepEqual(cards.map(({ slot }) => slot), expectedSlots);
+  cards.forEach(({ html: card }, index) => {
+    assert.equal(card.match(/<legend>[\s\S]*?<b>([^<]+)<\/b><\/legend>/)?.[1], expectedLabels[index]);
+    const images = card.match(/<img\b[^>]*>/g) || [];
+    assert.equal(images.length, 1, `${expectedSlots[index]} 부위 아이콘`);
+
+    const image = images[0];
+    assert.equal(
+      attribute(image, "src"),
+      `https://v2.xivapi.com/api/asset?path=ui%2Ficon%2F060000%2F${expectedIconIds[index]}_hr1.tex&amp;format=png`,
+    );
+    assert.equal(attribute(image, "alt"), "");
+    assert.equal(attribute(image, "width"), "40");
+    assert.equal(attribute(image, "height"), "40");
+    assert.equal(attribute(image, "referrerpolicy"), "no-referrer");
+  });
+
+  assert.doesNotMatch(html, /[⚔◇▣✦▥⌟◉○◎◌]/);
+  assert.match(html, /© SQUARE ENIX/);
+}
+
 function idsFromController(file) {
   return [...read(file).matchAll(/byId\("([^"]+)"\)/g)].map((match) => match[1]);
 }
@@ -43,6 +92,10 @@ test("공대 생성과 참여 화면은 고정 8자리·11부위·3상태 계약
     assert.equal((room.match(new RegExp(`value="${state}"`, "g")) || []).length, 11);
   }
   assert.match(home, /id="raidLootCreateStartDate"[^>]*required/);
+});
+
+test("공대 파밍 입력표도 같은 장비 순서와 파판 장비 카테고리 아이콘을 사용한다", () => {
+  assertGearCardLayout(read("room.html"));
 });
 
 test("취합 화면은 8주 탭·11×8 표·17종 드랍·실제 원장을 제공한다", () => {
@@ -86,4 +139,3 @@ test("검색 공개는 홈만 허용하고 방·취합 주소는 noindex로 둔�
   assert.match(room, /<meta name="robots" content="noindex, follow" \/>/);
   assert.match(summary, /<meta name="robots" content="noindex, follow" \/>/);
 });
-
