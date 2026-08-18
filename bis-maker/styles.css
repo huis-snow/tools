@@ -1609,15 +1609,25 @@ footer {
 .bis-table tbody th {
   text-align: left;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .bis-table tbody th > span {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   display: inline-grid;
   place-items: center;
   margin-right: 8px;
   background: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.bis-table tbody th > .gear-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .bis-table td > span {

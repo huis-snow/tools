@@ -15,6 +15,31 @@ function attribute(tag, name) {
   return tag.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? null;
 }
 
+const GEAR_ICON_IDS = {
+  weapon: "060102",
+  head: "060124",
+  body: "060126",
+  hands: "060129",
+  legs: "060128",
+  feet: "060130",
+  earrings: "060133",
+  necklace: "060132",
+  bracelets: "060134",
+  ring1: "060135",
+  ring2: "060135",
+};
+
+function assertGearIcon(image, slot) {
+  assert.equal(
+    attribute(image, "src"),
+    `https://v2.xivapi.com/api/asset?path=ui%2Ficon%2F060000%2F${GEAR_ICON_IDS[slot]}_hr1.tex&amp;format=png`,
+  );
+  assert.equal(attribute(image, "alt"), "");
+  assert.equal(attribute(image, "width"), "40");
+  assert.equal(attribute(image, "height"), "40");
+  assert.equal(attribute(image, "referrerpolicy"), "no-referrer");
+}
+
 function gearCards(html) {
   return [...html.matchAll(/<fieldset\b[^>]*class="[^"]*\bgear-card\b[^"]*"[^>]*>[\s\S]*?<\/fieldset>/g)].map(
     (match) => ({
@@ -29,10 +54,6 @@ function assertGearCardLayout(html) {
     "weapon", "head", "earrings", "body", "necklace", "hands",
     "bracelets", "legs", "ring1", "feet", "ring2",
   ];
-  const expectedIconIds = [
-    "060102", "060124", "060133", "060126", "060132", "060129",
-    "060134", "060128", "060135", "060130", "060135",
-  ];
   const expectedLabels = [
     "무기", "머리", "귀걸이", "몸통", "목걸이", "장갑",
     "팔찌", "바지", "반지 1", "신발", "반지 2",
@@ -46,17 +67,28 @@ function assertGearCardLayout(html) {
     assert.equal(images.length, 1, `${expectedSlots[index]} 부위 아이콘`);
 
     const image = images[0];
-    assert.equal(
-      attribute(image, "src"),
-      `https://v2.xivapi.com/api/asset?path=ui%2Ficon%2F060000%2F${expectedIconIds[index]}_hr1.tex&amp;format=png`,
-    );
-    assert.equal(attribute(image, "alt"), "");
-    assert.equal(attribute(image, "width"), "40");
-    assert.equal(attribute(image, "height"), "40");
-    assert.equal(attribute(image, "referrerpolicy"), "no-referrer");
+    assertGearIcon(image, expectedSlots[index]);
   });
 
   assert.doesNotMatch(html, /[⚔◇▣✦▥⌟◉○◎◌]/);
+  assert.match(html, /© SQUARE ENIX/);
+}
+
+function assertSummaryGearIcons(html) {
+  const rows = [...html.matchAll(/<tr\b[^>]*data-slot="([^"]+)"[^>]*>[\s\S]*?<\/tr>/g)].map(
+    (match) => ({ html: match[0], slot: match[1] }),
+  );
+
+  assert.equal(rows.length, 11);
+  assert.deepEqual(
+    [...new Set(rows.map(({ slot }) => slot))].sort(),
+    Object.keys(GEAR_ICON_IDS).sort(),
+  );
+  rows.forEach(({ html: row, slot }) => {
+    const images = row.match(/<img\b[^>]*>/g) || [];
+    assert.equal(images.length, 1, `${slot} 현황표 부위 아이콘`);
+    assertGearIcon(images[0], slot);
+  });
   assert.match(html, /© SQUARE ENIX/);
 }
 
@@ -107,6 +139,7 @@ test("취합 화면은 8주 탭·11×8 표·17종 드랍·실제 원장을 제�
     "upgrade_weapon", "raid_weapon", "direct_weapon", "music", "mount",
   ];
 
+  assertSummaryGearIcons(html);
   assert.equal((html.match(/role="tab"[^>]*data-week="[1-8]"/g) || []).length, 8);
   assert.equal((html.match(/<tr data-slot=/g) || []).length, 11);
   assert.equal((html.match(/<td data-seat=/g) || []).length, 88);

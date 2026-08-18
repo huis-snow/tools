@@ -22,7 +22,7 @@
 
 아직 입력하지 않은 부위는 내부적으로 `미입력` 상태로 구분하며, 11개 부위를 모두 선택해야 개인 현황을 완료할 수 있습니다.
 
-장비 분류 그림은 [XIVAPI](https://v2.xivapi.com/docs/guides/assets/)가 제공하는 파이널판타지14 게임 아이콘을 사용합니다. 아이콘 저작권은 Square Enix에 있으며 앱 화면에도 `© SQUARE ENIX`를 표시합니다.
+입력 화면과 8인 현황표의 장비 분류 그림은 [XIVAPI](https://v2.xivapi.com/docs/guides/assets/)가 제공하는 파이널판타지14 게임 아이콘을 사용합니다. 아이콘 저작권은 Square Enix에 있으며 아이콘이 표시되는 화면에도 `© SQUARE ENIX`를 표시합니다.
 
 ## 자동 분배 기준
 
