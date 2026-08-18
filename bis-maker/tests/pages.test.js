@@ -16,6 +16,19 @@ function attribute(tag, name) {
   return tag.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? null;
 }
 
+function cssDeclarations(css, selector) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
+  assert.ok(match, `${selector} CSS 규칙`);
+  return match[1];
+}
+
+function assertCssSize(css, selector, size) {
+  const declarations = cssDeclarations(css, selector);
+  assert.match(declarations, new RegExp(`\\bwidth:\\s*${size}px\\s*;`));
+  assert.match(declarations, new RegExp(`\\bheight:\\s*${size}px\\s*;`));
+}
+
 const GEAR_ICON_IDS = {
   weapon: "060102",
   head: "060124",
@@ -128,6 +141,15 @@ test("비스 상태 입력표는 장비 순서와 파판 장비 카테고리 아
     css,
     /\.gear-card\[data-slot="weapon"\]\s*\{[^}]*grid-column:\s*1\s*\/\s*-1\s*;/,
   );
+});
+
+test("입력표와 8인 현황표의 장비 아이콘은 축소된 크기를 유지한다", () => {
+  const css = read("styles.css");
+
+  assertCssSize(css, ".gear-card legend span", 17);
+  assertCssSize(css, ".gear-card legend .gear-icon img", 17);
+  assertCssSize(css, ".bis-table tbody th > span", 15);
+  assertCssSize(css, ".bis-table tbody th > .gear-icon img", 15);
 });
 
 test("전체 현황은 11×8 표·13종 일회성 드랍·이미지 공유를 갖춘다", () => {
