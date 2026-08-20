@@ -28,18 +28,42 @@ test("익명 투표는 동의·거부·상관없음 세 선택지만 사용한�
 
 test("안건과 선택 설명은 공백을 정리하고 길이를 제한한다", () => {
   assert.deepEqual(core.normalizeRoomDraft({ agenda: "  안건입니다  ", description: "  설명입니다  " }), {
-    version: 1,
+    version: 2,
     agenda: "안건입니다",
     description: "설명입니다",
+    resultVisibility: "owner",
   });
   assert.throws(() => core.normalizeRoomDraft({ agenda: "", description: "" }), /안건/);
   assert.throws(() => core.normalizeRoomDraft({ agenda: "가".repeat(161), description: "" }), /160자/);
   assert.throws(() => core.normalizeRoomDraft({ agenda: "안건", description: "가".repeat(501) }), /500자/);
 });
 
+test("새 투표방은 세 결과 공개 범위를 v2 스키마로 정규화한다", () => {
+  assert.equal(core.LEGACY_VERSION, 1);
+  assert.equal(core.VERSION, 2);
+  assert.deepEqual(core.RESULT_VISIBILITIES, ["public", "voters", "owner"]);
+  assert.deepEqual(
+    core.RESULT_VISIBILITIES.map((visibility) => core.RESULT_VISIBILITY_META[visibility].label),
+    ["전체 공개", "투표한 사람만 공개", "방장만 공개"],
+  );
+  core.RESULT_VISIBILITIES.forEach((resultVisibility) => {
+    assert.equal(core.normalizeResultVisibility(resultVisibility), resultVisibility);
+    assert.equal(
+      core.normalizeRoomDraft({ agenda: "안건", description: "", resultVisibility }).resultVisibility,
+      resultVisibility,
+    );
+  });
+  assert.throws(
+    () => core.normalizeRoomDraft({ agenda: "안건", description: "", resultVisibility: "members" }),
+    /결과 공개 범위/,
+  );
+});
+
 test("공개 방 정보와 방장 전용 익명 투표함은 서로 분리한다", () => {
   const normalized = core.normalizeRoomSnapshot(room(), "AAAAAAAAAAAAAAAAAAAAAA");
   assert.equal(normalized.agenda, "이번 주 토요일에 출발할까요?");
+  assert.equal(normalized.version, 1);
+  assert.equal(normalized.resultVisibility, "owner", "기존 v1 방은 방장 공개로 해석해야 한다");
   assert.equal(Object.hasOwn(normalized, "counts"), false);
   const result = core.normalizeResultSnapshot({
     votes: {
@@ -67,6 +91,25 @@ test("공개 방 정보와 방장 전용 익명 투표함은 서로 분리한다
   assert.throws(() => core.normalizeResultSnapshot({
     votes: tooManyVotes, createdAt: timestamp, updatedAt: timestamp,
   }), /최대 참여/);
+});
+
+test("v2 방은 결과 공개 범위를 필수로 저장하고 v1 혼합 스키마를 거부한다", () => {
+  const current = core.normalizeRoomSnapshot(room({
+    version: 2,
+    resultVisibility: "voters",
+  }));
+  assert.equal(current.version, 2);
+  assert.equal(current.resultVisibility, "voters");
+
+  assert.throws(() => core.normalizeRoomSnapshot(room({ version: 2 })), /알 수 없는 항목/);
+  assert.throws(
+    () => core.normalizeRoomSnapshot(room({ resultVisibility: "public" })),
+    /알 수 없는 항목/,
+  );
+  assert.throws(
+    () => core.normalizeRoomSnapshot(room({ version: 2, resultVisibility: "members" })),
+    /결과 공개 범위/,
+  );
 });
 
 test("결과 행은 참여 인원과 소수점 한 자리 비율을 계산한다", () => {

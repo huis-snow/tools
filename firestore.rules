@@ -745,6 +745,12 @@ service cloud.firestore {
         choice == 'neutral';
     }
 
+    function validPollResultVisibility(resultVisibility) {
+      return resultVisibility == 'public' ||
+        resultVisibility == 'voters' ||
+        resultVisibility == 'owner';
+    }
+
     function validPollBallotKey(ballotKey) {
       return ballotKey is string &&
         ballotKey.matches('[A-Za-z0-9_-]{22}');
@@ -767,10 +773,21 @@ service cloud.firestore {
           'ownerUid',
           'locked',
           'createdAt',
-          'updatedAt'
+          'updatedAt',
+          'resultVisibility'
         ]) &&
         data.version is int &&
-        data.version == 1 &&
+        (
+          (
+            data.version == 1 &&
+            !('resultVisibility' in data)
+          ) ||
+          (
+            data.version == 2 &&
+            'resultVisibility' in data &&
+            validPollResultVisibility(data.resultVisibility)
+          )
+        ) &&
         data.agenda is string &&
         data.agenda == data.agenda.trim() &&
         data.agenda.size() > 0 &&
@@ -1218,6 +1235,7 @@ service cloud.firestore {
       allow create: if googleAccount() &&
         validRoomId(roomId) &&
         validPollRoom(request.resource.data) &&
+        request.resource.data.version == 2 &&
         request.resource.data.ownerUid == request.auth.uid &&
         request.resource.data.locked == false &&
         request.resource.data.createdAt == request.time &&
@@ -1249,6 +1267,29 @@ service cloud.firestore {
             existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)) &&
             pollBallotParentBefore().data.locked == false &&
             pollBallotParentAfter().data.locked == false;
+        }
+
+        function pollCanReadResults() {
+          let parent = pollBallotParentBefore();
+          return signedIn() &&
+            validPollRoom(parent.data) &&
+            (
+              (
+                googleAccount() &&
+                parent.data.ownerUid == request.auth.uid
+              ) ||
+              (
+                parent.data.version == 2 &&
+                'resultVisibility' in parent.data &&
+                (
+                  parent.data.resultVisibility == 'public' ||
+                  (
+                    parent.data.resultVisibility == 'voters' &&
+                    exists(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid))
+                  )
+                )
+              )
+            );
         }
 
         function pollFirstBallotUpdate() {
@@ -1290,11 +1331,12 @@ service cloud.firestore {
             );
         }
 
+        // Authorized readers receive pseudonymous ballot keys; the app only exposes aggregate values.
         allow get: if ballotId == 'current' &&
-          googleAccount() &&
+          signedIn() &&
           validRoomId(roomId) &&
           exists(/databases/$(database)/documents/pollRooms/$(roomId)) &&
-          pollBallotParentBefore().data.ownerUid == request.auth.uid;
+          pollCanReadResults();
         allow list: if false;
 
         allow create: if ballotId == 'current' &&

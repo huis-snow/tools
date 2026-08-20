@@ -7,12 +7,29 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const VERSION = 1;
+  const LEGACY_VERSION = 1;
+  const VERSION = 2;
   const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
   const BALLOT_KEY_PATTERN = /^[A-Za-z0-9_-]{22}$/;
   const MAX_AGENDA_LENGTH = 160;
   const MAX_DESCRIPTION_LENGTH = 500;
   const MAX_VOTES = 100;
+  const DEFAULT_RESULT_VISIBILITY = "owner";
+  const RESULT_VISIBILITIES = Object.freeze(["public", "voters", "owner"]);
+  const RESULT_VISIBILITY_META = Object.freeze({
+    public: Object.freeze({
+      label: "전체 공개",
+      description: "링크로 들어온 누구나 결과를 볼 수 있어요",
+    }),
+    voters: Object.freeze({
+      label: "투표한 사람만 공개",
+      description: "투표를 제출한 사람과 방장만 결과를 볼 수 있어요",
+    }),
+    owner: Object.freeze({
+      label: "방장만 공개",
+      description: "방장만 결과를 볼 수 있어요",
+    }),
+  });
   const CHOICES = Object.freeze(["agree", "reject", "neutral"]);
   const CHOICE_META = Object.freeze({
     agree: Object.freeze({ label: "동의", symbol: "○", description: "이 안건에 동의해요" }),
@@ -60,6 +77,13 @@
     return value;
   }
 
+  function normalizeResultVisibility(value) {
+    if (!RESULT_VISIBILITIES.includes(value)) {
+      throw new Error("결과 공개 범위를 전체 공개, 투표한 사람만 공개, 방장만 공개 중에서 선택해 주세요.");
+    }
+    return value;
+  }
+
   function normalizeCounts(value) {
     exactKeys(value, CHOICES, "투표 합계");
     const counts = {};
@@ -90,20 +114,29 @@
       version: VERSION,
       agenda: text(value.agenda, "안건", MAX_AGENDA_LENGTH),
       description: text(value.description || "", "설명", MAX_DESCRIPTION_LENGTH, true),
+      resultVisibility: normalizeResultVisibility(
+        value.resultVisibility === undefined ? DEFAULT_RESULT_VISIBILITY : value.resultVisibility,
+      ),
     };
   }
 
   function normalizeRoomSnapshot(value, roomId) {
-    exactKeys(value, [
+    const legacyKeys = [
       "version", "agenda", "description", "ownerUid", "locked", "createdAt", "updatedAt",
-    ], "투표방");
-    if (value.version !== VERSION) throw new Error("지원하지 않는 투표방 버전입니다.");
+    ];
+    if (!plainObject(value)) throw new TypeError("투표방 형식이 올바르지 않습니다.");
+    const legacy = value.version === LEGACY_VERSION;
+    if (!legacy && value.version !== VERSION) throw new Error("지원하지 않는 투표방 버전입니다.");
+    exactKeys(value, legacy ? legacyKeys : [...legacyKeys, "resultVisibility"], "투표방");
     if (typeof value.locked !== "boolean") throw new Error("투표 마감 상태가 올바르지 않습니다.");
     return {
       id: roomId === undefined ? undefined : validateRoomId(roomId),
-      version: VERSION,
+      version: value.version,
       agenda: text(value.agenda, "안건", MAX_AGENDA_LENGTH),
       description: text(value.description, "설명", MAX_DESCRIPTION_LENGTH, true),
+      resultVisibility: normalizeResultVisibility(
+        legacy ? DEFAULT_RESULT_VISIBILITY : value.resultVisibility,
+      ),
       ownerUid: uid(value.ownerUid, "방장 식별자"),
       locked: value.locked,
       createdAt: timestamp(value.createdAt, "생성 시각"),
@@ -208,15 +241,20 @@
   }
 
   return Object.freeze({
+    LEGACY_VERSION,
     VERSION,
     ROOM_ID_PATTERN,
     BALLOT_KEY_PATTERN,
     MAX_AGENDA_LENGTH,
     MAX_DESCRIPTION_LENGTH,
     MAX_VOTES,
+    DEFAULT_RESULT_VISIBILITY,
+    RESULT_VISIBILITIES,
+    RESULT_VISIBILITY_META,
     CHOICES,
     CHOICE_META,
     normalizeChoice,
+    normalizeResultVisibility,
     normalizeCounts,
     emptyCounts,
     totalVotes,

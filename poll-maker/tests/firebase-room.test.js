@@ -54,12 +54,13 @@ test("Google 방장은 parent와 빈 ballots/current 문서를 같은 batch로 �
   assert.match(store, /doc\(roomReference\(roomId\), "ballots", CURRENT_BALLOT_ID\)/);
   assert.match(store, /const batch = writeBatch\(database\)/);
   assert.match(store, /batch\.set\(roomReference\(roomId\)/);
+  assert.match(store, /resultVisibility: room\.resultVisibility/);
   assert.match(store, /batch\.set\(ballotReference\(roomId\)/);
   assert.match(store, /votes: \{\}/);
   assert.match(store, /await batch\.commit\(\)/);
 });
 
-test("방장 목록과 방·내 표·방장 전용 결과 실시간 구독 API를 제공한다", () => {
+test("방장 목록과 방·내 표·공개 범위별 결과 실시간 구독 API를 제공한다", () => {
   const store = read("poll-maker/firebase-room-store.js");
   const resultSubscription = store.match(/function subscribeResults\([\s\S]*?\n  async function castVote/)?.[0] || "";
 
@@ -69,8 +70,8 @@ test("방장 목록과 방·내 표·방장 전용 결과 실시간 구독 API�
   assert.match(store, /function subscribeRoom\(/);
   assert.match(store, /function subscribeOwnVote\(/);
   assert.match(store, /function subscribeResults\(/);
-  assert.match(resultSubscription, /requireGoogleAccount\(\)/);
-  assert.doesNotMatch(resultSubscription, /requireUser\(\)/);
+  assert.match(resultSubscription, /requireUser\(\)/);
+  assert.doesNotMatch(resultSubscription, /requireGoogleAccount\(\)/);
   assert.equal(
     (store.match(/snapshot\.data\(\{ serverTimestamps: "estimate" \}\)/g) || []).length,
     3,
@@ -120,15 +121,23 @@ test("투표방 parent에는 공개 집계가 없고 방장은 마감 상태만 
   assert.match(pollMatch, /allow delete: if false/);
 });
 
-test("익명 투표함은 방장 UID만 get할 수 있고 참여자와 list 조회는 항상 막는다", () => {
+test("익명 투표함 get은 방장·전체 공개·투표 완료 공개를 구분하고 list는 막는다", () => {
   const rules = read("firestore.rules");
   const ballotMatch = rules.match(/match \/ballots\/\{ballotId\} \{([\s\S]*?)\n      match \/votes\/\{voterUid\}/)?.[1] || "";
   const ballotGet = ballotMatch.match(/allow get:[\s\S]*?;/)?.[0] || "";
 
   assert.match(ballotGet, /ballotId == 'current'/);
-  assert.match(ballotGet, /googleAccount\(\)/);
-  assert.match(ballotGet, /pollBallotParentBefore\(\)\.data\.ownerUid == request\.auth\.uid/);
-  assert.doesNotMatch(ballotGet, /locked|request\.auth\.uid\)\/votes/);
+  assert.match(ballotGet, /signedIn\(\)/);
+  assert.match(ballotGet, /pollCanReadResults\(\)/);
+  assert.doesNotMatch(ballotGet, /googleAccount\(\)/);
+  assert.match(ballotMatch, /googleAccount\(\) &&\s*parent\.data\.ownerUid == request\.auth\.uid/);
+  assert.match(ballotMatch, /parent\.data\.ownerUid == request\.auth\.uid/);
+  assert.match(ballotMatch, /parent\.data\.resultVisibility == 'public'/);
+  assert.match(ballotMatch, /parent\.data\.resultVisibility == 'voters'/);
+  assert.match(
+    ballotMatch,
+    /exists\([^\n]+pollRooms\/\$\(roomId\)\/votes\/\$\(request\.auth\.uid\)\)/,
+  );
   assert.match(ballotMatch, /allow list: if false/);
   assert.match(ballotMatch, /allow delete: if false/);
 });
@@ -171,7 +180,7 @@ test("Rules는 own vote와 무작위 ballot 필드 하나의 정확한 원자적
   assert.match(ballotUpdate, /pollFirstBallotUpdate\(\)/);
   assert.match(ballotUpdate, /pollChangedBallotUpdate\(\)/);
   assert.doesNotMatch(ballotUpdate, /ownerUid|googleAccount\(\)/);
-  assert.doesNotMatch(pollMatch, /match \/results\/|validPollResult|counts|total|100000/);
+  assert.doesNotMatch(pollMatch, /match \/results\/|function validPollResult\(|counts|total|100000/);
 });
 
 test("방 생성과 방장 목록은 Google 계정·비밀 ID·최대 30개를 강제한다", () => {
@@ -182,7 +191,23 @@ test("방 생성과 방장 목록은 Google 계정·비밀 ID·최대 30개를 �
   assert.match(pollMatch, /allow list: if googleAccount\(\)/);
   assert.match(pollMatch, /request\.query\.limit <= 30/);
   assert.match(pollMatch, /allow create: if googleAccount\(\)/);
+  assert.match(pollMatch, /request\.resource\.data\.version == 2/);
   assert.match(pollMatch, /validInitialPollBallot\(roomId\)/);
+});
+
+test("Rules는 v2 공개 범위를 필수 검증하면서 기존 v1을 owner-only로 유지한다", () => {
+  const rules = read("firestore.rules");
+  const roomValidator = rules.match(/function validPollRoom\(data\) \{([\s\S]*?)\n    \}/)?.[1] || "";
+
+  assert.match(rules, /function validPollResultVisibility\(resultVisibility\)/);
+  for (const visibility of ["public", "voters", "owner"]) {
+    assert.match(rules, new RegExp(`resultVisibility == '${visibility}'`));
+  }
+  assert.match(roomValidator, /data\.version == 1/);
+  assert.match(roomValidator, /!\('resultVisibility' in data\)/);
+  assert.match(roomValidator, /data\.version == 2/);
+  assert.match(roomValidator, /'resultVisibility' in data/);
+  assert.match(roomValidator, /validPollResultVisibility\(data\.resultVisibility\)/);
 });
 
 test("익명 투표 방장 목록용 복합 색인이 기존 색인과 함께 등록된다", () => {

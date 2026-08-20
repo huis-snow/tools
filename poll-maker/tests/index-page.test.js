@@ -15,6 +15,7 @@ test("투표방 생성은 Google 계정과 core 검증을 거쳐 참여 링크�
   assert.match(page, /core\.normalizeRoomDraft\(\{/);
   assert.match(page, /agenda: elements\.agenda\.value/);
   assert.match(page, /description: elements\.description\.value/);
+  assert.match(page, /resultVisibility: elements\.form\.elements\.namedItem\("resultVisibility"\)\.value/);
   assert.match(page, /await store\.createRoom\(draft\)/);
   assert.match(page, /window\.location\.assign\(core\.roomUrl\(roomId, window\.location\.href\)\.toString\(\)\)/);
 });
@@ -24,6 +25,8 @@ test("내 투표방 목록은 개별 투표가 아니라 메타데이터만 렌�
   assert.match(page, /room\.agenda/);
   assert.match(page, /room\.description/);
   assert.match(page, /room\.locked/);
+  assert.match(page, /resultVisibilityLabel\(room\.resultVisibility\)/);
+  assert.match(page, /core\.RESULT_VISIBILITY_META\[normalized\]\.label/);
   assert.match(page, /core\.roomUrl\(room\.id, window\.location\.href\)/);
   assert.match(page, /copyText\(core\.roomUrl/);
   assert.doesNotMatch(page, /subscribeResults|subscribeOwnVote|votes\//);

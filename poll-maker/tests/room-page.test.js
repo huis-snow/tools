@@ -36,24 +36,43 @@ test("존재하지 않거나 사라진 방은 내 투표 구독을 정리하고 
   assert.match(missing, /unsubscribeVote = null/);
   assert.match(missing, /stopResultsSubscription\(\{ clear: true \}\)/);
   assert.match(missing, /elements\.roomResultSummary\.hidden = true/);
+  assert.match(missing, /elements\.roomVisibilityNotice\.hidden = true/);
   assert.match(subscriptionError, /if \(roomMissing\) return/);
 });
 
-test("결과는 Google 방장에게만 구독·표시하고 참여자에게는 합계 영역도 숨긴다", () => {
+test("결과는 방장·전체 공개 참여자·투표를 저장한 참여자에게만 구독·표시한다", () => {
   const eligibility = functionSource("resultsEligible", "shortTime");
-  const owner = functionSource("isOwner", "ownChoice");
+  const owner = functionSource("isOwner", "resultVisibility");
   const subscription = functionSource("syncResultsSubscription", "ensureOwnVoteSubscription");
 
   assert.match(owner, /store\?\.isGoogleAccount\?\.\(\)/);
   assert.match(owner, /room\.ownerUid === currentUid\(\)/);
-  assert.match(eligibility, /room && !ownerAuthBusy && !subscriptionFailed && isOwner\(\)/);
-  assert.doesNotMatch(eligibility, /ownVote|room\.locked/);
+  assert.match(eligibility, /!room \|\| !currentUid\(\) \|\| ownerAuthBusy \|\| subscriptionFailed/);
+  assert.match(eligibility, /if \(isOwner\(\)\) return true/);
+  assert.match(eligibility, /resultVisibility\(\) === "public"/);
+  assert.match(eligibility, /resultVisibility\(\) === "voters" && voteResolved && Boolean\(ownVote\)/);
+  assert.doesNotMatch(eligibility, /room\.locked/);
   assert.match(subscription, /if \(!store \|\| !roomId \|\| !resultsEligible\(\)\)/);
   assert.match(subscription, /store\.subscribeResults\(/);
   assert.match(page, /elements\.resultsPanel\.hidden = !eligible/);
   assert.match(page, /elements\.roomResultSummary\.hidden = !eligible/);
   assert.match(page, /elements\.roomTotal\.textContent = "—"/);
-  assert.match(page, /elements\.roomTotalLabel\.textContent = "방장 결과"/);
+  assert.match(page, /elements\.roomTotalLabel\.textContent = resultSummaryLabel\(\)/);
+});
+
+test("참여방은 공개 범위와 현재 투표 상태에 맞는 결과 안내를 렌더링한다", () => {
+  const roomRender = functionSource("renderRoom", "renderVote");
+  const voteRender = functionSource("renderVote", "clearResults");
+  const resultRender = functionSource("renderResults", "renderOwnerAccess");
+
+  assert.match(roomRender, /resultVisibilityMeta\(\)\.label/);
+  assert.match(roomRender, /elements\.roomVisibilityNotice\.hidden = false/);
+  assert.match(roomRender, /링크를 연 누구나 이름 없는 전체 합계/);
+  assert.match(roomRender, /이 브라우저나 계정으로 투표를 저장한 뒤/);
+  assert.match(roomRender, /방을 만든 Google 계정에서만/);
+  assert.match(voteRender, /선택을 저장하면 전체 결과가 열리고/);
+  assert.match(resultRender, /resultAudiencePhrase\(\)/);
+  assert.match(page, /결과 열람 권한이 있는 계정이나 브라우저는 이 가명표 원본에 기술적으로 접근/);
 });
 
 test("인증 계정을 바꾸기 전 투표·결과 구독과 화면 데이터를 모두 제거한다", () => {

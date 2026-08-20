@@ -17,6 +17,9 @@ const elements = {
   title: byId("pollRoomTitle"),
   description: byId("pollRoomDescription"),
   state: byId("pollRoomState"),
+  roomVisibilityNotice: byId("pollRoomVisibilityNotice"),
+  roomVisibilityLabel: byId("pollRoomVisibilityLabel"),
+  roomVisibilityDescription: byId("pollRoomVisibilityDescription"),
   roomResultSummary: byId("pollRoomResultSummary"),
   roomTotal: byId("pollRoomTotal"),
   roomTotalLabel: byId("pollRoomTotalLabel"),
@@ -48,6 +51,7 @@ const elements = {
   ownerCopy: byId("pollOwnerCopyButton"),
   lockButton: byId("pollLockButton"),
   ownerStatus: byId("pollOwnerStatus"),
+  roomPrivacyDescription: byId("pollRoomPrivacyDescription"),
   toast: byId("toast"),
 };
 
@@ -97,6 +101,26 @@ function isOwner() {
   return Boolean(room && store?.isGoogleAccount?.() && currentUid() && room.ownerUid === currentUid());
 }
 
+function resultVisibility() {
+  return core.normalizeResultVisibility(room?.resultVisibility || "owner");
+}
+
+function resultVisibilityMeta() {
+  return core.RESULT_VISIBILITY_META[resultVisibility()];
+}
+
+function resultAudiencePhrase() {
+  if (resultVisibility() === "public") return "링크를 연 누구나 볼 수 있는";
+  if (resultVisibility() === "voters") return "이 브라우저나 계정으로 투표를 저장한 사람과 방장이 볼 수 있는";
+  return "방장에게만 보이는";
+}
+
+function resultSummaryLabel() {
+  if (resultVisibility() === "public") return "전체 공개 결과";
+  if (resultVisibility() === "voters") return "투표자 공개 결과";
+  return "방장 결과";
+}
+
 function ownChoice() {
   return ownVote?.choice || "";
 }
@@ -110,7 +134,10 @@ function choiceLabel(choice) {
 }
 
 function resultsEligible() {
-  return Boolean(room && !ownerAuthBusy && !subscriptionFailed && isOwner());
+  if (!room || !currentUid() || ownerAuthBusy || subscriptionFailed) return false;
+  if (isOwner()) return true;
+  if (resultVisibility() === "public") return true;
+  return resultVisibility() === "voters" && voteResolved && Boolean(ownVote);
 }
 
 function shortTime() {
@@ -157,6 +184,15 @@ function renderRoom() {
   elements.title.textContent = room.agenda;
   elements.description.textContent = room.description || "추가 설명이 없는 안건입니다.";
   elements.description.dataset.empty = String(!room.description);
+  elements.roomVisibilityNotice.hidden = false;
+  const visibility = resultVisibility();
+  elements.roomVisibilityLabel.textContent = resultVisibilityMeta().label;
+  elements.roomVisibilityDescription.textContent = visibility === "public"
+    ? "링크를 연 누구나 이름 없는 전체 합계를 볼 수 있어요."
+    : visibility === "voters"
+      ? "이 브라우저나 계정으로 투표를 저장한 뒤 전체 합계를 볼 수 있어요. 방장은 항상 볼 수 있습니다."
+      : "방을 만든 Google 계정에서만 전체 합계를 볼 수 있어요.";
+  elements.roomPrivacyDescription.textContent = `${resultAudiencePhrase()} 결과예요. 앱 화면에는 이름 없는 선택지별 합계만 표시합니다. 투표할 때 이 브라우저에서 무작위 투표 키가 만들어지고, 투표함에는 이름·UID 대신 그 키와 선택이 함께 저장됩니다. 결과 열람 권한이 있는 계정이나 브라우저는 이 가명표 원본에 기술적으로 접근할 수 있고 Firebase 프로젝트 운영자도 원본 데이터에 접근할 수 있습니다. 익명 참여 상태에서 브라우저를 바꾸거나 사이트 데이터를 지우면 새 투표 키가 생겨 다시 투표할 수 있고, 참여자가 적으면 결과를 볼 수 있는 사람이 투표 시점과 합계 변화로 선택을 짐작할 수도 있어요.`;
   elements.state.textContent = room.locked ? "투표 마감" : "투표 중";
   elements.state.dataset.state = room.locked ? "locked" : "open";
   elements.workspace.hidden = false;
@@ -206,14 +242,21 @@ function renderVote() {
   } else if (editorDirty()) {
     setStatus(elements.voteStatus, savedChoice ? "바꿀 선택을 골랐어요. 아직 저장되지 않았습니다." : "한 항목을 골랐어요. 저장하면 방장에게 합계로 전달됩니다.", "warning");
   } else if (savedChoice) {
-    setStatus(elements.voteStatus, `‘${choiceLabel(savedChoice)}’으로 저장됐어요. 합계는 방장만 볼 수 있고 마감 전까지 선택을 바꿀 수 있습니다.`, "success");
+    const resultMessage = resultVisibility() === "public"
+      ? "전체 공개 결과를 함께 볼 수 있고"
+      : resultVisibility() === "voters"
+        ? "이제 전체 결과를 볼 수 있고"
+        : "합계는 방장만 볼 수 있고";
+    setStatus(elements.voteStatus, `‘${choiceLabel(savedChoice)}’으로 저장됐어요. ${resultMessage} 마감 전까지 선택을 바꿀 수 있습니다.`, "success");
   } else {
     setStatus(elements.voteStatus, "동의·거부·상관없음 중 하나를 골라 주세요.");
   }
 
   elements.voteGuide.textContent = room?.locked
     ? "방장이 투표를 마감했어요. 저장된 내 선택만 확인할 수 있어요."
-    : "한 번 저장한 뒤에도 투표가 마감되기 전까지 바꿀 수 있어요.";
+    : resultVisibility() === "voters" && !savedChoice
+      ? "선택을 저장하면 전체 결과가 열리고, 마감 전까지 내 선택을 바꿀 수 있어요."
+      : "한 번 저장한 뒤에도 투표가 마감되기 전까지 바꿀 수 있어요.";
 }
 
 function clearResults() {
@@ -222,10 +265,10 @@ function clearResults() {
   resultsFromCache = false;
   resultsError = null;
   elements.roomTotal.textContent = "—";
-  elements.roomTotalLabel.textContent = "방장 결과";
+  elements.roomTotalLabel.textContent = resultSummaryLabel();
   elements.resultsTotal.textContent = "—";
   elements.resultsEmpty.hidden = true;
-  elements.resultsGuide.textContent = "방장 전용 전체 합계를 불러오고 있어요.";
+  elements.resultsGuide.textContent = `${resultAudiencePhrase()} 전체 합계를 불러오고 있어요.`;
   elements.resultsLive.innerHTML = '<b aria-hidden="true"></b> 확인 중';
   elements.resultsLive.dataset.state = "cache";
   core.CHOICES.forEach((choice) => {
@@ -245,7 +288,7 @@ function renderResults() {
 
   if (!eligible) {
     elements.roomTotal.textContent = "—";
-    elements.roomTotalLabel.textContent = "방장 결과";
+    elements.roomTotalLabel.textContent = resultSummaryLabel();
     return;
   }
 
@@ -264,7 +307,7 @@ function renderResults() {
     elements.roomTotal.textContent = "—";
     elements.roomTotalLabel.textContent = "합계 불러오는 중";
     elements.resultsTotal.textContent = "—";
-    elements.resultsGuide.textContent = "방장 전용 전체 합계를 불러오고 있어요.";
+    elements.resultsGuide.textContent = `${resultAudiencePhrase()} 전체 합계를 불러오고 있어요.`;
     return;
   }
 
@@ -275,8 +318,8 @@ function renderResults() {
   elements.resultsTotal.textContent = String(total);
   elements.resultsEmpty.hidden = total !== 0;
   elements.resultsGuide.textContent = room?.locked
-    ? "방장에게만 보이는 최종 합계예요. 개별 투표는 표시되지 않아요."
-    : "방장에게만 보이는 실시간 합계예요. 개별 선택은 표시되지 않아요.";
+    ? `${resultAudiencePhrase()} 최종 합계예요. 개별 투표는 표시되지 않아요.`
+    : `${resultAudiencePhrase()} 실시간 합계예요. 개별 선택은 표시되지 않아요.`;
   elements.resultsLive.innerHTML = resultsFromCache
     ? '<b aria-hidden="true"></b> 연결 확인 중'
     : room?.locked
@@ -304,17 +347,33 @@ function renderOwnerAccess() {
   elements.ownerSignIn.disabled = !store || ownerAuthBusy || subscriptionFailed;
   elements.ownerSignIn.textContent = google ? "다른 Google 계정으로 확인" : "Google로 방장 확인";
   elements.ownerAccessDescription.textContent = google
-    ? "현재 Google 계정은 이 방의 방장 계정이 아니에요. 다른 계정으로 전환해 확인할 수 있습니다."
-    : "방을 만든 Google 계정으로 확인하면 실시간 합계와 마감 기능이 열려요.";
+    ? "현재 Google 계정은 이 방의 방장 계정이 아니에요. 다른 계정으로 전환하면 투표 마감·재개 기능을 확인할 수 있습니다."
+    : resultVisibility() === "owner"
+      ? "방을 만든 Google 계정으로 확인하면 실시간 합계와 투표 마감·재개 기능이 열려요."
+      : "방을 만든 Google 계정으로 확인하면 투표 마감·재개 기능이 열려요.";
 
   if (ownerAuthBusy) {
     setStatus(elements.ownerAccessStatus, "Google 방장 계정을 확인하고 있어요.");
   } else if (ownerAccessFeedback) {
     setStatus(elements.ownerAccessStatus, ownerAccessFeedback.message, ownerAccessFeedback.state);
   } else if (google) {
-    setStatus(elements.ownerAccessStatus, "이 계정은 방장이 아닙니다. 참여자로 투표할 수 있지만 결과는 볼 수 없어요.", "warning");
+    const accessMessage = resultVisibility() === "public"
+      ? "전체 공개 결과는 볼 수 있지만 투표 마감은 방장만 할 수 있어요."
+      : resultVisibility() === "voters"
+        ? ownVote
+          ? "저장된 투표가 있어 결과는 볼 수 있지만 투표 마감은 방장만 할 수 있어요."
+          : "이 계정으로 투표를 저장하면 결과를 볼 수 있지만 투표 마감은 방장만 할 수 있어요."
+        : "참여자로 투표할 수 있지만 결과와 마감 기능은 방장에게만 공개돼요.";
+    setStatus(elements.ownerAccessStatus, `이 계정은 방장이 아닙니다. ${accessMessage}`, "warning");
   } else {
-    setStatus(elements.ownerAccessStatus, "참여자는 로그인하지 않아도 투표할 수 있고 결과는 공개되지 않아요.");
+    const accessMessage = resultVisibility() === "public"
+      ? "링크를 연 누구나 전체 결과를 볼 수 있어요."
+      : resultVisibility() === "voters"
+        ? ownVote
+          ? "이 브라우저로 투표를 저장해 전체 결과를 볼 수 있어요."
+          : "이 브라우저로 투표를 저장하면 전체 결과가 열려요."
+        : "전체 결과는 방장에게만 공개돼요.";
+    setStatus(elements.ownerAccessStatus, `별도의 로그인 화면 없이 익명으로 투표할 수 있어요. ${accessMessage}`);
   }
 }
 
@@ -335,7 +394,7 @@ function renderOwner() {
   } else if (room?.locked) {
     setStatus(elements.ownerStatus, "투표가 마감됐어요. 필요하면 다시 열 수 있습니다.", "success");
   } else {
-    setStatus(elements.ownerStatus, "방장 전용 실시간 합계를 확인할 수 있어요. 모두 참여했다면 투표를 마감해 주세요.");
+    setStatus(elements.ownerStatus, `${resultAudiencePhrase()} 실시간 합계를 확인할 수 있어요. 모두 참여했다면 투표를 마감해 주세요.`);
   }
 }
 
@@ -494,6 +553,7 @@ function showMissingRoom() {
   elements.state.textContent = "종료됨";
   elements.state.dataset.state = "error";
   elements.roomResultSummary.hidden = true;
+  elements.roomVisibilityNotice.hidden = true;
   elements.roomTotal.textContent = "—";
   elements.roomTotalLabel.textContent = "확인 불가";
   elements.workspace.hidden = true;
@@ -573,6 +633,7 @@ function showStartupError(title, description, message) {
   elements.state.textContent = "연결 불가";
   elements.state.dataset.state = "error";
   elements.roomResultSummary.hidden = true;
+  elements.roomVisibilityNotice.hidden = true;
   elements.roomTotal.textContent = "—";
   elements.roomTotalLabel.textContent = "확인 불가";
   elements.workspace.hidden = true;

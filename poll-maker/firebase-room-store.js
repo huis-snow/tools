@@ -202,6 +202,7 @@ export async function createPollRoomStore(config, options = {}) {
       version: room.version,
       agenda: room.agenda,
       description: room.description,
+      resultVisibility: room.resultVisibility,
       ownerUid: user.uid,
       locked: false,
       createdAt: serverTimestamp(),
@@ -297,8 +298,9 @@ export async function createPollRoomStore(config, options = {}) {
   }
 
   function subscribeResults(roomId, onValue, onError) {
-    requireGoogleAccount();
+    requireUser();
     const normalizedId = core.validateRoomId(roomId);
+    // Firestore authorizes the raw random-key ballot map; normalization only returns aggregate counts.
     return onSnapshot(
       ballotReference(normalizedId),
       { includeMetadataChanges: true },

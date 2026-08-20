@@ -10,11 +10,11 @@
     <meta property="og:locale" content="ko_KR" />
     <meta property="og:site_name" content="작은 도구함" />
     <meta property="og:title" content="익명 투표 참여 | 익명 투표소" />
-    <meta property="og:description" content="이름 없이 한 표를 남기고, 방장만 실시간 합계를 확인하세요." />
+    <meta property="og:description" content="이름 없이 한 표를 남기고, 방장이 정한 범위에서 실시간 합계를 확인하세요." />
     <meta property="og:url" content="https://huis-snow.github.io/tools/poll-maker/room.html" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="익명 투표 참여 | 익명 투표소" />
-    <meta name="twitter:description" content="동의·거부·상관없음 중 하나를 이름 없이 선택하고 방장에게 합계로 전달하세요." />
+    <meta name="twitter:description" content="동의·거부·상관없음 중 하나를 이름 없이 선택하고 공개 범위에 맞춰 합계를 확인하세요." />
     <title>익명 투표 참여 | 익명 투표소</title>
     <link rel="canonical" href="https://huis-snow.github.io/tools/poll-maker/room.html" />
     <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
@@ -40,6 +40,13 @@
         </div>
         <h1 id="pollRoomTitle" tabindex="-1">투표방을 불러오는 중</h1>
         <p class="room-description" id="pollRoomDescription">안건을 확인하고 있어요.</p>
+        <div class="room-visibility-notice" id="pollRoomVisibilityNotice" hidden>
+          <span>RESULT ACCESS</span>
+          <div>
+            <strong id="pollRoomVisibilityLabel">결과 공개 범위 확인 중</strong>
+            <p id="pollRoomVisibilityDescription">누가 결과를 볼 수 있는지 확인하고 있어요.</p>
+          </div>
+        </div>
         <div class="room-summary">
           <span id="pollRoomResultSummary" hidden><strong id="pollRoomTotal">—</strong><i id="pollRoomTotalLabel">방장 결과</i></span>
           <button id="pollShareButton" type="button" disabled>참여 링크 복사</button>
@@ -59,7 +66,7 @@
             <span id="pollOwnerAccessDescription">방을 만든 Google 계정으로 확인하면 실시간 합계와 마감 기능이 열려요.</span>
           </div>
           <button id="pollOwnerSignInButton" type="button">Google로 방장 확인</button>
-          <p class="action-status" id="pollOwnerAccessStatus" role="status" aria-live="polite" aria-atomic="true">참여자는 로그인하지 않아도 투표할 수 있고 결과는 공개되지 않아요.</p>
+          <p class="action-status" id="pollOwnerAccessStatus" role="status" aria-live="polite" aria-atomic="true">참여자는 별도의 로그인 화면 없이 익명으로 투표할 수 있어요.</p>
         </section>
 
         <section class="vote-panel" id="pollVotePanel" aria-labelledby="pollVoteTitle" tabindex="-1">
@@ -101,7 +108,7 @@
         <section class="results-panel" id="pollResultsPanel" aria-labelledby="pollResultsTitle" hidden>
           <div class="section-heading compact-heading">
             <div><p>02 / LIVE RESULT</p><h2 id="pollResultsTitle" tabindex="-1">지금까지의 결과</h2></div>
-            <p id="pollResultsGuide">방장에게만 세 선택지의 합계가 표시되고 개별 투표는 보이지 않아요.</p>
+            <p id="pollResultsGuide">결과 공개 범위를 확인하고 있어요. 개별 투표는 표시하지 않아요.</p>
           </div>
           <div class="result-total"><strong id="pollResultsTotal">0</strong><span>명 참여</span><i id="pollResultsLive" data-state="cache" role="status" aria-live="polite" aria-atomic="true"><b aria-hidden="true"></b> 확인 중</i></div>
           <div class="result-list" id="pollResultList" aria-live="polite" aria-atomic="true">
@@ -128,7 +135,7 @@
           <div class="owner-panel-copy">
             <p>ROOM OWNER</p>
             <h2 id="pollOwnerTitle">투표 관리</h2>
-            <span>마감하면 새 투표와 변경을 막고, 방장 전용 합계를 최종 결과로 유지해요.</span>
+            <span>마감하면 새 투표와 변경을 막고, 정해 둔 공개 범위에서 합계를 최종 결과로 유지해요.</span>
           </div>
           <div class="owner-actions">
             <button id="pollOwnerCopyButton" type="button">참여 링크 복사</button>
@@ -141,7 +148,7 @@
           <span aria-hidden="true">i</span>
           <div>
             <h2 id="pollRoomPrivacyTitle">익명 투표 안내</h2>
-            <p>참여자에게는 결과를 공개하지 않아요. 투표할 때 이 브라우저에서 무작위 투표 키가 만들어지고, 방장 전용 투표함에는 이름·UID 대신 그 키와 선택이 함께 저장됩니다. 방장 Google 계정은 이 가명표 원본에 기술적으로 접근할 수 있지만 앱 화면에는 선택지별 합계만 표시해요. Firebase 프로젝트 운영자도 원본 데이터에 접근할 수 있습니다. 익명 참여 상태에서 브라우저를 바꾸거나 사이트 데이터를 지우면 새 투표 키가 생겨 다시 투표할 수 있고, 참여자가 적으면 방장이 투표 시점과 합계 변화로 선택을 짐작할 수도 있어요.</p>
+            <p id="pollRoomPrivacyDescription">결과 공개 범위와 관계없이 앱 화면에는 이름 없는 선택지별 합계만 표시해요. 투표할 때 이 브라우저에서 무작위 투표 키가 만들어지고, 투표함에는 이름·UID 대신 그 키와 선택이 함께 저장됩니다. 결과 열람 권한이 있는 계정이나 브라우저는 이 가명표 원본에 기술적으로 접근할 수 있고 Firebase 프로젝트 운영자도 원본 데이터에 접근할 수 있습니다. 익명 참여 상태에서 브라우저를 바꾸거나 사이트 데이터를 지우면 새 투표 키가 생겨 다시 투표할 수 있고, 참여자가 적으면 결과를 볼 수 있는 사람이 투표 시점과 합계 변화로 선택을 짐작할 수도 있어요.</p>
           </div>
         </aside>
       </div>

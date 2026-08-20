@@ -24,7 +24,7 @@ test("검색 가능한 홈은 canonical과 무료 한국어 웹앱 구조화 데
     "@type": "WebApplication",
     name: "익명 투표소",
     url: "https://huis-snow.github.io/tools/poll-maker/",
-    description: "동의, 거부, 상관없음 중 하나를 익명으로 선택하고 방장만 실시간 합계를 보는 온라인 투표 도구",
+    description: "동의, 거부, 상관없음 중 하나를 익명으로 선택하고 결과 공개 범위를 정할 수 있는 온라인 투표 도구",
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Any",
     inLanguage: "ko-KR",
@@ -33,7 +33,7 @@ test("검색 가능한 홈은 canonical과 무료 한국어 웹앱 구조화 데
   });
 });
 
-test("홈은 Google 방장 로그인·한 안건·설명·고정 세 선택지를 제공한다", () => {
+test("홈은 Google 방장 로그인·한 안건·설명·고정 세 선택지와 결과 공개 범위를 제공한다", () => {
   const html = read("index.html");
 
   assert.match(html, /id="pollGoogleSignInButton"/);
@@ -45,12 +45,17 @@ test("홈은 Google 방장 로그인·한 안건·설명·고정 세 선택지�
   assert.match(html, /id="poll-owned-rooms"/);
   assert.match(html, /data-action="copy"/);
   assert.doesNotMatch(html, /name="(?:nickname|name)"/i);
-  assert.match(html, /방장만 실시간 합계를 보는/);
-  assert.match(html, /방장 전용 익명 투표 결과 예시/);
-  assert.match(html, /방장에게 이름 없는 합계만 보여요/);
+  assert.equal((html.match(/name="resultVisibility"/g) || []).length, 3);
+  assert.equal((html.match(/value="(?:public|voters|owner)"/g) || []).length, 3);
+  assert.match(html, /name="resultVisibility" value="owner" checked/);
+  assert.match(html, /전체 공개/);
+  assert.match(html, /투표한 사람만 공개/);
+  assert.match(html, /방장만 공개 <b>추천<\/b>/);
+  assert.match(html, /aria-label="익명 투표 결과 예시"/);
+  assert.match(html, /결과를 누구에게 보여 줄지 방장이 정해요/);
 });
 
-test("참여방은 검색 제외·native radio·방장 전용 결과와 마감 영역을 갖춘다", () => {
+test("참여방은 검색 제외·native radio·권한별 결과 안내와 방장 마감 영역을 갖춘다", () => {
   const html = read("room.html");
 
   assert.match(html, /<meta name="robots" content="noindex, follow"/);
@@ -64,19 +69,22 @@ test("참여방은 검색 제외·native radio·방장 전용 결과와 마감 �
   assert.match(html, /id="pollLockButton"/);
   assert.match(html, /id="pollOwnerAccess"/);
   assert.match(html, /id="pollOwnerSignInButton"/);
+  assert.match(html, /id="pollRoomVisibilityLabel"/);
+  assert.match(html, /id="pollRoomVisibilityDescription"/);
+  assert.match(html, /id="pollRoomVisibilityNotice" hidden/);
   assert.match(html, /id="pollRoomTotal">—</);
   assert.match(html, /id="pollRoomTotalLabel">방장 결과/);
 });
 
-test("익명 범위와 한계를 홈과 참여방에서 오해 없이 알린다", () => {
+test("익명 범위·결과 공개 범위와 기술적 한계를 홈과 참여방에서 오해 없이 알린다", () => {
   const copy = `${read("index.html")}\n${read("room.html")}`;
 
-  for (const phrase of ["무작위 투표 키", "키와 선택이 함께 저장", "방장 Google 계정", "가명표 원본", "앱 화면", "Firebase 프로젝트 운영자", "원본 데이터", "짐작"]) {
+  for (const phrase of ["무작위 투표 키", "키와 선택이 함께 저장", "결과 열람 권한", "가명표 원본", "앱 화면", "Firebase 프로젝트 운영자", "원본 데이터", "짐작"]) {
     assert.match(copy, new RegExp(phrase));
   }
   assert.match(read("index.html"), /공식 선거나 신원 확인이 필요한 투표에는 적합하지 않습니다/);
-  assert.match(read("room.html"), /참여자에게는 결과를 공개하지 않아요/);
-  assert.match(read("room.html"), /앱 화면에는 선택지별 합계만 표시해요/);
+  assert.match(read("room.html"), /결과 공개 범위와 관계없이 앱 화면에는 이름 없는 선택지별 합계만 표시해요/);
+  assert.match(read("room.html"), /결과 열람 권한이 있는 계정이나 브라우저/);
   assert.doesNotMatch(copy, /내부 익명 ID만/);
   assert.doesNotMatch(copy, /방장(?:도|은|에게는?) (?:원본|개별 선택)에 접근할 수 없/);
 });

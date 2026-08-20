@@ -57,6 +57,11 @@ function authName(user) {
   return String(user?.displayName || user?.email || "Google 사용자").trim();
 }
 
+function resultVisibilityLabel(value) {
+  const normalized = core.normalizeResultVisibility(value);
+  return core.RESULT_VISIBILITY_META[normalized].label;
+}
+
 function identityKey(user) {
   if (!user) return "signed-out";
   const providers = Array.isArray(user.providerData)
@@ -112,6 +117,7 @@ function ownedRoomItem(room) {
   const state = item.querySelector("[data-field='state']");
   state.textContent = room.locked ? "투표 마감" : "투표 중";
   state.dataset.state = room.locked ? "locked" : "open";
+  item.querySelector("[data-field='privacy']").textContent = resultVisibilityLabel(room.resultVisibility);
   item.querySelector("[data-field='agenda']").textContent = room.agenda;
   const description = item.querySelector("[data-field='description']");
   description.textContent = room.description || "추가 설명 없음";
@@ -348,6 +354,7 @@ elements.form.addEventListener("submit", async (event) => {
     const draft = core.normalizeRoomDraft({
       agenda: elements.agenda.value,
       description: elements.description.value,
+      resultVisibility: elements.form.elements.namedItem("resultVisibility").value,
     });
     const roomId = await store.createRoom(draft);
     setStatus(elements.createStatus, "투표방을 만들었어요. 참여 화면으로 이동합니다.", "success");
