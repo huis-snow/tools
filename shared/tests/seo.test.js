@@ -49,6 +49,12 @@ const PAGES = [
     url: "https://huis-snow.github.io/tools/raid-loot-maker/summary.html",
     indexed: false,
   },
+  { file: "poll-maker/index.html", url: "https://huis-snow.github.io/tools/poll-maker/", indexed: true },
+  {
+    file: "poll-maker/room.html",
+    url: "https://huis-snow.github.io/tools/poll-maker/room.html",
+    indexed: false,
+  },
   { file: "daily-log/index.html", url: "https://huis-snow.github.io/tools/daily-log/", indexed: true },
 ];
 
@@ -113,6 +119,17 @@ test("반듯표는 한글 아스키 테이블 검색 의도와 실제 사용 안
   assert.match(source, /한글과 전각 문자는 왜 2칸일까요\?/);
   assert.match(source, /스프레드시트에서 바로 표 만들기/);
   assert.match(read("index.html"), /한글 아스키\(ASCII\) 테이블 생성기/);
+});
+
+test("작은 도구함은 여덟 번째 익명 투표 도구를 검색 설명과 카드에 함께 제공한다", () => {
+  const source = read("index.html");
+
+  assert.match(source, /<meta\s+name="description"\s+content="[^"]*익명 투표소[^"]*"\s*\/>/);
+  assert.match(source, /<p>TOOLS \/ 08<\/p>/);
+  assert.match(source, /href="\.\/poll-maker\/"/);
+  assert.match(source, /<span class="card-index">008<\/span>/);
+  assert.match(source, /<h3>익명 투표소/);
+  assert.match(source, /<span class="card-index">009<\/span>/);
 });
 
 test("사이트와 반듯표 구조화 데이터는 실제 페이지 정보와 일치한다", () => {

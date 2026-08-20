@@ -14,6 +14,7 @@ const STYLE_FILES = [
   "raid-maker/styles.css",
   "bis-maker/styles.css",
   "raid-loot-maker/styles.css",
+  "poll-maker/styles.css",
   "daily-log/styles.css",
 ];
 const PAGE_FILES = [
@@ -31,6 +32,8 @@ const PAGE_FILES = [
   "raid-loot-maker/index.html",
   "raid-loot-maker/room.html",
   "raid-loot-maker/summary.html",
+  "poll-maker/index.html",
+  "poll-maker/room.html",
   "daily-log/index.html",
 ];
 

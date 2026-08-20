@@ -5,35 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·일회성 BiS·8주 파밍 분배표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 습관 달력, 공대 구성·BiS 파밍표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음"
     />
     <meta name="theme-color" content="#f4f1e8" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ko_KR" />
     <meta property="og:site_name" content="작은 도구함" />
-    <meta property="og:title" content="작은 도구함 | 한글 아스키 테이블·일정표 웹 도구" />
+    <meta property="og:title" content="작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구" />
     <meta
       property="og:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 취합과 8주 파밍 기록, 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 공대 BiS 취합과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <meta property="og:url" content="https://huis-snow.github.io/tools/" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="작은 도구함 | 한글 아스키 테이블·일정표 웹 도구" />
+    <meta name="twitter:title" content="작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구" />
     <meta
       name="twitter:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 공대 BiS 취합과 8주 파밍 기록, 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 공대 BiS 취합과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
-    <title>작은 도구함 | 한글 아스키 테이블·일정표 웹 도구</title>
+    <title>작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구</title>
     <link rel="canonical" href="https://huis-snow.github.io/tools/" />
     <link rel="icon" href="favicon.svg?v=20260715" type="image/svg+xml" />
-    <link rel="stylesheet" href="hub.css?v=20260715-data-safety" />
+    <link rel="stylesheet" href="hub.css?v=20260818-poll" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "작은 도구함",
         "url": "https://huis-snow.github.io/tools/",
-        "description": "한글 아스키 테이블 생성기, 주간 일정표, 습관 달력, 공대 구성·일회성 BiS·8주 파밍 분배표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음",
+        "description": "한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 습관 달력, 공대 구성·BiS 파밍표, 하루 기록을 설치 없이 사용하는 무료 웹 도구 모음",
         "inLanguage": "ko-KR"
       }
     </script>
@@ -197,7 +197,7 @@
       <section class="tools-section" id="tools" aria-labelledby="tools-title">
         <div class="section-heading">
           <div>
-            <p>TOOLS / 07</p>
+            <p>TOOLS / 08</p>
             <h2 id="tools-title">지금 쓸 수 있는 도구</h2>
           </div>
           <span>도구는 천천히 하나씩 늘어납니다.</span>
@@ -401,10 +401,44 @@
             </div>
           </a>
 
+          <a class="tool-card active-card" href="./poll-maker/">
+            <div class="card-topline">
+              <span class="status"><i></i> 사용 가능</span>
+              <span class="card-index">008</span>
+            </div>
+            <div class="card-preview poll-preview" aria-hidden="true">
+              <div class="mini-poll">
+                <div class="mini-poll-head">
+                  <strong>ANONYMOUS POLL</strong>
+                  <span>7명 참여</span>
+                </div>
+                <p>이번 주 파밍 시간을 변경할까요?</p>
+                <div class="mini-poll-row agree">
+                  <b>동의</b><i><span></span></i><em>4</em>
+                </div>
+                <div class="mini-poll-row reject">
+                  <b>거부</b><i><span></span></i><em>2</em>
+                </div>
+                <div class="mini-poll-row neutral">
+                  <b>상관없음</b><i><span></span></i><em>1</em>
+                </div>
+              </div>
+            </div>
+            <div class="card-content">
+              <p>ANONYMOUS · LIVE</p>
+              <h3>익명 투표소 <span aria-hidden="true">↗</span></h3>
+              <p class="description">안건을 공유하고 동의·거부·상관없음 중 하나를 이름 없이 실시간으로 모으는 투표 도구</p>
+            </div>
+            <div class="card-footer">
+              <span>링크 하나로 익명 참여 · 집계는 방장에게만</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
+
           <article class="tool-card empty-card" aria-label="다음 도구를 준비 중입니다">
             <div class="card-topline">
               <span class="status waiting"><i></i> 다음 도구</span>
-              <span class="card-index">008</span>
+              <span class="card-index">009</span>
             </div>
             <div class="empty-mark" aria-hidden="true"><span>+</span></div>
             <div class="card-content">

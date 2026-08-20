@@ -739,6 +739,112 @@ service cloud.firestore {
         );
     }
 
+    function validPollChoice(choice) {
+      return choice == 'agree' ||
+        choice == 'reject' ||
+        choice == 'neutral';
+    }
+
+    function validPollBallotKey(ballotKey) {
+      return ballotKey is string &&
+        ballotKey.matches('[A-Za-z0-9_-]{22}');
+    }
+
+    function validPollRoom(data) {
+      return data.keys().hasAll([
+          'version',
+          'agenda',
+          'description',
+          'ownerUid',
+          'locked',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'version',
+          'agenda',
+          'description',
+          'ownerUid',
+          'locked',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.version is int &&
+        data.version == 1 &&
+        data.agenda is string &&
+        data.agenda == data.agenda.trim() &&
+        data.agenda.size() > 0 &&
+        data.agenda.size() <= 160 &&
+        data.description is string &&
+        data.description == data.description.trim() &&
+        data.description.size() <= 500 &&
+        data.ownerUid is string &&
+        data.ownerUid.size() > 0 &&
+        data.ownerUid.size() <= 128 &&
+        data.locked is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validPollBallot(data) {
+      return data.keys().hasAll(['votes', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['votes', 'createdAt', 'updatedAt']) &&
+        data.votes is map &&
+        data.votes.size() <= 100 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validPollVote(data) {
+      return data.keys().hasAll(['choice', 'ballotKey', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['choice', 'ballotKey', 'createdAt', 'updatedAt']) &&
+        validPollChoice(data.choice) &&
+        validPollBallotKey(data.ballotKey) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function validPollBallotTransition(beforeBallot, afterBallot, ballotKey, beforeChoice, afterChoice, firstVote) {
+      let changes = afterBallot.diff(beforeBallot).affectedKeys();
+      let voteChanges = afterBallot.votes.diff(beforeBallot.votes);
+      return validPollBallot(beforeBallot) &&
+        validPollBallot(afterBallot) &&
+        validPollBallotKey(ballotKey) &&
+        validPollChoice(afterChoice) &&
+        changes.hasOnly(['votes', 'updatedAt']) &&
+        changes.hasAll(['votes', 'updatedAt']) &&
+        voteChanges.affectedKeys().hasOnly([ballotKey]) &&
+        voteChanges.affectedKeys().hasAll([ballotKey]) &&
+        afterBallot.createdAt == beforeBallot.createdAt &&
+        afterBallot.updatedAt == request.time &&
+        afterBallot.votes[ballotKey] == afterChoice &&
+        (
+          (
+            firstVote == true &&
+            !(ballotKey in beforeBallot.votes) &&
+            beforeBallot.votes.size() < 100 &&
+            afterBallot.votes.size() == beforeBallot.votes.size() + 1
+          ) ||
+          (
+            firstVote == false &&
+            validPollChoice(beforeChoice) &&
+            beforeChoice != afterChoice &&
+            ballotKey in beforeBallot.votes &&
+            beforeBallot.votes[ballotKey] == beforeChoice &&
+            afterBallot.votes.size() == beforeBallot.votes.size()
+          )
+        );
+    }
+
+    function validInitialPollBallot(roomId) {
+      let ballot = getAfter(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current);
+      return existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current) &&
+        validPollBallot(ballot.data) &&
+        ballot.data.votes.size() == 0 &&
+        ballot.data.createdAt == request.time &&
+        ballot.data.updatedAt == request.time;
+    }
+
     match /rooms/{roomId} {
       function owner() {
         return signedIn() && resource.data.ownerUid == request.auth.uid;
@@ -1085,6 +1191,224 @@ service cloud.firestore {
 
         allow delete: if raidLootEventParentOwner() &&
           !existsAfter(/databases/$(database)/documents/raidLootRooms/$(roomId));
+      }
+    }
+
+    match /pollRooms/{roomId} {
+      function pollOwner() {
+        return signedIn() && resource.data.ownerUid == request.auth.uid;
+      }
+
+      function pollOwnerLockUpdate() {
+        let changes = request.resource.data.diff(resource.data).affectedKeys();
+        return pollOwner() &&
+          googleAccount() &&
+          validPollRoom(request.resource.data) &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          changes.hasOnly(['locked', 'updatedAt']) &&
+          changes.hasAll(['locked', 'updatedAt']) &&
+          request.resource.data.updatedAt == request.time;
+      }
+
+      allow get: if signedIn() && validRoomId(roomId);
+      allow list: if googleAccount() &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.query.limit <= 30;
+
+      allow create: if googleAccount() &&
+        validRoomId(roomId) &&
+        validPollRoom(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.locked == false &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time &&
+        validInitialPollBallot(roomId);
+
+      allow update: if pollOwnerLockUpdate();
+      allow delete: if false;
+
+      match /ballots/{ballotId} {
+        function pollBallotParentBefore() {
+          return get(/databases/$(database)/documents/pollRooms/$(roomId));
+        }
+
+        function pollBallotParentAfter() {
+          return getAfter(/databases/$(database)/documents/pollRooms/$(roomId));
+        }
+
+        function pollRequesterVoteBefore() {
+          return get(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid));
+        }
+
+        function pollRequesterVoteAfter() {
+          return getAfter(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid));
+        }
+
+        function pollBallotOpenBeforeAndAfter() {
+          return exists(/databases/$(database)/documents/pollRooms/$(roomId)) &&
+            existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)) &&
+            pollBallotParentBefore().data.locked == false &&
+            pollBallotParentAfter().data.locked == false;
+        }
+
+        function pollFirstBallotUpdate() {
+          let voteAfter = pollRequesterVoteAfter();
+          return !exists(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+            existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+            validPollVote(voteAfter.data) &&
+            voteAfter.data.createdAt == request.time &&
+            voteAfter.data.updatedAt == request.time &&
+            validPollBallotTransition(
+              resource.data,
+              request.resource.data,
+              voteAfter.data.ballotKey,
+              '',
+              voteAfter.data.choice,
+              true
+            );
+        }
+
+        function pollChangedBallotUpdate() {
+          let voteBefore = pollRequesterVoteBefore();
+          let voteAfter = pollRequesterVoteAfter();
+          return exists(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+            existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+            validPollVote(voteBefore.data) &&
+            validPollVote(voteAfter.data) &&
+            voteAfter.data.ballotKey == voteBefore.data.ballotKey &&
+            voteAfter.data.createdAt == voteBefore.data.createdAt &&
+            voteAfter.data.updatedAt == request.time &&
+            voteAfter.data.diff(voteBefore.data).affectedKeys().hasOnly(['choice', 'updatedAt']) &&
+            voteAfter.data.diff(voteBefore.data).affectedKeys().hasAll(['choice', 'updatedAt']) &&
+            validPollBallotTransition(
+              resource.data,
+              request.resource.data,
+              voteAfter.data.ballotKey,
+              voteBefore.data.choice,
+              voteAfter.data.choice,
+              false
+            );
+        }
+
+        allow get: if ballotId == 'current' &&
+          googleAccount() &&
+          validRoomId(roomId) &&
+          exists(/databases/$(database)/documents/pollRooms/$(roomId)) &&
+          pollBallotParentBefore().data.ownerUid == request.auth.uid;
+        allow list: if false;
+
+        allow create: if ballotId == 'current' &&
+          googleAccount() &&
+          validRoomId(roomId) &&
+          validPollBallot(request.resource.data) &&
+          request.resource.data.votes.size() == 0 &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.updatedAt == request.time &&
+          !exists(/databases/$(database)/documents/pollRooms/$(roomId)) &&
+          existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)) &&
+          pollBallotParentAfter().data.ownerUid == request.auth.uid;
+
+        allow update: if ballotId == 'current' &&
+          signedIn() &&
+          validRoomId(roomId) &&
+          pollBallotOpenBeforeAndAfter() &&
+          (
+            (
+              !exists(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+              existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+              pollFirstBallotUpdate()
+            ) ||
+            (
+              exists(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+              existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)/votes/$(request.auth.uid)) &&
+              pollChangedBallotUpdate()
+            )
+          );
+        allow delete: if false;
+      }
+
+      match /votes/{voterUid} {
+        function pollVoteParentBefore() {
+          return get(/databases/$(database)/documents/pollRooms/$(roomId));
+        }
+
+        function pollVoteParentAfter() {
+          return getAfter(/databases/$(database)/documents/pollRooms/$(roomId));
+        }
+
+        function pollBallotBefore() {
+          return get(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current);
+        }
+
+        function pollBallotAfter() {
+          return getAfter(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current);
+        }
+
+        function pollVoteOpenBeforeAndAfter() {
+          return exists(/databases/$(database)/documents/pollRooms/$(roomId)) &&
+            existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)) &&
+            pollVoteParentBefore().data.locked == false &&
+            pollVoteParentAfter().data.locked == false;
+        }
+
+        function pollFirstVoteCreate() {
+          let ballotBefore = pollBallotBefore();
+          let ballotAfter = pollBallotAfter();
+          return validPollVote(request.resource.data) &&
+            request.resource.data.createdAt == request.time &&
+            request.resource.data.updatedAt == request.time &&
+            exists(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current) &&
+            existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current) &&
+            validPollBallotTransition(
+              ballotBefore.data,
+              ballotAfter.data,
+              request.resource.data.ballotKey,
+              '',
+              request.resource.data.choice,
+              true
+            );
+        }
+
+        function pollVoteChange() {
+          let changes = request.resource.data.diff(resource.data).affectedKeys();
+          let ballotBefore = pollBallotBefore();
+          let ballotAfter = pollBallotAfter();
+          return validPollVote(resource.data) &&
+            validPollVote(request.resource.data) &&
+            request.resource.data.ballotKey == resource.data.ballotKey &&
+            request.resource.data.createdAt == resource.data.createdAt &&
+            request.resource.data.updatedAt == request.time &&
+            changes.hasOnly(['choice', 'updatedAt']) &&
+            changes.hasAll(['choice', 'updatedAt']) &&
+            exists(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current) &&
+            existsAfter(/databases/$(database)/documents/pollRooms/$(roomId)/ballots/current) &&
+            validPollBallotTransition(
+              ballotBefore.data,
+              ballotAfter.data,
+              resource.data.ballotKey,
+              resource.data.choice,
+              request.resource.data.choice,
+              false
+            );
+        }
+
+        allow get: if signedIn() &&
+          validRoomId(roomId) &&
+          voterUid == request.auth.uid &&
+          exists(/databases/$(database)/documents/pollRooms/$(roomId));
+        allow list: if false;
+
+        allow create: if signedIn() &&
+          validRoomId(roomId) &&
+          voterUid == request.auth.uid &&
+          pollVoteOpenBeforeAndAfter() &&
+          pollFirstVoteCreate();
+        allow update: if signedIn() &&
+          validRoomId(roomId) &&
+          voterUid == request.auth.uid &&
+          pollVoteOpenBeforeAndAfter() &&
+          pollVoteChange();
+        allow delete: if false;
       }
     }
 

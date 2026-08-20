@@ -177,7 +177,7 @@ test("온라인 페이지는 Firebase 저장과 링크 공개 범위를 안내�
 
 test("작은 도구함 첫 화면은 일회성 비스표와 8주 공대 파밍표를 구분한다", () => {
   const hub = fs.readFileSync(path.join(REPO_ROOT, "index.html"), "utf8");
-  assert.match(hub, /TOOLS \/ 07/);
+  assert.match(hub, /TOOLS \/ 08/);
   assert.match(hub, /href="\.\/bis-maker\/"/);
   assert.match(hub, /<h3>비스표/);
   assert.match(hub, /당일 드랍을 빠르게 나누는 도구/);

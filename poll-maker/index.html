@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="이름 없이 동의·거부·상관없음 중 하나를 고르고, 방장만 실시간 합계를 보는 온라인 익명 투표소"
+    />
+    <meta name="theme-color" content="#f3efe6" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="온라인 익명 투표소 | 작은 도구함" />
+    <meta
+      property="og:description"
+      content="안건 하나를 올리고 동의·거부·상관없음 의견을 이름 없이 모아 보세요."
+    />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/poll-maker/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="온라인 익명 투표소 | 작은 도구함" />
+    <meta name="twitter:description" content="이름 없이 세 가지 의견을 모으는 간단한 실시간 투표소" />
+    <title>온라인 익명 투표소 | 작은 도구함</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/poll-maker/" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "익명 투표소",
+        "url": "https://huis-snow.github.io/tools/poll-maker/",
+        "description": "동의, 거부, 상관없음 중 하나를 익명으로 선택하고 방장만 실시간 합계를 보는 온라인 투표 도구",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "ko-KR",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "KRW"
+        }
+      }
+    </script>
+  </head>
+  <body id="top" class="poll-home-page">
+    <a class="skip-link" href="#poll-room-builder">투표방 만들기로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="익명 투표소 홈">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>익명 투표소</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> 실시간 의견 취합</span>
+    </header>
+
+    <main>
+      <section class="poll-hero" aria-labelledby="poll-hero-title">
+        <div class="poll-hero-copy">
+          <p class="eyebrow"><span></span> ONE QUESTION, THREE ANSWERS</p>
+          <h1 id="poll-hero-title">이름 없이,<br /><em>의견만.</em></h1>
+          <p>
+            하나의 안건을 올리고 동의·거부·상관없음을 받아 보세요.<br class="desktop-only" />
+            누가 무엇을 골랐는지는 보여 주지 않고 방장에게 합계만 실시간으로 모아 줘요.
+          </p>
+          <a class="primary-link" href="#poll-room-builder">투표방 만들기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="hero-ballot" aria-label="방장 전용 익명 투표 결과 예시">
+          <div class="hero-ballot-head"><span>ANONYMOUS BALLOT</span><strong>12 VOTES</strong></div>
+          <p class="hero-question">이번 주 정기 모임을 토요일 밤으로 옮길까요?</p>
+          <div class="hero-result agree"><span><b>○</b> 동의</span><i><u></u></i><strong>7</strong></div>
+          <div class="hero-result reject"><span><b>×</b> 거부</span><i><u></u></i><strong>3</strong></div>
+          <div class="hero-result neutral"><span><b>—</b> 상관없음</span><i><u></u></i><strong>2</strong></div>
+          <p class="hero-secret"><span aria-hidden="true">●</span> 방장에게 이름 없는 합계만 보여요</p>
+        </div>
+      </section>
+
+      <section class="builder-section" id="poll-room-builder" aria-labelledby="poll-builder-title" tabindex="-1">
+        <div class="section-heading">
+          <div><p>01 / CREATE A POLL</p><h2 id="poll-builder-title">물어볼 내용을 적어요</h2></div>
+          <p>방장만 Google 로그인이 필요해요. 참여자는 공유 링크를 열어 이름 없이 바로 선택합니다.</p>
+        </div>
+
+        <aside class="setup-notice" id="pollSetupNotice" role="status" hidden>
+          <strong>Firebase 연결이 필요합니다</strong>
+          <p><a href="https://github.com/huis-snow/tools/blob/main/poll-maker/FIREBASE_SETUP.md">Firebase 연결 안내</a>에 따라 공개 웹 설정과 Google·익명 로그인을 연결해 주세요. 서비스 계정 키는 필요하지 않습니다.</p>
+        </aside>
+
+        <section class="auth-card" id="pollAuthCard" aria-labelledby="pollAuthTitle" aria-busy="true">
+          <div class="auth-identity">
+            <span class="google-mark" aria-hidden="true">G</span>
+            <div>
+              <p>ROOM OWNER ACCOUNT</p>
+              <strong id="pollAuthTitle">로그인 상태를 확인하고 있어요</strong>
+              <span id="pollAuthDescription">투표방을 만들고 마감할 때만 Google 로그인이 필요해요.</span>
+            </div>
+          </div>
+          <div class="auth-actions">
+            <a id="pollOwnedRoomsLink" href="#poll-owned-rooms" hidden>내 투표 목록</a>
+            <button id="pollGoogleSignInButton" type="button" disabled>Google로 로그인</button>
+            <button id="pollGoogleSignOutButton" type="button" hidden>로그아웃</button>
+          </div>
+          <p class="action-status" id="pollAuthStatus" role="status" aria-live="polite" aria-atomic="true">
+            Firebase 인증 연결을 준비하고 있어요.
+          </p>
+        </section>
+
+        <form class="create-card" id="pollRoomCreateForm">
+          <div class="card-heading">
+            <span>NEW</span>
+            <div>
+              <h3>새 익명 투표</h3>
+              <p>투표 중에는 혼선을 막기 위해 안건을 바꿀 수 없어요.</p>
+            </div>
+          </div>
+
+          <div class="room-fields">
+            <label class="field" for="pollCreateAgenda">
+              <span>안건 <small><b id="pollAgendaLength">0</b> / 160</small></span>
+              <textarea id="pollCreateAgenda" name="agenda" rows="3" maxlength="160" required></textarea>
+            </label>
+            <label class="field" for="pollCreateDescription">
+              <span>설명 <i>선택</i> <small><b id="pollDescriptionLength">0</b> / 500</small></span>
+              <textarea id="pollCreateDescription" name="description" rows="4" maxlength="500"></textarea>
+            </label>
+          </div>
+
+          <fieldset class="choice-preview">
+            <legend>참여자에게 보일 선택지</legend>
+            <div>
+              <span class="agree"><b aria-hidden="true">○</b><strong>동의</strong><small>이 안건에 동의해요</small></span>
+              <span class="reject"><b aria-hidden="true">×</b><strong>거부</strong><small>이 안건에 동의하지 않아요</small></span>
+              <span class="neutral"><b aria-hidden="true">—</b><strong>상관없음</strong><small>어느 쪽이어도 괜찮아요</small></span>
+            </div>
+          </fieldset>
+
+          <div class="create-actions">
+            <p>만든 뒤 참여 링크를 복사해 공유할 수 있어요.</p>
+            <button id="pollCreateButton" class="primary-button" type="submit" disabled>
+              투표방 만들기 <span aria-hidden="true">→</span>
+            </button>
+          </div>
+          <p class="action-status" id="pollCreateStatus" role="status" aria-live="polite" aria-atomic="true">
+            Firebase 연결을 확인하고 있어요.
+          </p>
+        </form>
+
+        <section class="owned-rooms" id="poll-owned-rooms" aria-labelledby="pollOwnedRoomsTitle" aria-busy="false" hidden>
+          <div class="owned-heading">
+            <div>
+              <p>MY POLLS</p>
+              <h3 id="pollOwnedRoomsTitle" tabindex="-1">내 투표방</h3>
+              <span>이 Google 계정으로 만든 투표를 최근 순서대로 다시 열 수 있어요.</span>
+            </div>
+            <div><strong>최근 <span id="pollOwnedRoomCount">0</span>개</strong><button id="pollOwnedRoomsRefreshButton" type="button">새로고침</button></div>
+          </div>
+          <ul class="owned-list" id="pollOwnedRoomList"></ul>
+          <div class="owned-empty" id="pollOwnedRoomsEmpty" hidden>
+            <strong>아직 만든 투표방이 없어요</strong><p>위에서 첫 안건을 등록해 보세요.</p>
+          </div>
+          <p class="action-status" id="pollOwnedRoomsStatus" role="status" aria-live="polite" aria-atomic="true">내 투표방을 불러올 준비가 됐어요.</p>
+        </section>
+
+        <aside class="privacy-card" aria-labelledby="pollPrivacyTitle">
+          <span aria-hidden="true">i</span>
+          <div>
+            <h3 id="pollPrivacyTitle">이 투표의 ‘익명’ 범위</h3>
+            <p>참여자에게는 결과를 공개하지 않아요. 투표할 때 브라우저에서 무작위 투표 키가 만들어지고, 방장 전용 투표함에는 이름·UID 대신 그 키와 선택이 함께 저장됩니다. 방장 Google 계정은 이 가명표 원본에 기술적으로 접근할 수 있지만 앱 화면에는 선택지별 합계만 보여요. Firebase 프로젝트 운영자도 원본 데이터에 접근할 수 있습니다. 익명 참여 상태에서 브라우저를 바꾸거나 사이트 데이터를 지우면 새 투표 키가 생겨 다시 투표할 수 있고, 참여자가 적으면 방장이 투표 시점과 합계 변화로 선택을 짐작할 수도 있습니다. 공식 선거나 신원 확인이 필요한 투표에는 적합하지 않습니다.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="how-section" aria-labelledby="poll-how-title">
+        <div class="section-heading">
+          <div><p>02 / HOW IT WORKS</p><h2 id="poll-how-title">질문하고, 고르고, 마감해요</h2></div>
+          <p>참여자의 이름이나 닉네임을 입력받지 않아요.</p>
+        </div>
+        <ol class="how-list">
+          <li><span>01</span><strong>방장이 안건 등록</strong><p>Google 계정으로 투표방을 만들고 공유 링크를 보내요.</p></li>
+          <li><span>02</span><strong>링크에서 익명 선택</strong><p>동의·거부·상관없음 중 하나를 저장하고, 마감 전에는 바꿀 수 있어요.</p></li>
+          <li><span>03</span><strong>방장이 합계 확인·마감</strong><p>방장만 실시간 합계를 확인하고 투표를 닫아요. 참여자에게는 합계가 공개되지 않아요.</p></li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./" aria-label="익명 투표소 홈"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>익명 투표소</span></a>
+      <p>이름 없이 의견만 모으는 작은 투표 도구</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <template id="pollOwnedRoomTemplate">
+      <li>
+        <article class="owned-item">
+          <div>
+            <p><span data-field="state">투표 중</span><span data-field="privacy">방장 전용 합계</span></p>
+            <h4 data-field="agenda">투표 안건</h4>
+            <span data-field="description"></span>
+            <time data-field="updated"></time>
+          </div>
+          <nav aria-label="투표방 바로가기">
+            <a data-action="open" href="./room.html">투표 관리 열기</a>
+            <button data-action="copy" type="button">링크 복사</button>
+          </nav>
+        </article>
+      </li>
+    </template>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./firebase-room-store.js"></script>
+    <script type="module" src="./index-page.js"></script>
+  </body>
+</html>

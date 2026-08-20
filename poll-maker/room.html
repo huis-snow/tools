@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="동의·거부·상관없음 중 하나를 이름 없이 선택하는 익명 투표방" />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#f3efe6" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="익명 투표 참여 | 익명 투표소" />
+    <meta property="og:description" content="이름 없이 한 표를 남기고, 방장만 실시간 합계를 확인하세요." />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/poll-maker/room.html" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="익명 투표 참여 | 익명 투표소" />
+    <meta name="twitter:description" content="동의·거부·상관없음 중 하나를 이름 없이 선택하고 방장에게 합계로 전달하세요." />
+    <title>익명 투표 참여 | 익명 투표소</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/poll-maker/room.html" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body id="top" class="poll-room-page">
+    <a class="skip-link" href="#pollVotePanel">투표 선택으로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="./"><span aria-hidden="true">←</span> 투표소 홈</a>
+      <a class="brand" href="./" aria-label="익명 투표소 홈">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>익명 투표소</span>
+      </a>
+      <button class="header-link" id="pollHeaderCopyButton" type="button" disabled>링크 복사 <span aria-hidden="true">↗</span></button>
+    </header>
+
+    <main class="room-main">
+      <section class="room-banner" id="pollRoomBanner" aria-labelledby="pollRoomTitle" aria-busy="true">
+        <div class="room-kicker">
+          <p>ANONYMOUS POLL</p>
+          <span id="pollRoomState" data-state="loading">연결 중</span>
+        </div>
+        <h1 id="pollRoomTitle" tabindex="-1">투표방을 불러오는 중</h1>
+        <p class="room-description" id="pollRoomDescription">안건을 확인하고 있어요.</p>
+        <div class="room-summary">
+          <span id="pollRoomResultSummary" hidden><strong id="pollRoomTotal">—</strong><i id="pollRoomTotalLabel">방장 결과</i></span>
+          <button id="pollShareButton" type="button" disabled>참여 링크 복사</button>
+        </div>
+        <p class="action-status" id="pollRoomStatus" role="status" aria-live="polite" aria-atomic="true">Firebase에서 투표방을 확인하고 있어요.</p>
+        <div class="missing-actions" id="pollRoomMissingActions" hidden>
+          <a href="./">새 투표방 만들기</a>
+          <a href="../">작은 도구함으로 돌아가기</a>
+        </div>
+      </section>
+
+      <div class="room-workspace" id="pollRoomWorkspace" hidden>
+        <section class="owner-access" id="pollOwnerAccess" aria-labelledby="pollOwnerAccessTitle">
+          <div>
+            <p>OWNER ACCESS</p>
+            <h2 id="pollOwnerAccessTitle">이 투표방의 방장인가요?</h2>
+            <span id="pollOwnerAccessDescription">방을 만든 Google 계정으로 확인하면 실시간 합계와 마감 기능이 열려요.</span>
+          </div>
+          <button id="pollOwnerSignInButton" type="button">Google로 방장 확인</button>
+          <p class="action-status" id="pollOwnerAccessStatus" role="status" aria-live="polite" aria-atomic="true">참여자는 로그인하지 않아도 투표할 수 있고 결과는 공개되지 않아요.</p>
+        </section>
+
+        <section class="vote-panel" id="pollVotePanel" aria-labelledby="pollVoteTitle" tabindex="-1">
+          <div class="section-heading compact-heading">
+            <div><p>01 / YOUR BALLOT</p><h2 id="pollVoteTitle">내 의견을 골라요</h2></div>
+            <p id="pollVoteGuide">한 번 저장한 뒤에도 투표가 마감되기 전까지 바꿀 수 있어요.</p>
+          </div>
+
+          <form id="pollVoteForm">
+            <fieldset class="vote-choices" id="pollVoteChoices">
+              <legend class="sr-only">투표 선택지</legend>
+              <label class="vote-choice agree">
+                <input type="radio" name="pollChoice" value="agree" required />
+                <span class="choice-mark" aria-hidden="true">○</span>
+                <span><strong>동의</strong><small>이 안건에 동의해요</small></span>
+                <i aria-hidden="true"></i>
+              </label>
+              <label class="vote-choice reject">
+                <input type="radio" name="pollChoice" value="reject" />
+                <span class="choice-mark" aria-hidden="true">×</span>
+                <span><strong>거부</strong><small>이 안건에 동의하지 않아요</small></span>
+                <i aria-hidden="true"></i>
+              </label>
+              <label class="vote-choice neutral">
+                <input type="radio" name="pollChoice" value="neutral" />
+                <span class="choice-mark" aria-hidden="true">—</span>
+                <span><strong>상관없음</strong><small>어느 쪽으로 정해져도 괜찮아요</small></span>
+                <i aria-hidden="true"></i>
+              </label>
+            </fieldset>
+            <div class="vote-actions">
+              <div class="own-vote" id="pollOwnVote" hidden><span aria-hidden="true">✓</span><p><b>내 투표</b><strong id="pollOwnVoteLabel">동의</strong></p></div>
+              <button class="primary-button" id="pollVoteButton" type="submit" disabled>선택 저장하기 <span aria-hidden="true">→</span></button>
+            </div>
+            <p class="action-status" id="pollVoteStatus" role="status" aria-live="polite" aria-atomic="true">익명 참여 연결을 준비하고 있어요.</p>
+          </form>
+        </section>
+
+        <section class="results-panel" id="pollResultsPanel" aria-labelledby="pollResultsTitle" hidden>
+          <div class="section-heading compact-heading">
+            <div><p>02 / LIVE RESULT</p><h2 id="pollResultsTitle" tabindex="-1">지금까지의 결과</h2></div>
+            <p id="pollResultsGuide">방장에게만 세 선택지의 합계가 표시되고 개별 투표는 보이지 않아요.</p>
+          </div>
+          <div class="result-total"><strong id="pollResultsTotal">0</strong><span>명 참여</span><i id="pollResultsLive" data-state="cache" role="status" aria-live="polite" aria-atomic="true"><b aria-hidden="true"></b> 확인 중</i></div>
+          <div class="result-list" id="pollResultList" aria-live="polite" aria-atomic="true">
+            <article class="result-row agree" data-choice="agree">
+              <div><span aria-hidden="true">○</span><strong>동의</strong><b data-field="percent">0%</b></div>
+              <div class="result-track" aria-hidden="true"><i data-field="bar"></i></div>
+              <p><strong data-field="count">0</strong>표</p>
+            </article>
+            <article class="result-row reject" data-choice="reject">
+              <div><span aria-hidden="true">×</span><strong>거부</strong><b data-field="percent">0%</b></div>
+              <div class="result-track" aria-hidden="true"><i data-field="bar"></i></div>
+              <p><strong data-field="count">0</strong>표</p>
+            </article>
+            <article class="result-row neutral" data-choice="neutral">
+              <div><span aria-hidden="true">—</span><strong>상관없음</strong><b data-field="percent">0%</b></div>
+              <div class="result-track" aria-hidden="true"><i data-field="bar"></i></div>
+              <p><strong data-field="count">0</strong>표</p>
+            </article>
+          </div>
+          <p class="result-empty" id="pollResultsEmpty" hidden>아직 저장된 투표가 없어요.</p>
+        </section>
+
+        <section class="owner-panel" id="pollOwnerPanel" aria-labelledby="pollOwnerTitle" hidden>
+          <div class="owner-panel-copy">
+            <p>ROOM OWNER</p>
+            <h2 id="pollOwnerTitle">투표 관리</h2>
+            <span>마감하면 새 투표와 변경을 막고, 방장 전용 합계를 최종 결과로 유지해요.</span>
+          </div>
+          <div class="owner-actions">
+            <button id="pollOwnerCopyButton" type="button">참여 링크 복사</button>
+            <button class="danger-button" id="pollLockButton" type="button">투표 마감하기</button>
+          </div>
+          <p class="action-status" id="pollOwnerStatus" role="status" aria-live="polite" aria-atomic="true">방장 권한으로 투표를 관리할 수 있어요.</p>
+        </section>
+
+        <aside class="privacy-card room-privacy" aria-labelledby="pollRoomPrivacyTitle">
+          <span aria-hidden="true">i</span>
+          <div>
+            <h2 id="pollRoomPrivacyTitle">익명 투표 안내</h2>
+            <p>참여자에게는 결과를 공개하지 않아요. 투표할 때 이 브라우저에서 무작위 투표 키가 만들어지고, 방장 전용 투표함에는 이름·UID 대신 그 키와 선택이 함께 저장됩니다. 방장 Google 계정은 이 가명표 원본에 기술적으로 접근할 수 있지만 앱 화면에는 선택지별 합계만 표시해요. Firebase 프로젝트 운영자도 원본 데이터에 접근할 수 있습니다. 익명 참여 상태에서 브라우저를 바꾸거나 사이트 데이터를 지우면 새 투표 키가 생겨 다시 투표할 수 있고, 참여자가 적으면 방장이 투표 시점과 합계 변화로 선택을 짐작할 수도 있어요.</p>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./" aria-label="익명 투표소 홈"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>익명 투표소</span></a>
+      <p>동의 · 거부 · 상관없음</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script type="module" src="./firebase-room-store.js"></script>
+    <script type="module" src="./room-page.js"></script>
+  </body>
+</html>
