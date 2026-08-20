@@ -1027,6 +1027,15 @@
       compareGrid: document.querySelector("#compareGrid"),
       compareGridScroller: document.querySelector("#compareGridScroller"),
       compareDetail: document.querySelector("#compareDetail"),
+      compareCandidatePanel: document.querySelector("#compareCandidatePanel"),
+      compareCandidateDuration: document.querySelector("#compareCandidateDurationSelect"),
+      compareCandidateThreshold: document.querySelector("#compareCandidateThresholdSelect"),
+      compareCandidateSummary: document.querySelector("#compareCandidateSummary"),
+      compareCandidateList: document.querySelector("#compareCandidateList"),
+      compareCandidateEmpty: document.querySelector("#compareCandidateEmpty"),
+      compareCandidateClear: document.querySelector("#compareCandidateClearButton"),
+      compareCandidateApply: document.querySelector("#compareCandidateApplyButton"),
+      compareCandidateTemplate: document.querySelector("#compareCandidateCardTemplate"),
       compareCollectionName: document.querySelector("#compareCollectionNameInput"),
       compareCollectionSave: document.querySelector("#compareSaveCollectionButton"),
       compareCollectionShare: document.querySelector("#compareCopyCollectionLinkButton"),
@@ -1064,6 +1073,12 @@
     let comparisonRovingIndex = slotIndex(8, 0);
     let comparisonCellElements = [];
     const comparisonImageSelectedIndexes = new Set();
+    let comparisonCandidates = [];
+    let comparisonSelectedCandidateKey = null;
+    let comparisonCandidateButtons = new Map();
+    let comparisonCandidateAnalysis = null;
+    let comparisonCandidateBaseSummary = "";
+    let comparisonImageSelectionSource = null;
     let activeComparisonCollectionId = null;
     let comparisonCollectionDirty = false;
     let comparisonImageBusy = false;
@@ -1883,6 +1898,326 @@
       return normalizeStartDay(elements.compareStartDay.value, 0);
     }
 
+    function availabilityCandidatesApi() {
+      const api = root.EonjepyoAvailabilityCandidates;
+      return api && typeof api.findAvailabilityCandidates === "function" ? api : null;
+    }
+
+    function currentComparisonCandidateDuration() {
+      const duration = Number(elements.compareCandidateDuration?.value);
+      return Number.isInteger(duration) && duration >= 1 && duration <= 6 ? duration : 3;
+    }
+
+    function currentComparisonCandidateThreshold() {
+      const threshold = elements.compareCandidateThreshold?.value;
+      if (threshold === "all") return "N";
+      return ["auto", "n-1", "n-2"].includes(threshold) ? threshold : "auto";
+    }
+
+    function comparisonCandidateGeometryKey(candidate) {
+      return candidate?.slotIndexes?.length ? candidate.slotIndexes.join(".") : "";
+    }
+
+    function selectedComparisonCandidate() {
+      return comparisonCandidates.find((candidate) => (
+        candidate.viewKey === comparisonSelectedCandidateKey
+      )) || null;
+    }
+
+    function comparisonCandidateTimeLabel(candidate) {
+      const firstCell = comparisonCells[candidate?.slotIndexes?.[0]];
+      if (!firstCell) return "시간 정보 없음";
+      const startHour = currentComparisonStartHour();
+      const timelineStart = firstCell.hour < startHour ? firstCell.hour + HOURS : firstCell.hour;
+      const timelineEnd = timelineStart + candidate.duration;
+
+      if (comparisonViewStartDate) {
+        const interval = slotCalendarInterval(
+          comparisonViewStartDate,
+          currentComparisonStartDay(),
+          firstCell.day,
+          firstCell.hour,
+          startHour,
+        );
+        if (interval) {
+          const endDate = addCalendarDays(
+            interval.startDate,
+            Math.floor((firstCell.hour + candidate.duration) / HOURS),
+          );
+          const endDateLabel = endDate === interval.startDate
+            ? ""
+            : `${calendarDateCompact(endDate)} `;
+          return `${calendarDateCompact(interval.startDate)} ${formatHour(firstCell.hour)}–${endDateLabel}${formatHour(timelineEnd % HOURS)}`;
+        }
+      }
+
+      return `${DAYS[firstCell.day].full} ${formatTimelineHour(timelineStart, startHour)}–${formatTimelineHour(timelineEnd, startHour)}`;
+    }
+
+    function comparisonCandidateParticipantNames(candidate, field) {
+      const indexes = Array.isArray(candidate?.[field]) ? candidate[field] : [];
+      return indexes
+        .map((participantIndex) => comparisonRoster[participantIndex]?.displayName)
+        .filter(Boolean);
+    }
+
+    function comparisonCandidateTierLabel(candidate) {
+      const missing = Math.max(0, comparisonRoster.length - candidate.attendeeCount);
+      if (missing === 0) return "전원 가능";
+      return `${missing}명 제외 대안`;
+    }
+
+    function setComparisonCandidateEmpty(title, description) {
+      if (!elements.compareCandidateEmpty) return;
+      const titleElement = elements.compareCandidateEmpty.querySelector?.("strong");
+      const descriptionElement = elements.compareCandidateEmpty.querySelector?.("small");
+      if (titleElement) titleElement.textContent = title;
+      if (descriptionElement) descriptionElement.textContent = description;
+      elements.compareCandidateEmpty.hidden = false;
+    }
+
+    function updateComparisonCandidateSummary() {
+      if (!elements.compareCandidateSummary) return;
+      const candidate = selectedComparisonCandidate();
+      if (!candidate) {
+        elements.compareCandidateSummary.textContent = comparisonCandidateBaseSummary;
+        return;
+      }
+      const unavailable = comparisonCandidateParticipantNames(candidate, "missingParticipantIndexes");
+      elements.compareCandidateSummary.textContent = [
+        `선택한 후보: ${comparisonCandidateTimeLabel(candidate)}`,
+        `${candidate.attendeeCount}/${comparisonRoster.length}명 · ${candidate.duration}시간 연속`,
+        unavailable.length ? `불참 ${unavailable.join(", ")}` : "전원 참석",
+      ].join(" · ");
+    }
+
+    function syncComparisonCandidatePresentation() {
+      const candidate = selectedComparisonCandidate();
+      comparisonCellElements.forEach((cell) => cell?.classList.remove("is-candidate-selected"));
+      comparisonCandidateButtons.forEach((button, key) => {
+        button.setAttribute("aria-pressed", String(Boolean(candidate && key === candidate.viewKey)));
+      });
+      candidate?.slotIndexes.forEach((index) => {
+        comparisonCellElements[index]?.classList.add("is-candidate-selected");
+      });
+      if (elements.compareCandidateClear) elements.compareCandidateClear.disabled = !candidate;
+      if (elements.compareCandidateApply) elements.compareCandidateApply.disabled = !candidate;
+      updateComparisonCandidateSummary();
+    }
+
+    function clearComparisonCandidateSelection(options = {}) {
+      const hadCandidate = Boolean(selectedComparisonCandidate());
+      comparisonSelectedCandidateKey = null;
+      if (comparisonImageSelectionSource === "candidate") {
+        if (options.clearCandidateImage === true) comparisonImageSelectedIndexes.clear();
+        comparisonImageSelectionSource = options.clearCandidateImage === true ? null : "manual";
+      }
+      syncComparisonCandidatePresentation();
+      if (options.clearCandidateImage === true) {
+        syncComparisonImageSelectionPresentation();
+        syncComparisonImageControls(comparisonRoster.length);
+        describeComparisonImageScope();
+      }
+      if (hadCandidate && options.resetDetail !== false) resetComparisonDetail();
+    }
+
+    function showComparisonCandidateDetail(candidate) {
+      if (!candidate) return;
+      if (comparisonActiveIndex !== null) {
+        comparisonCellElements[comparisonActiveIndex]?.classList.remove("is-active");
+      }
+      comparisonActiveIndex = null;
+      const available = comparisonCandidateParticipantNames(candidate, "participantIndexes");
+      const unavailable = comparisonCandidateParticipantNames(candidate, "missingParticipantIndexes");
+
+      elements.compareDetail.replaceChildren();
+      const icon = document.createElement("span");
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "◆";
+      const detail = document.createElement("p");
+      const heading = document.createElement("strong");
+      heading.textContent = comparisonCandidateTimeLabel(candidate);
+      detail.append(heading, ` · ${candidate.attendeeCount}/${comparisonRoster.length}명 · ${candidate.duration}시간 연속`);
+      detail.append(document.createElement("br"), "계속 가능: ");
+
+      if (available.length) {
+        const names = document.createElement("span");
+        names.className = "detail-participants";
+        available.forEach((nameText) => {
+          const name = document.createElement("span");
+          name.textContent = nameText;
+          names.append(name);
+        });
+        detail.append(names);
+      } else {
+        detail.append("없음");
+      }
+      if (unavailable.length) {
+        const unavailableText = document.createElement("span");
+        unavailableText.className = "detail-unavailable";
+        unavailableText.textContent = ` · 불가능: ${unavailable.join(", ")}`;
+        detail.append(unavailableText);
+      } else {
+        const unavailableText = document.createElement("span");
+        unavailableText.className = "detail-unavailable";
+        unavailableText.textContent = " · 불가능: 없음 (전원 참석)";
+        detail.append(unavailableText);
+      }
+      elements.compareDetail.append(icon, detail);
+    }
+
+    function selectComparisonCandidate(key) {
+      const next = comparisonCandidates.find((candidate) => candidate.viewKey === key);
+      if (!next) return;
+      if (comparisonSelectedCandidateKey === key) {
+        clearComparisonCandidateSelection();
+        return;
+      }
+      if (comparisonImageSelectionSource === "candidate") {
+        comparisonImageSelectionSource = "manual";
+      }
+      comparisonSelectedCandidateKey = key;
+      syncComparisonCandidatePresentation();
+      showComparisonCandidateDetail(next);
+      if (elements.compareGridScroller) {
+        elements.compareGridScroller.scrollTop = Math.max(0, (next.startOffset * 42) - 42);
+      }
+    }
+
+    function applyComparisonCandidateToImage() {
+      const candidate = selectedComparisonCandidate();
+      if (!candidate || !elements.compareImageMode) return;
+      comparisonImageSelectedIndexes.clear();
+      candidate.slotIndexes.forEach((index) => comparisonImageSelectedIndexes.add(index));
+      comparisonImageSelectionSource = "candidate";
+      elements.compareImageMode.value = "selected";
+      syncComparisonImageSelectionPresentation();
+      syncComparisonImageControls(comparisonRoster.length);
+      describeComparisonImageScope();
+      showToast(`${candidate.duration}시간 후보를 이미지 선택에 반영했어요`);
+    }
+
+    function comparisonCandidateCard(candidate, index) {
+      const template = elements.compareCandidateTemplate;
+      const fragment = template?.content?.cloneNode?.(true);
+      const item = fragment?.querySelector?.(".compare-candidate-item") || null;
+      const button = fragment?.querySelector?.(".compare-candidate-card") || null;
+      if (!fragment || !item || !button) return null;
+      const rank = fragment.querySelector("[data-candidate-rank]");
+      const attendance = fragment.querySelector("[data-candidate-attendance]");
+      const time = fragment.querySelector("[data-candidate-time]");
+      const duration = fragment.querySelector("[data-candidate-duration]");
+      const unavailable = fragment.querySelector("[data-candidate-unavailable]");
+      const missingNames = comparisonCandidateParticipantNames(candidate, "missingParticipantIndexes");
+      const isPrimary = comparisonCandidateAnalysis?.selectedAttendeeCount === candidate.attendeeCount;
+
+      button.dataset.candidateId = candidate.viewKey;
+      button.setAttribute("aria-pressed", "false");
+      button.setAttribute(
+        "aria-label",
+        `${index + 1}번째 후보, ${comparisonCandidateTimeLabel(candidate)}, ${candidate.attendeeCount}/${comparisonRoster.length}명, ${candidate.duration}시간 연속`,
+      );
+      if (rank) rank.textContent = `${isPrimary ? "우선 추천 · " : ""}${comparisonCandidateTierLabel(candidate)}`;
+      if (attendance) attendance.textContent = `${candidate.attendeeCount}/${comparisonRoster.length}명`;
+      if (time) time.textContent = comparisonCandidateTimeLabel(candidate);
+      if (duration) duration.textContent = `${candidate.duration}시간`;
+      if (unavailable) unavailable.textContent = missingNames.length
+        ? `불참 ${missingNames.join(", ")}`
+        : "불참 없음";
+      comparisonCandidateButtons.set(candidate.viewKey, button);
+      return fragment;
+    }
+
+    function renderComparisonCandidates(options = {}) {
+      if (!elements.compareCandidatePanel) return;
+      const api = availabilityCandidatesApi();
+      if (!api) {
+        elements.compareCandidatePanel.hidden = true;
+        comparisonCandidates = [];
+        comparisonSelectedCandidateKey = null;
+        return;
+      }
+      elements.compareCandidatePanel.hidden = false;
+      const preserveSelection = options.preserveSelection === true;
+      const previousKey = preserveSelection ? comparisonSelectedCandidateKey : null;
+      const duration = currentComparisonCandidateDuration();
+      const threshold = currentComparisonCandidateThreshold();
+      const analysis = api.findAvailabilityCandidates({
+        cells: comparisonCells,
+        startHour: currentComparisonStartHour(),
+        participantCount: comparisonRoster.length,
+      }, {
+        duration,
+        threshold,
+        startHour: currentComparisonStartHour(),
+        startDay: currentComparisonStartDay(),
+        participantCount: comparisonRoster.length,
+      });
+      comparisonCandidateAnalysis = analysis;
+      const sourceCandidates = threshold === "auto"
+        ? analysis.skylineCandidates
+        : analysis.candidates;
+      const wrappedCandidates = sourceCandidates.map((candidate) => ({
+        ...candidate,
+        viewKey: comparisonCandidateGeometryKey(candidate),
+      }));
+      let visibleCandidates = wrappedCandidates.slice(0, 12);
+      const preservedCandidate = previousKey
+        ? wrappedCandidates.find((candidate) => candidate.viewKey === previousKey)
+        : null;
+      if (preservedCandidate && !visibleCandidates.some((candidate) => candidate.viewKey === previousKey)) {
+        visibleCandidates = [...visibleCandidates.slice(0, 11), preservedCandidate];
+      }
+      comparisonCandidates = visibleCandidates;
+
+      const previousWasCandidateImage = comparisonImageSelectionSource === "candidate";
+      comparisonSelectedCandidateKey = preservedCandidate ? preservedCandidate.viewKey : null;
+      if (!preservedCandidate && previousKey && previousWasCandidateImage) {
+        comparisonImageSelectedIndexes.clear();
+        comparisonImageSelectionSource = null;
+      } else if (preservedCandidate && previousWasCandidateImage) {
+        comparisonImageSelectedIndexes.clear();
+        preservedCandidate.slotIndexes.forEach((index) => comparisonImageSelectedIndexes.add(index));
+      } else if (!preserveSelection && previousWasCandidateImage) {
+        comparisonImageSelectedIndexes.clear();
+        comparisonImageSelectionSource = null;
+      }
+
+      elements.compareCandidateList.replaceChildren();
+      comparisonCandidateButtons = new Map();
+      comparisonCandidates.forEach((candidate, index) => {
+        const fragment = comparisonCandidateCard(candidate, index);
+        if (fragment) elements.compareCandidateList.append(fragment);
+      });
+
+      if (!comparisonRoster.length) {
+        comparisonCandidateBaseSummary = onlineRoomMode
+          ? `참여자가 저장하면 ${duration}시간 동안 함께 가능한 후보를 찾아드려요.`
+          : `일정을 추가하면 ${duration}시간 동안 함께 가능한 후보를 찾아드려요.`;
+        setComparisonCandidateEmpty(
+          "아직 계산할 일정이 없어요.",
+          onlineRoomMode ? "참여자가 저장하면 추천 시간이 여기에 나타나요." : "위에서 일정을 추가하면 추천 시간이 여기에 나타나요.",
+        );
+      } else if (!wrappedCandidates.length) {
+        const longestEveryone = analysis.comparison.everyoneShortCandidates[0]?.duration || 0;
+        comparisonCandidateBaseSummary = longestEveryone
+          ? `전원 가능한 구간은 최대 ${longestEveryone}시간이에요. 필요 시간을 줄이거나 n-1 기준을 골라보세요.`
+          : `${duration}시간 내내 같은 사람이 가능한 구간을 찾지 못했어요.`;
+        setComparisonCandidateEmpty(
+          `${duration}시간 연속 후보가 없어요.`,
+          "필요 시간을 줄이거나 후보 기준을 넓혀 보세요.",
+        );
+      } else {
+        const tierLabels = [...new Set(wrappedCandidates.map((candidate) => (
+          comparisonCandidateTierLabel(candidate)
+        )))];
+        const hiddenCount = Math.max(0, wrappedCandidates.length - comparisonCandidates.length);
+        comparisonCandidateBaseSummary = `${duration}시간 이상 이어지는 ${tierLabels.join(" · ")} 후보 ${wrappedCandidates.length}개를 찾았어요.${hiddenCount ? ` 상위 ${comparisonCandidates.length}개를 보여드려요.` : ""}`;
+        elements.compareCandidateEmpty.hidden = true;
+      }
+      syncComparisonCandidatePresentation();
+    }
+
     function comparisonTimezoneKey(value) {
       const timezone = cleanMeta(value, "Asia/Seoul", 40);
       try {
@@ -2015,6 +2350,7 @@
     function applyComparisonCollection(record) {
       comparisonParticipants = [];
       comparisonImageSelectedIndexes.clear();
+      comparisonImageSelectionSource = null;
       nextParticipantId = 1;
       appendComparisonSchedules(record.members || []);
       elements.compareCollectionName.value = record.name || "";
@@ -2251,6 +2587,10 @@
 
     function toggleComparisonImageSelection(index) {
       if (currentComparisonImageMode() !== "selected" || !comparisonCells[index]) return false;
+      if (comparisonImageSelectionSource === "candidate") {
+        clearComparisonCandidateSelection({ resetDetail: false });
+      }
+      comparisonImageSelectionSource = "manual";
       if (comparisonImageSelectedIndexes.has(index)) comparisonImageSelectedIndexes.delete(index);
       else comparisonImageSelectedIndexes.add(index);
       syncComparisonImageSelectionPresentation();
@@ -2262,6 +2602,7 @@
     function clearComparisonImageSelection() {
       if (!comparisonImageSelectedIndexes.size) return;
       comparisonImageSelectedIndexes.clear();
+      comparisonImageSelectionSource = null;
       syncComparisonImageSelectionPresentation();
       syncComparisonImageControls(comparisonRoster.length);
       describeComparisonImageScope();
@@ -2447,6 +2788,11 @@
         previous?.classList.remove("is-active");
       }
       comparisonActiveIndex = null;
+      const selectedCandidate = selectedComparisonCandidate();
+      if (selectedCandidate) {
+        showComparisonCandidateDetail(selectedCandidate);
+        return;
+      }
       elements.compareDetail.replaceChildren();
       const icon = document.createElement("span");
       icon.setAttribute("aria-hidden", "true");
@@ -2618,6 +2964,7 @@
 
     function renderComparison(options = {}) {
       const preserveView = options.preserveView === true;
+      const preserveCandidateSelection = preserveView || options.preserveCandidateSelection === true;
       const previousScrollTop = preserveView ? elements.compareGridScroller.scrollTop : 0;
       const previousActiveIndex = preserveView ? comparisonActiveIndex : null;
       const previousRovingIndex = preserveView ? comparisonRovingIndex : null;
@@ -2650,8 +2997,11 @@
         ? previousRovingIndex
         : slotIndex(startHour, startDay);
       createComparisonGrid(aggregate, compatible);
+      renderComparisonCandidates({ preserveSelection: preserveCandidateSelection });
       syncComparisonImageSelectionPresentation();
-      if (compatible.length && previousActiveIndex !== null && comparisonCells[previousActiveIndex]) {
+      if (selectedComparisonCandidate()) {
+        showComparisonCandidateDetail(selectedComparisonCandidate());
+      } else if (compatible.length && previousActiveIndex !== null && comparisonCells[previousActiveIndex]) {
         showComparisonDetail(previousActiveIndex);
       } else {
         resetComparisonDetail();
@@ -2807,7 +3157,10 @@
       if (!elements.compareGrid) return false;
       comparisonViewStartDate = normalizeCalendarDate(options.startDate);
       comparisonParticipants = [];
-      if (options.preserveView !== true) comparisonImageSelectedIndexes.clear();
+      if (options.preserveView !== true) {
+        comparisonImageSelectedIndexes.clear();
+        comparisonImageSelectionSource = null;
+      }
       nextParticipantId = 1;
       appendComparisonSchedules(Array.isArray(schedules) ? schedules : []);
       if (elements.compareStartHour) {
@@ -2906,6 +3259,12 @@
       if (elements.compareImageMode && !["overlap", "all", "selected"].includes(elements.compareImageMode.value)) {
         elements.compareImageMode.value = "overlap";
       }
+      if (elements.compareCandidateDuration && !["1", "2", "3", "4", "5", "6"].includes(elements.compareCandidateDuration.value)) {
+        elements.compareCandidateDuration.value = "3";
+      }
+      if (elements.compareCandidateThreshold && !["auto", "all", "n-1", "n-2"].includes(elements.compareCandidateThreshold.value)) {
+        elements.compareCandidateThreshold.value = "auto";
+      }
       const comparisonApi = onlineRoomMode ? null : savedComparisonsApi();
       const hasInitialCollection = !onlineRoomMode && Boolean(
         (comparisonApi && (window.location.hash || "").startsWith(`#${comparisonApi.SHARE_PARAMETER || "g"}=`))
@@ -2934,18 +3293,20 @@
         });
         elements.compareStartHour?.addEventListener("change", () => {
           comparisonImageSelectedIndexes.clear();
+          comparisonImageSelectionSource = null;
           renderComparison();
           markComparisonCollectionDirty();
           setComparisonInputStatus(`결과의 하루 시작을 ${formatHour(currentComparisonStartHour())}로 바꿨어요.`, "success");
         });
         elements.compareStartDay?.addEventListener("change", () => {
-          renderComparison();
+          renderComparison({ preserveCandidateSelection: true });
           markComparisonCollectionDirty();
           setComparisonInputStatus(`결과를 ${DAYS[currentComparisonStartDay()].full}부터 보이도록 바꿨어요.`, "success");
         });
         elements.compareClear?.addEventListener("click", () => {
           comparisonParticipants = [];
           comparisonImageSelectedIndexes.clear();
+          comparisonImageSelectionSource = null;
           renderComparison();
           markComparisonCollectionDirty();
           setComparisonInputStatus("추가한 일정을 모두 비웠어요.", "success");
@@ -2956,7 +3317,10 @@
           const participantId = Number(remove.dataset.participantId);
           const participant = comparisonParticipants.find((item) => item.id === participantId);
           comparisonParticipants = comparisonParticipants.filter((item) => item.id !== participantId);
-          if (!comparisonParticipants.length) comparisonImageSelectedIndexes.clear();
+          if (!comparisonParticipants.length) {
+            comparisonImageSelectedIndexes.clear();
+            comparisonImageSelectionSource = null;
+          }
           renderComparison();
           markComparisonCollectionDirty();
           setComparisonInputStatus(`${participant?.title || "일정"} 일정을 제거했어요.`, "success");
@@ -2976,6 +3340,24 @@
         syncComparisonImageControls(comparisonRoster.length);
         describeComparisonImageScope();
       });
+      const updateCandidateSettings = () => {
+        renderComparisonCandidates({ preserveSelection: false });
+        syncComparisonImageSelectionPresentation();
+        syncComparisonImageControls(comparisonRoster.length);
+        describeComparisonImageScope();
+        resetComparisonDetail();
+      };
+      elements.compareCandidateDuration?.addEventListener("change", updateCandidateSettings);
+      elements.compareCandidateThreshold?.addEventListener("change", updateCandidateSettings);
+      elements.compareCandidateList?.addEventListener("click", (event) => {
+        const card = event.target.closest?.(".compare-candidate-card");
+        if (!card?.dataset.candidateId) return;
+        selectComparisonCandidate(card.dataset.candidateId);
+      });
+      elements.compareCandidateClear?.addEventListener("click", () => {
+        clearComparisonCandidateSelection();
+      });
+      elements.compareCandidateApply?.addEventListener("click", applyComparisonCandidateToImage);
       elements.compareImageSelectionClear?.addEventListener("click", clearComparisonImageSelection);
       elements.compareImageButton?.addEventListener("click", copyComparisonImage);
       elements.comparePngButton?.addEventListener("click", saveComparisonPng);
@@ -2992,6 +3374,9 @@
       elements.compareGrid.addEventListener("focusin", (event) => {
         const cell = event.target.closest(".compare-cell");
         if (cell) showComparisonDetail(Number(cell.dataset.index));
+      });
+      elements.compareGrid.addEventListener("pointerleave", () => {
+        if (selectedComparisonCandidate()) showComparisonCandidateDetail(selectedComparisonCandidate());
       });
       elements.compareGrid.addEventListener("click", (event) => {
         const cell = event.target.closest(".compare-cell");

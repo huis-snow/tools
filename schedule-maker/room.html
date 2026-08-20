@@ -371,6 +371,77 @@
                   </div>
                 </div>
 
+                <section class="compare-candidate-panel" id="compareCandidatePanel" aria-labelledby="compareCandidateTitle">
+                  <div class="compare-candidate-heading">
+                    <div>
+                      <p>SKYLINE</p>
+                      <h4 id="compareCandidateTitle">모임 시간 후보</h4>
+                    </div>
+                    <p>같은 사람들이 필요한 시간 동안 계속 가능한 구간을 찾아요.</p>
+                  </div>
+
+                  <fieldset class="compare-candidate-controls">
+                    <legend>후보 찾기 조건</legend>
+                    <label for="compareCandidateDurationSelect">
+                      <span>필요 시간</span>
+                      <select id="compareCandidateDurationSelect" aria-describedby="compareCandidateSummary">
+                        <option value="1">1시간</option>
+                        <option value="2">2시간</option>
+                        <option value="3" selected>3시간</option>
+                        <option value="4">4시간</option>
+                        <option value="5">5시간</option>
+                        <option value="6">6시간</option>
+                      </select>
+                    </label>
+                    <label for="compareCandidateThresholdSelect">
+                      <span>후보 기준</span>
+                      <select id="compareCandidateThresholdSelect" aria-describedby="compareCandidateSummary">
+                        <option value="auto" selected>자동 추천</option>
+                        <option value="all">전원 가능</option>
+                        <option value="n-1">n-1명 이상</option>
+                        <option value="n-2">n-2명 이상</option>
+                      </select>
+                    </label>
+                  </fieldset>
+
+                  <p
+                    class="compare-candidate-summary"
+                    id="compareCandidateSummary"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    참여자가 저장하면 3시간 동안 함께 가능한 후보를 찾아드려요.
+                  </p>
+
+                  <div class="compare-candidate-list" id="compareCandidateList" role="list" aria-label="모임 시간 후보"></div>
+                  <div class="compare-candidate-empty" id="compareCandidateEmpty">
+                    <span aria-hidden="true">◇</span>
+                    <p><strong>아직 계산할 일정이 없어요.</strong><small>참여자가 저장하면 추천 시간이 여기에 나타나요.</small></p>
+                  </div>
+
+                  <div class="compare-candidate-actions">
+                    <button id="compareCandidateClearButton" type="button" disabled>후보 선택 해제</button>
+                    <button id="compareCandidateApplyButton" type="button" disabled>이미지 선택에 반영 <span aria-hidden="true">→</span></button>
+                  </div>
+
+                  <template id="compareCandidateCardTemplate">
+                    <div class="compare-candidate-item" role="listitem">
+                      <button class="compare-candidate-card" type="button" aria-pressed="false">
+                        <span class="compare-candidate-card-topline">
+                          <span data-candidate-rank>추천 후보</span>
+                          <strong data-candidate-attendance>0/0명</strong>
+                        </span>
+                        <strong class="compare-candidate-time" data-candidate-time>요일 00:00~00:00</strong>
+                        <span class="compare-candidate-meta">
+                          <span><b data-candidate-duration>3시간</b> 연속</span>
+                          <span data-candidate-unavailable>불참 없음</span>
+                        </span>
+                      </button>
+                    </div>
+                  </template>
+                </section>
+
                 <div class="compare-image-export" role="group" aria-labelledby="compare-image-export-title">
                   <div class="compare-image-export-copy">
                     <span class="compare-image-export-icon" aria-hidden="true"><i></i></span>
@@ -481,6 +552,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="online-room-core.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="availability-candidates.js"></script>
     <script src="app.js"></script>
     <script type="module" src="room-page.js"></script>
   </body>
