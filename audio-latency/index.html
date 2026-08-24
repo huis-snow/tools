@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="유선 헤드셋과 블루투스 이어폰에서 소리를 듣고 누르는 반응 시간을 비교해 무선 오디오의 추가 지연을 측정하는 무료 웹 도구"
+    />
+    <meta name="theme-color" content="#f3f0e7" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="블루투스 오디오 지연 측정 | 소리차" />
+    <meta
+      property="og:description"
+      content="유선과 블루투스에서 들리는 순간의 반응 시간을 비교해 무선 오디오의 추가 지연을 가늠해 보세요."
+    />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/audio-latency/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="블루투스 오디오 지연 측정 | 소리차" />
+    <meta
+      name="twitter:description"
+      content="유선과 블루투스에서 들리는 순간의 반응 시간을 비교해 무선 오디오의 추가 지연을 가늠해 보세요."
+    />
+    <title>블루투스 오디오 지연 측정 | 소리차</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/audio-latency/" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=20260823" />
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#latencyTest">지연 측정기로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="소리차 홈">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>소리차</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> AUDIO LATENCY</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="introTitle">
+        <div class="intro-copy">
+          <p class="eyebrow"><span aria-hidden="true"></span> WIRED VS BLUETOOTH</p>
+          <h1 id="introTitle">들리는 순간,<br /><em>눌러보세요.</em></h1>
+          <p>
+            유선에서 잰 나의 반응 속도를 기준으로,<br class="desktop-only" />
+            블루투스 이어폰이 더 늦게 들리는 시간을 계산합니다.
+          </p>
+          <a class="intro-cta" href="#latencyTest">측정 시작하기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="hero-meter" aria-hidden="true">
+          <div class="hero-meter-head"><span>RESPONSE GAP</span><b>+ 68 ms</b></div>
+          <div class="hero-wave hero-wave-wired">
+            <span>WIRED</span>
+            <div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <b>214</b>
+          </div>
+          <div class="hero-wave hero-wave-bluetooth">
+            <span>BT</span>
+            <div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <b>282</b>
+          </div>
+          <div class="hero-axis"><span>0 ms</span><span>반응 시간 →</span><span>400 ms</span></div>
+          <div class="hero-stamp"><span>△</span> COMPARE<br />THE GAP</div>
+        </div>
+      </section>
+
+      <section class="test-section" id="latencyTest" aria-labelledby="testTitle">
+        <div class="section-heading">
+          <div>
+            <p>01 / REACTION TEST</p>
+            <h2 id="testTitle">두 번 재고, 차이만 봅니다</h2>
+          </div>
+          <p>각 장치에서 연습 1회와 본 측정 8회를 진행해요.</p>
+        </div>
+
+        <div class="test-shell">
+          <ol class="phase-track" aria-label="측정 진행 단계">
+            <li class="is-current" id="phaseWired" aria-current="step">
+              <span>01</span>
+              <div><b>유선 기준</b><small>나의 기본 반응</small></div>
+            </li>
+            <li id="phaseBluetooth">
+              <span>02</span>
+              <div><b>블루투스</b><small>무선 반응</small></div>
+            </li>
+            <li id="phaseResult">
+              <span>03</span>
+              <div><b>차이 확인</b><small>추정 지연</small></div>
+            </li>
+          </ol>
+
+          <div class="test-stage">
+            <section class="setup-view" id="setupView" aria-labelledby="setupTitle">
+              <div class="device-illustration wired-device" aria-hidden="true">
+                <span class="headband"></span><span class="ear ear-left"></span><span class="ear ear-right"></span>
+                <span class="cable"></span><span class="plug"></span>
+              </div>
+              <p class="stage-kicker">STEP 01 · BASELINE</p>
+              <h3 id="setupTitle">유선 헤드셋을 연결해 주세요</h3>
+              <p class="stage-description">
+                운영체제의 소리 출력이 유선 헤드셋인지 확인하세요.<br />같은 자세와 손가락으로 두 측정을 진행하면 더 정확합니다.
+              </p>
+              <ul class="ready-list">
+                <li><span>1</span> 조용한 곳에서 편한 음량으로 맞추기</li>
+                <li><span>2</span> 소리가 들리면 큰 버튼 또는 스페이스바 누르기</li>
+                <li><span>3</span> 소리가 나기 전에 누르면 해당 회차는 다시 측정</li>
+              </ul>
+              <div class="setup-actions">
+                <button class="button button-secondary" id="wiredSoundButton" type="button">
+                  <span aria-hidden="true">♪</span> 소리 확인
+                </button>
+                <button class="button button-primary" id="startWiredButton" type="button">
+                  유선 측정 시작 <span aria-hidden="true">→</span>
+                </button>
+              </div>
+              <p class="sound-status" id="wiredSoundStatus" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="reaction-view" id="reactionView" aria-labelledby="reactionTitle" hidden>
+              <div class="reaction-toolbar">
+                <div>
+                  <p class="stage-kicker" id="reactionDeviceLabel">WIRED · BASELINE</p>
+                  <h3 id="reactionTitle">소리가 들리면 누르세요</h3>
+                </div>
+                <span class="trial-label" id="trialLabel">연습 1 / 1</span>
+              </div>
+
+              <div class="trial-dots" id="trialDots" aria-label="본 측정 진행률"></div>
+
+              <button class="reaction-pad" id="reactionPad" type="button" aria-describedby="reactionHelp">
+                <span class="pad-rings" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="pad-icon" aria-hidden="true">↯</span>
+                <strong>들리면 누르기</strong>
+                <small>또는 스페이스바</small>
+              </button>
+
+              <p class="reaction-help" id="reactionHelp">화면 변화가 아니라 오직 소리에만 반응해 주세요.</p>
+              <p class="trial-feedback" id="trialFeedback" role="status" aria-live="polite"></p>
+              <button class="text-button" id="cancelTestButton" type="button">측정 그만두기</button>
+            </section>
+
+            <section class="switch-view" id="switchView" aria-labelledby="switchTitle" hidden>
+              <div class="device-illustration bluetooth-device" aria-hidden="true">
+                <span class="bud bud-left"><i></i></span><span class="signal"><i></i><i></i><i></i></span><span class="bud bud-right"><i></i></span>
+              </div>
+              <p class="stage-kicker">STEP 02 · WIRELESS</p>
+              <h3 id="switchTitle" tabindex="-1">이제 블루투스로 바꿔 주세요</h3>
+              <p class="stage-description">
+                유선 헤드셋을 분리하고 블루투스 이어폰을 연결한 뒤,<br />운영체제의 출력 장치가 바뀌었는지 소리로 확인하세요.
+              </p>
+              <div class="baseline-ticket">
+                <span>유선 기준 측정 완료</span>
+                <strong><b id="wiredMedianPreview">—</b> ms</strong>
+                <small>8회 중앙값</small>
+              </div>
+              <div class="setup-actions">
+                <button class="button button-secondary" id="bluetoothSoundButton" type="button">
+                  <span aria-hidden="true">♪</span> 소리 확인
+                </button>
+                <button class="button button-primary" id="startBluetoothButton" type="button">
+                  블루투스 측정 시작 <span aria-hidden="true">→</span>
+                </button>
+              </div>
+              <p class="sound-status" id="bluetoothSoundStatus" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="result-view" id="resultView" aria-labelledby="resultTitle" hidden>
+              <p class="stage-kicker">RESULT · ESTIMATED GAP</p>
+              <h3 id="resultTitle" tabindex="-1">블루투스에서 더 늦게 들린 시간</h3>
+              <div class="gap-result" id="gapResult"><span>+</span><strong>—</strong><small>ms</small></div>
+              <p class="result-verdict" id="resultVerdict">두 측정의 중앙값 차이입니다.</p>
+
+              <div class="result-comparison">
+                <article>
+                  <span><i class="wired-dot"></i> 유선 헤드셋</span>
+                  <strong><b id="wiredResult">—</b> ms</strong>
+                  <small>기준 반응 중앙값</small>
+                  <div class="sample-strip" id="wiredSamples" aria-label="유선 측정값"></div>
+                </article>
+                <div class="comparison-arrow" aria-hidden="true">→</div>
+                <article>
+                  <span><i class="bluetooth-dot"></i> 블루투스 이어폰</span>
+                  <strong><b id="bluetoothResult">—</b> ms</strong>
+                  <small>무선 반응 중앙값</small>
+                  <div class="sample-strip" id="bluetoothSamples" aria-label="블루투스 측정값"></div>
+                </article>
+              </div>
+
+              <div class="result-note">
+                <span aria-hidden="true">i</span>
+                <p id="reliabilityNote">측정값의 흔들림을 확인하고 있어요.</p>
+              </div>
+              <div class="result-actions">
+                <button class="button button-primary" id="restartButton" type="button">처음부터 다시 측정</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section class="guide-section" aria-labelledby="guideTitle">
+        <div class="section-heading">
+          <div>
+            <p>02 / HOW IT WORKS</p>
+            <h2 id="guideTitle">왜 두 번 측정하나요?</h2>
+          </div>
+        </div>
+        <div class="guide-grid">
+          <article>
+            <span>01</span>
+            <h3>내 반응을 먼저 잽니다</h3>
+            <p>유선에서도 사람의 청각·손 반응 시간이 들어갑니다. 이 값을 개인 기준선으로 사용해요.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>같은 방법으로 다시 잽니다</h3>
+            <p>출력만 블루투스로 바꾸고 같은 테스트를 반복해 사람에게서 생기는 차이를 줄여요.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>중앙값의 차이를 봅니다</h3>
+            <p>빠르거나 느린 한두 번에 덜 흔들리도록 8회 측정의 중앙값끼리 빼서 보여줘요.</p>
+          </article>
+        </div>
+        <aside class="accuracy-note">
+          <strong>측정 전에 알아두세요</strong>
+          <p>
+            이 결과는 장비로 직접 녹음한 정밀 측정값이 아니라 사람의 반응을 이용한 추정치입니다. 브라우저·운영체제·코덱·배터리 상태에 따라 달라질 수 있으니 2~3번 반복한 범위를 참고하세요.
+          </p>
+        </aside>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>소리차</span>
+      </a>
+      <p>Listen. React. Compare the gap.</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+
+    <script src="app.js?v=20260823"></script>
+  </body>
+</html>
