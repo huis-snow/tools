@@ -35,6 +35,7 @@
       rel="stylesheet"
     />
     <link rel="preload" href="assets/hero-meadow.webp" as="image" type="image/webp" />
+    <link rel="preload" href="assets/hero-character.webp" as="image" type="image/webp" />
     <link rel="stylesheet" href="styles.css" />
     <script src="script.js" defer></script>
   </head>
@@ -68,7 +69,15 @@
         <a href="#info">행사 정보</a>
         <a href="#route">행진 안내</a>
         <a href="#timeline">타임라인</a>
-        <button class="nav-cta" type="button" data-calendar>일정 저장</button>
+        <a
+          class="nav-cta"
+          href="https://discord.gg/Qdew4FaaSQ"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="감자데이 디스코드 서버 참여하기 (새 창)"
+        >
+          Discord 참여
+        </a>
       </nav>
     </header>
 
@@ -77,6 +86,16 @@
         <div class="hero-overlay" aria-hidden="true"></div>
         <div class="petal-field" aria-hidden="true">
           <i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+
+        <div class="hero-character" data-reveal>
+          <img
+            src="assets/hero-character.webp"
+            alt="양팔을 펼쳐 반갑게 인사하는 분홍색 메이드복의 라라펠 캐릭터"
+            width="1159"
+            height="1358"
+            fetchpriority="high"
+          />
         </div>
 
         <div class="hero-inner">
@@ -97,6 +116,20 @@
                 <svg aria-hidden="true" viewBox="0 0 24 24">
                   <path d="m8 5 7 7-7 7" />
                 </svg>
+              </a>
+              <a
+                class="button button-discord"
+                href="https://discord.gg/Qdew4FaaSQ"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="감자데이 디스코드 서버 참여하기 (새 창)"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M7.2 6.7a13.5 13.5 0 0 1 9.6 0c1.6 2.4 2.3 5.1 2.2 8-1.5 1.2-3 2-4.6 2.5l-1.1-1.5c.6-.2 1.2-.5 1.8-.9-2 .9-4.1 1.1-6.2.6-.7-.1-1.4-.3-2-.6.6.4 1.2.7 1.8.9l-1.1 1.5C6 16.7 4.5 15.9 3 14.7c-.1-2.9.6-5.6 2.2-8 .7-.3 1.4-.5 2-.7Z" />
+                  <circle cx="9" cy="12" r="1" />
+                  <circle cx="15" cy="12" r="1" />
+                </svg>
+                Discord 참여
               </a>
               <button class="button button-ghost" type="button" data-calendar>
                 <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -358,6 +391,14 @@
           <h2 id="closingTitle">우리, 라노시아에서<br />함께 걸어요!</h2>
           <p>반응이 좋다면 다음 감자데이도 다시 찾아올 예정입니다.</p>
           <div class="closing-actions">
+            <a
+              class="button button-discord"
+              href="https://discord.gg/Qdew4FaaSQ"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Discord 참여
+            </a>
             <button class="button button-primary" type="button" data-calendar>캘린더에 추가</button>
             <a class="button button-ghost" href="#top">맨 위로</a>
           </div>
@@ -370,7 +411,10 @@
         <strong>감자데이 대행진 이벤트</strong>
         <p>라라펠 유저 커뮤니티 이벤트 안내 페이지</p>
       </div>
-      <p>FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved.</p>
+      <div class="footer-meta">
+        <a href="https://discord.gg/Qdew4FaaSQ" target="_blank" rel="noopener noreferrer">Discord 서버 ↗</a>
+        <p>FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved.</p>
+      </div>
     </footer>
 
     <dialog class="poster-dialog" id="posterDialog" aria-labelledby="posterDialogTitle">

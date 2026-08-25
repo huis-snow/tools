@@ -208,8 +208,11 @@ svg {
 }
 
 .nav-cta {
+  display: inline-flex;
   min-height: 42px;
   padding: 0 1.15rem;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 14px;
   background: var(--ink);
@@ -220,6 +223,15 @@ svg {
   transition:
     background 0.2s ease,
     transform 0.2s ease;
+}
+
+.site-nav .nav-cta {
+  padding: 0 1.15rem;
+  color: white;
+}
+
+.site-nav .nav-cta::after {
+  display: none;
 }
 
 .nav-cta:hover {
@@ -283,6 +295,7 @@ svg {
 
 .hero-inner {
   position: relative;
+  z-index: 2;
   display: grid;
   width: var(--shell);
   margin: auto;
@@ -293,7 +306,26 @@ svg {
 }
 
 .hero-copy {
+  position: relative;
+  z-index: 2;
   max-width: 760px;
+}
+
+.hero-character {
+  position: absolute;
+  right: max(-2rem, calc((100vw - 1180px) / 2 - 7.5rem));
+  bottom: -5rem;
+  z-index: 1;
+  height: min(86svh, 900px);
+  pointer-events: none;
+  filter: drop-shadow(0 28px 26px rgba(53, 54, 43, 0.2));
+  transform-origin: bottom center;
+}
+
+.hero-character img {
+  width: auto;
+  height: 100%;
+  object-fit: contain;
 }
 
 .hero-kicker {
@@ -419,6 +451,17 @@ svg {
   color: white;
 }
 
+.button-discord {
+  background: #5865f2;
+  box-shadow: 0 10px 28px rgba(88, 101, 242, 0.26);
+  color: white;
+}
+
+.button-discord:hover {
+  background: #4752c4;
+  box-shadow: 0 15px 32px rgba(88, 101, 242, 0.34);
+}
+
 .hero-facts {
   display: flex;
   width: fit-content;
@@ -456,6 +499,7 @@ svg {
 
 .welcome-bubble {
   position: relative;
+  z-index: 3;
   align-self: start;
   max-width: 290px;
   margin: 2.5rem 0 0 auto;
@@ -1394,6 +1438,21 @@ svg {
   font-size: 0.7rem;
 }
 
+.footer-meta {
+  display: grid;
+  justify-items: end;
+}
+
+.footer-meta a {
+  color: white;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.footer-meta a:hover {
+  color: var(--pink-light);
+}
+
 .poster-dialog {
   width: min(940px, calc(100% - 2rem));
   max-height: calc(100svh - 2rem);
@@ -1531,8 +1590,18 @@ svg {
     margin-top: 0.3rem;
   }
 
+  .site-nav .nav-cta {
+    padding: 0.8rem 0.9rem;
+  }
+
   .hero-inner {
     grid-template-columns: 1fr 220px;
+  }
+
+  .hero-character {
+    right: -10rem;
+    bottom: -3rem;
+    height: min(74svh, 760px);
   }
 
   .info-grid {
@@ -1587,6 +1656,23 @@ svg {
     align-self: end;
   }
 
+  .hero-character {
+    top: 5rem;
+    right: -4.8rem;
+    bottom: auto;
+    width: 18rem;
+    height: auto;
+    opacity: 0.96;
+    filter: drop-shadow(0 14px 16px rgba(53, 54, 43, 0.16));
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 57%, transparent 96%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 57%, transparent 96%);
+  }
+
+  .hero-character img {
+    width: 100%;
+    height: auto;
+  }
+
   .hero-kicker {
     font-size: 0.68rem;
   }
@@ -1606,11 +1692,13 @@ svg {
   .welcome-bubble {
     position: absolute;
     top: 1.25rem;
-    right: 0.4rem;
+    right: auto;
+    left: 0.25rem;
     max-width: 175px;
     margin: 0;
     padding: 0.8rem 0.9rem;
     border-width: 3px;
+    transform: rotate(-2deg);
   }
 
   .welcome-bubble p {
@@ -1618,7 +1706,9 @@ svg {
   }
 
   .welcome-bubble::after {
+    right: 20%;
     bottom: -15px;
+    left: auto;
     width: 27px;
     height: 24px;
     border-width: 3px;
@@ -1778,6 +1868,10 @@ svg {
   .site-footer {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .footer-meta {
+    justify-items: start;
   }
 }
 
