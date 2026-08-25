@@ -1454,6 +1454,34 @@ service cloud.firestore {
       }
     }
 
+    match /publicCounters/{counterId} {
+      function validCounter(data) {
+        return data.keys().hasAll(['count', 'updatedAt']) &&
+          data.keys().hasOnly(['count', 'updatedAt']) &&
+          data.count is int &&
+          data.count >= 1 &&
+          data.updatedAt is timestamp;
+      }
+
+      allow get: if counterId == 'gamjaRunSite';
+      allow list: if false;
+
+      allow create: if counterId == 'gamjaRunSite' &&
+        validCounter(request.resource.data) &&
+        request.resource.data.count == 1 &&
+        request.resource.data.updatedAt == request.time;
+
+      allow update: if counterId == 'gamjaRunSite' &&
+        validCounter(resource.data) &&
+        validCounter(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count', 'updatedAt']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAll(['count', 'updatedAt']) &&
+        request.resource.data.count == resource.data.count + 1 &&
+        request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
