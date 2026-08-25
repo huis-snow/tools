@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="8월 30일 초코보 서버에서 열리는 라라펠 유저 감자데이 대행진 이벤트 안내 페이지"
+    />
+    <meta name="theme-color" content="#f78391" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:title" content="감자데이 대행진 이벤트" />
+    <meta
+      property="og:description"
+      content="작고 귀여운 라라펠들이 함께 걷고, 포즈를 맞추고, 단체 스크린샷을 남기는 커뮤니티 이벤트!"
+    />
+    <meta
+      property="og:image"
+      content="https://huis-snow.github.io/tools/lalafell-day/assets/share-poster.jpg"
+    />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/lalafell-day/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:image"
+      content="https://huis-snow.github.io/tools/lalafell-day/assets/share-poster.jpg"
+    />
+    <title>감자데이 대행진 이벤트</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/lalafell-day/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" href="assets/hero-meadow.webp" as="image" type="image/webp" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main">본문으로 바로가기</a>
+
+    <header class="site-header" id="siteHeader">
+      <a class="brand" href="#top" aria-label="감자데이 홈으로 이동">
+        <span class="brand-mark" aria-hidden="true">
+          <span class="brand-face">•ᴗ•</span>
+        </span>
+        <span class="brand-copy">
+          <strong>감자데이</strong>
+          <small>LALAFELL PARADE</small>
+        </span>
+      </a>
+
+      <button
+        class="menu-button"
+        id="menuButton"
+        type="button"
+        aria-expanded="false"
+        aria-controls="siteNav"
+        aria-label="메뉴 열기"
+      >
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="site-nav" id="siteNav" aria-label="주요 메뉴">
+        <a href="#about">소개</a>
+        <a href="#info">행사 정보</a>
+        <a href="#route">행진 안내</a>
+        <a href="#timeline">타임라인</a>
+        <button class="nav-cta" type="button" data-calendar>일정 저장</button>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="heroTitle">
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="petal-field" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+
+        <div class="hero-inner">
+          <div class="hero-copy" data-reveal>
+            <p class="hero-kicker"><span>8.30 SUN</span> 라라펠 유저 대행진 이벤트</p>
+            <h1 id="heroTitle">
+              <span>감자데이</span>
+              <strong>대행진 이벤트</strong>
+            </h1>
+            <p class="hero-description">
+              작고 귀여운 라라펠들이 한자리에 모여<br />
+              함께 걷고, 포즈를 맞추고, 단체 스크린샷을 남겨요.
+            </p>
+
+            <div class="hero-actions">
+              <a class="button button-primary" href="#info">
+                <span>행사 정보 보기</span>
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="m8 5 7 7-7 7" />
+                </svg>
+              </a>
+              <button class="button button-ghost" type="button" data-calendar>
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z" />
+                </svg>
+                캘린더에 추가
+              </button>
+            </div>
+
+            <dl class="hero-facts">
+              <div>
+                <dt>DATE</dt>
+                <dd>8월 30일 (일) · 20:30</dd>
+              </div>
+              <div>
+                <dt>SERVER</dt>
+                <dd>초코보</dd>
+              </div>
+              <div>
+                <dt>MEET</dt>
+                <dd>중부 라노시아</dd>
+              </div>
+            </dl>
+          </div>
+
+          <aside class="welcome-bubble" data-reveal aria-label="환영 인사">
+            <span class="bubble-flower" aria-hidden="true">✿</span>
+            <p>어서오세요~<br />다 같이 재밌게 가요!</p>
+            <span class="bubble-heart" aria-hidden="true">♥</span>
+          </aside>
+        </div>
+
+        <a class="scroll-cue" href="#about" aria-label="소개로 이동">
+          <span>SCROLL</span>
+          <i></i>
+        </a>
+      </section>
+
+      <section class="intro section" id="about" aria-labelledby="aboutTitle">
+        <div class="section-shell intro-grid">
+          <div class="section-heading" data-reveal>
+            <p class="eyebrow">WELCOME, LITTLE ADVENTURERS!</p>
+            <h2 id="aboutTitle">오늘은 모두가<br /><em>행진의 주인공</em></h2>
+          </div>
+
+          <div class="intro-card" data-reveal>
+            <span class="card-number">01</span>
+            <p>
+              걷다가 마음에 드는 곳에서 함께 포즈를 맞추고, 추억이 될 단체 스크린샷을 남기는
+              라라펠 커뮤니티 이벤트입니다.
+            </p>
+            <p>
+              늦어도 괜찮아요. 행진 중간에도 언제든 자유롭게 합류해서 함께 즐겨 주세요.
+            </p>
+            <div class="tiny-lalas" aria-hidden="true">
+              <span>●</span><span>●</span><span>●</span><span>●</span><span>●</span><span>●</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="event-section section" id="info" aria-labelledby="infoTitle">
+        <div class="section-shell">
+          <div class="center-heading" data-reveal>
+            <p class="eyebrow">EVENT INFORMATION</p>
+            <h2 id="infoTitle">출발 전에 확인해 주세요</h2>
+            <p>원활한 진행을 위해 시작 10분 전까지 도착해 주세요.</p>
+          </div>
+
+          <div class="countdown-card" data-reveal>
+            <div class="countdown-copy">
+              <span class="live-dot" aria-hidden="true"></span>
+              <p>감자데이까지</p>
+              <strong id="countdownLabel">즐거운 행진을 기다리는 중!</strong>
+            </div>
+            <div class="countdown" id="countdown" role="timer" aria-label="행사 시작까지 남은 시간" aria-live="off">
+              <div><strong data-days>00</strong><span>일</span></div>
+              <i>:</i>
+              <div><strong data-hours>00</strong><span>시간</span></div>
+              <i>:</i>
+              <div><strong data-minutes>00</strong><span>분</span></div>
+              <i>:</i>
+              <div><strong data-seconds>00</strong><span>초</span></div>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <article class="info-card info-card-date" data-reveal>
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z" /></svg>
+              </div>
+              <p class="info-label">날짜 및 시간</p>
+              <h3>8월 30일 (일)<br /><strong>20:30</strong></h3>
+              <p>행사 시작 10분 전 도착 권장</p>
+            </article>
+
+            <article class="info-card" data-reveal>
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z" /><circle cx="12" cy="9" r="2.5" /></svg>
+              </div>
+              <p class="info-label">서버 · 집합 장소</p>
+              <h3>초코보 서버<br /><strong>중부 라노시아</strong></h3>
+              <p>림사 로민사 하층갑판 입구</p>
+              <button class="text-button" type="button" data-copy="초코보 서버 · 중부 라노시아 (림사 로민사 하층갑판 입구)">
+                장소 복사
+              </button>
+            </article>
+
+            <article class="info-card" data-reveal>
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M8 7V5a4 4 0 0 1 8 0v2M6 7h12l2 14H4L6 7Z" /><path d="M9 11h6" /></svg>
+              </div>
+              <p class="info-label">권장 패션 소품</p>
+              <h3>가볍게 메는<br /><strong>배낭</strong></h3>
+              <p>없어도 괜찮아요!</p>
+            </article>
+
+            <article class="info-card" data-reveal>
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M8 12h8M12 8v8" /><circle cx="12" cy="12" r="9" /></svg>
+              </div>
+              <p class="info-label">참여 방법</p>
+              <h3>집합 장소에서<br /><strong>자유롭게 합류</strong></h3>
+              <p>다른 서버 유저도 참여할 수 있어요.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="route-section section" id="route" aria-labelledby="routeTitle">
+        <div class="section-shell">
+          <div class="route-heading" data-reveal>
+            <div>
+              <p class="eyebrow">PARADE ROUTE</p>
+              <h2 id="routeTitle">천천히 걷고,<br />중간중간 함께 찰칵!</h2>
+            </div>
+            <p>
+              5분 행진과 5분 포즈를 반복하며 이동합니다.<br />정확한 동선과 진행 순서는 현장에서 안내해 드려요.
+            </p>
+          </div>
+
+          <div class="route-board" data-reveal>
+            <svg class="route-line" viewBox="0 0 1100 240" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M65 175 C170 15 285 30 360 135 S545 255 625 115 S805 15 860 120 S990 215 1045 70" />
+            </svg>
+
+            <ol class="route-stops">
+              <li>
+                <span class="stop-dot">01</span>
+                <div><strong>출발</strong><small>중부 라노시아</small></div>
+              </li>
+              <li>
+                <span class="stop-dot">02</span>
+                <div><strong>행진</strong><small>다 함께 천천히</small></div>
+              </li>
+              <li>
+                <span class="stop-dot">03</span>
+                <div><strong>5분 휴식</strong><small>잠깐 쉬어가기</small></div>
+              </li>
+              <li>
+                <span class="stop-dot">04</span>
+                <div><strong>단체사진</strong><small>포즈 맞추기</small></div>
+              </li>
+              <li>
+                <span class="stop-dot stop-end">END</span>
+                <div><strong>목적지 도착</strong><small>마지막 스크린샷</small></div>
+              </li>
+            </ol>
+          </div>
+
+          <div class="route-note" data-reveal>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6" /></svg>
+            <p><strong>늦게 도착해도 괜찮아요.</strong> 행진 중인 감자 행렬을 찾아 언제든 합류해 주세요!</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="timeline-section section" id="timeline" aria-labelledby="timelineTitle">
+        <div class="section-shell timeline-layout">
+          <div class="timeline-heading" data-reveal>
+            <p class="eyebrow">EVENT TIMELINE</p>
+            <h2 id="timelineTitle">행사 당일<br />이렇게 진행해요</h2>
+            <p>진행 상황에 따라 시간은 조금 달라질 수 있습니다.</p>
+            <span class="timeline-stamp" aria-hidden="true">LET'S<br />WALK!</span>
+          </div>
+
+          <ol class="timeline" data-reveal>
+            <li>
+              <time datetime="2026-08-30T20:00:00+09:00">20:00 – 20:10</time>
+              <div>
+                <span>STAFF ONLY</span>
+                <h3>진행요원 최종 브리핑</h3>
+                <p>파티찾기 개설 및 디스코드 소통을 준비합니다.</p>
+              </div>
+            </li>
+            <li>
+              <time datetime="2026-08-30T20:10:00+09:00">20:10 – 20:20</time>
+              <div>
+                <span>GATHER</span>
+                <h3>참가자 집합 및 개회 안내</h3>
+                <p>안내요원은 각자 길 안내 포인트로 미리 이동합니다.</p>
+              </div>
+            </li>
+            <li class="timeline-main">
+              <time datetime="2026-08-30T20:30:00+09:00">20:30 – 21:30</time>
+              <div>
+                <span>PARADE</span>
+                <h3>대행진 &amp; 포토타임</h3>
+                <p>5분 이동과 5분 포즈를 반복하고, 행진 사이사이 스크린샷과 단체 사진을 촬영합니다.</p>
+              </div>
+            </li>
+            <li>
+              <time datetime="2026-08-30T21:30:00+09:00">21:30 – 21:35</time>
+              <div>
+                <span>FINALE</span>
+                <h3>최종 목적지 도착</h3>
+                <p>마지막 단체 스크린샷을 촬영하고 행사를 마무리합니다.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="poster-section section" aria-labelledby="posterTitle">
+        <div class="section-shell poster-layout">
+          <div class="poster-frame" data-reveal>
+            <button type="button" data-poster-open aria-label="원본 행사 포스터 크게 보기">
+              <img
+                src="assets/lalafell-day-poster.webp"
+                alt="감자데이 대행진 이벤트의 전체 일정과 상세 행진 경로가 담긴 원본 포스터"
+                width="1280"
+                height="1280"
+                loading="lazy"
+              />
+              <span>크게 보기 <b aria-hidden="true">↗</b></span>
+            </button>
+          </div>
+
+          <div class="poster-copy" data-reveal>
+            <p class="eyebrow">ORIGINAL POSTER</p>
+            <h2 id="posterTitle">상세 행진 경로는<br />포스터에서 확인하세요</h2>
+            <p>
+              출발 지점부터 휴식, 단체사진 스팟과 도착 지점까지 전체 동선을 한눈에 볼 수 있어요.
+            </p>
+            <button class="button button-dark" type="button" data-poster-open>
+              포스터 크게 보기
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5h11v11M19 5 7 17M5 8v11h11" /></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="closing-section" aria-labelledby="closingTitle">
+        <div class="closing-cloud cloud-one" aria-hidden="true"></div>
+        <div class="closing-cloud cloud-two" aria-hidden="true"></div>
+        <div class="section-shell closing-content" data-reveal>
+          <span class="closing-flower" aria-hidden="true">✿</span>
+          <p class="eyebrow">SEE YOU IN LA NOSCEA!</p>
+          <h2 id="closingTitle">우리, 라노시아에서<br />함께 걸어요!</h2>
+          <p>반응이 좋다면 다음 감자데이도 다시 찾아올 예정입니다.</p>
+          <div class="closing-actions">
+            <button class="button button-primary" type="button" data-calendar>캘린더에 추가</button>
+            <a class="button button-ghost" href="#top">맨 위로</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>감자데이 대행진 이벤트</strong>
+        <p>라라펠 유저 커뮤니티 이벤트 안내 페이지</p>
+      </div>
+      <p>FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved.</p>
+    </footer>
+
+    <dialog class="poster-dialog" id="posterDialog" aria-labelledby="posterDialogTitle">
+      <div class="dialog-toolbar">
+        <h2 id="posterDialogTitle">감자데이 원본 포스터</h2>
+        <button type="button" data-poster-close aria-label="포스터 닫기">×</button>
+      </div>
+      <img
+        src="assets/lalafell-day-poster.webp"
+        alt="감자데이 대행진 이벤트 원본 포스터"
+        width="1280"
+        height="1280"
+      />
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
