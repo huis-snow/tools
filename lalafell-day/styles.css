@@ -451,6 +451,19 @@ svg {
   color: white;
 }
 
+.button-invite {
+  border-color: rgba(217, 79, 100, 0.2);
+  background: rgba(255, 238, 218, 0.92);
+  box-shadow: 0 10px 26px rgba(158, 91, 57, 0.13);
+  color: var(--pink-dark);
+  backdrop-filter: blur(10px);
+}
+
+.button-invite:hover {
+  background: #fff7e9;
+  box-shadow: 0 14px 30px rgba(158, 91, 57, 0.2);
+}
+
 .button-discord {
   background: #5865f2;
   box-shadow: 0 10px 28px rgba(88, 101, 242, 0.26);
@@ -1505,6 +1518,10 @@ svg {
   height: auto;
 }
 
+.invitation-dialog {
+  width: min(760px, calc(100% - 2rem));
+}
+
 .toast {
   position: fixed;
   bottom: 1.5rem;
@@ -1636,7 +1653,7 @@ svg {
   }
 
   .hero {
-    min-height: 860px;
+    min-height: 930px;
     background-position: 61% center;
   }
 

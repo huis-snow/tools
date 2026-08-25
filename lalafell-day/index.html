@@ -117,6 +117,13 @@
                   <path d="m8 5 7 7-7 7" />
                 </svg>
               </a>
+              <button class="button button-invite" type="button" data-invitation-open>
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M6 3h9l4 4v14H6V3Z" />
+                  <path d="M15 3v5h4M9 12h7M9 16h5" />
+                </svg>
+                초대장 보기
+              </button>
               <a
                 class="button button-discord"
                 href="https://discord.gg/Qdew4FaaSQ"
@@ -427,6 +434,20 @@
         alt="감자데이 대행진 이벤트 원본 포스터"
         width="1280"
         height="1280"
+      />
+    </dialog>
+
+    <dialog class="poster-dialog invitation-dialog" id="invitationDialog" aria-labelledby="invitationDialogTitle">
+      <div class="dialog-toolbar">
+        <h2 id="invitationDialogTitle">감자데이 초대장</h2>
+        <button type="button" data-invitation-close aria-label="초대장 닫기">×</button>
+      </div>
+      <img
+        src="assets/invitation.webp"
+        alt="감자들에게 보내는 감자데이 대행진 이벤트 초대장"
+        width="1079"
+        height="1440"
+        loading="lazy"
       />
     </dialog>
 

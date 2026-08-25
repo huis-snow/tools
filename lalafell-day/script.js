@@ -2,7 +2,6 @@ const header = document.querySelector("#siteHeader");
 const menuButton = document.querySelector("#menuButton");
 const siteNav = document.querySelector("#siteNav");
 const toast = document.querySelector("#toast");
-const posterDialog = document.querySelector("#posterDialog");
 
 const eventStart = new Date("2026-08-30T20:30:00+09:00");
 const eventEnd = new Date("2026-08-30T21:35:00+09:00");
@@ -165,18 +164,26 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
   });
 });
 
-document.querySelectorAll("[data-poster-open]").forEach((button) => {
-  button.addEventListener("click", () => posterDialog.showModal());
-});
+function setupImageDialog(dialogSelector, openSelector, closeSelector) {
+  const dialog = document.querySelector(dialogSelector);
+  if (!dialog) return;
 
-document.querySelector("[data-poster-close]").addEventListener("click", () => posterDialog.close());
+  document.querySelectorAll(openSelector).forEach((button) => {
+    button.addEventListener("click", () => dialog.showModal());
+  });
 
-posterDialog.addEventListener("click", (event) => {
-  const bounds = posterDialog.getBoundingClientRect();
-  const outside =
-    event.clientX < bounds.left ||
-    event.clientX > bounds.right ||
-    event.clientY < bounds.top ||
-    event.clientY > bounds.bottom;
-  if (outside) posterDialog.close();
-});
+  dialog.querySelector(closeSelector).addEventListener("click", () => dialog.close());
+
+  dialog.addEventListener("click", (event) => {
+    const bounds = dialog.getBoundingClientRect();
+    const outside =
+      event.clientX < bounds.left ||
+      event.clientX > bounds.right ||
+      event.clientY < bounds.top ||
+      event.clientY > bounds.bottom;
+    if (outside) dialog.close();
+  });
+}
+
+setupImageDialog("#posterDialog", "[data-poster-open]", "[data-poster-close]");
+setupImageDialog("#invitationDialog", "[data-invitation-open]", "[data-invitation-close]");
