@@ -57,6 +57,12 @@ const PAGES = [
   },
   { file: "daily-log/index.html", url: "https://huis-snow.github.io/tools/daily-log/", indexed: true },
   { file: "audio-latency/index.html", url: "https://huis-snow.github.io/tools/audio-latency/", indexed: true },
+  {
+    file: "pvp-series-calculator/index.html",
+    url: "https://huis-snow.github.io/tools/pvp-series-calculator/",
+    indexed: true,
+  },
+  { file: "lalafell-day/index.html", url: "https://huis-snow.github.io/tools/lalafell-day/", indexed: true },
 ];
 
 function read(relativePath) {
@@ -89,7 +95,7 @@ test("모든 실제 페이지는 고유한 대표 주소와 공유 메타데이�
     assert.equal(matches(source, /<meta\s+name="description"\s+content="[^"]+"\s*\/>/g).length, 1, `${file}의 description`);
     assert.match(source, /<meta property="og:title" content="[^"]+"\s*\/>/, `${file}의 Open Graph 제목`);
     assert.match(source, new RegExp(`<meta property="og:url" content="${url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}" \\/>`));
-    assert.match(source, /<meta name="twitter:card" content="summary"\s*\/>/, `${file}의 Twitter 카드`);
+    assert.match(source, /<meta name="twitter:card" content="summary(?:_large_image)?"\s*\/>/, `${file}의 Twitter 카드`);
 
     if (indexed) {
       assert.doesNotMatch(source, /<meta name="robots" content="[^"]*noindex/i, `${file}는 검색 허용`);
@@ -122,15 +128,14 @@ test("반듯표는 한글 아스키 테이블 검색 의도와 실제 사용 안
   assert.match(read("index.html"), /한글 아스키\(ASCII\) 테이블 생성기/);
 });
 
-test("작은 도구함은 아홉 번째 오디오 지연 측정 도구를 검색 설명과 카드에 함께 제공한다", () => {
+test("작은 도구함은 열 번째 PvP 시리즈 경험치 계산기를 검색 설명과 카드에 함께 제공한다", () => {
   const source = read("index.html");
 
-  assert.match(source, /<meta\s+name="description"\s+content="[^"]*블루투스 오디오 지연 측정[^"]*"\s*\/>/);
-  assert.match(source, /<p>TOOLS \/ 09<\/p>/);
-  assert.match(source, /href="\.\/audio-latency\/"/);
-  assert.match(source, /<span class="card-index">009<\/span>/);
-  assert.match(source, /<h3>소리차/);
+  assert.match(source, /<meta\s+name="description"\s+content="[^"]*PvP 시리즈 경험치 계산기[^"]*"\s*\/>/);
+  assert.match(source, /<p>TOOLS \/ 10<\/p>/);
+  assert.match(source, /href="\.\/pvp-series-calculator\/"/);
   assert.match(source, /<span class="card-index">010<\/span>/);
+  assert.match(source, /<h3>시리즈 작전표/);
 });
 
 test("사이트와 반듯표 구조화 데이터는 실제 페이지 정보와 일치한다", () => {

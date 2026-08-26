@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://huis-snow.github.io/tools/</loc>
-    <lastmod>2026-08-23</lastmod>
+    <lastmod>2026-08-26</lastmod>
   </url>
   <url>
     <loc>https://huis-snow.github.io/tools/table-maker/</loc>
@@ -43,6 +43,10 @@
   <url>
     <loc>https://huis-snow.github.io/tools/audio-latency/</loc>
     <lastmod>2026-08-23</lastmod>
+  </url>
+  <url>
+    <loc>https://huis-snow.github.io/tools/pvp-series-calculator/</loc>
+    <lastmod>2026-08-26</lastmod>
   </url>
   <url>
     <loc>https://huis-snow.github.io/tools/lalafell-day/</loc>

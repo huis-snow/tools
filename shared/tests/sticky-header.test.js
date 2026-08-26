@@ -16,6 +16,7 @@ const STYLE_FILES = [
   "raid-loot-maker/styles.css",
   "poll-maker/styles.css",
   "daily-log/styles.css",
+  "pvp-series-calculator/styles.css",
 ];
 const PAGE_FILES = [
   "index.html",
@@ -35,6 +36,7 @@ const PAGE_FILES = [
   "poll-maker/index.html",
   "poll-maker/room.html",
   "daily-log/index.html",
+  "pvp-series-calculator/index.html",
 ];
 
 function read(relativePath) {

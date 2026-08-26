@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 습관 달력, 블루투스 오디오 지연 측정 등을 설치 없이 사용하는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 파판14 PvP 시리즈 경험치 계산기, 블루투스 오디오 지연 측정 등을 설치 없이 사용하는 무료 웹 도구 모음"
     />
     <meta name="theme-color" content="#f4f1e8" />
     <meta property="og:type" content="website" />
@@ -14,26 +14,26 @@
     <meta property="og:title" content="작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구" />
     <meta
       property="og:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 블루투스 오디오 지연 측정과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 파판14 PvP 시리즈 경험치 계산과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <meta property="og:url" content="https://huis-snow.github.io/tools/" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구" />
     <meta
       name="twitter:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 블루투스 오디오 지연 측정과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 파판14 PvP 시리즈 경험치 계산과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <title>작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구</title>
     <link rel="canonical" href="https://huis-snow.github.io/tools/" />
     <link rel="icon" href="favicon.svg?v=20260715" type="image/svg+xml" />
-    <link rel="stylesheet" href="hub.css?v=20260824-fish" />
+    <link rel="stylesheet" href="hub.css?v=20260826-series" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "작은 도구함",
         "url": "https://huis-snow.github.io/tools/",
-        "description": "한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 습관 달력, 블루투스 오디오 지연 측정 등을 설치 없이 사용하는 무료 웹 도구 모음",
+        "description": "한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 파판14 PvP 시리즈 경험치 계산기 등을 설치 없이 사용하는 무료 웹 도구 모음",
         "inLanguage": "ko-KR"
       }
     </script>
@@ -197,7 +197,7 @@
       <section class="tools-section" id="tools" aria-labelledby="tools-title">
         <div class="section-heading">
           <div>
-            <p>TOOLS / 09</p>
+            <p>TOOLS / 10</p>
             <h2 id="tools-title">지금 쓸 수 있는 도구</h2>
           </div>
           <span>도구는 천천히 하나씩 늘어납니다.</span>
@@ -470,18 +470,35 @@
             </div>
           </a>
 
-          <article class="tool-card empty-card" aria-label="다음 도구를 준비 중입니다">
+          <a class="tool-card active-card" href="./pvp-series-calculator/">
             <div class="card-topline">
-              <span class="status waiting"><i></i> 다음 도구</span>
+              <span class="status"><i></i> 사용 가능</span>
               <span class="card-index">010</span>
             </div>
-            <div class="empty-mark" aria-hidden="true"><span>+</span></div>
-            <div class="card-content">
-              <p>COMING LATER</p>
-              <h3>다음 빈칸</h3>
-              <p class="description">필요한 작은 도구가 생기면 이 자리를 채울 예정입니다.</p>
+            <div class="card-preview series-preview" aria-hidden="true">
+              <div class="mini-series">
+                <div class="mini-series-head">
+                  <span>SERIES ROUTE</span>
+                  <b>18 → 25</b>
+                </div>
+                <strong>47,250 <small>EXP</small></strong>
+                <div class="mini-series-track"><i></i><span></span><span></span><b></b></div>
+                <div class="mini-series-results">
+                  <span><small>CRYSTALLINE</small><b>약 60판</b></span>
+                  <span><small>FRONTLINE</small><b>약 38판</b></span>
+                </div>
+              </div>
             </div>
-          </article>
+            <div class="card-content">
+              <p>FFXIV · PVP · PROGRESS</p>
+              <h3>시리즈 작전표 <span aria-hidden="true">↗</span></h3>
+              <p class="description">목표 시리즈 레벨까지 남은 경험치와 크컨·기공전·전장의 예상 판수를 계산하는 도구</p>
+            </div>
+            <div class="card-footer">
+              <span>콘텐츠별 판수 · 마감일까지 하루 목표</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
         </div>
       </section>
 
