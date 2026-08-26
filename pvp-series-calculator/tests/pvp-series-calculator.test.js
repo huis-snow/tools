@@ -138,3 +138,11 @@ test("페이지는 계산기 메타데이터와 핵심 입력·결과 영역을 
   assert.match(html, /id="deadlineResult"/);
   assert.match(html, /app\.js\?v=/);
 });
+
+test("사용자에게 보이는 글자는 10px보다 작게 축소하지 않는다", () => {
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+  assert.doesNotMatch(css, /(?:font-size|font):[^;]*(?<![\d.])[1-9]px/);
+  assert.match(css, /\.intro-copy > p:not\(\.eyebrow\)[^{]*\{[^}]*font-size: 16px;/);
+  assert.match(css, /\.field > small[^{]*\{[^}]*font-size: 11px;/);
+  assert.match(css, /\.result-message[^{]*\{[^}]*font-size: 13px;/);
+});

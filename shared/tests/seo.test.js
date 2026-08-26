@@ -62,7 +62,6 @@ const PAGES = [
     url: "https://huis-snow.github.io/tools/pvp-series-calculator/",
     indexed: true,
   },
-  { file: "lalafell-day/index.html", url: "https://huis-snow.github.io/tools/lalafell-day/", indexed: true },
 ];
 
 function read(relativePath) {
