@@ -4,6 +4,8 @@
   const MAX_SERIES_LEVEL = 30;
   const EXTRA_LEVEL_EXP = 20_000;
   const MAX_EXTRA_LEVEL = 999;
+  const STORAGE_KEY = "small-tools:pvp-series-calculator:v1";
+  const STORAGE_VERSION = 1;
   const DEFAULT_STATE = Object.freeze({
     currentLevel: 1,
     currentExp: 0,
@@ -200,7 +202,88 @@
     return target.mode === "extra" ? `목표 Lv.30 +${target.extraLevel}` : `목표 Lv.${target.level}`;
   }
 
-  function initApp(doc = document) {
+  function defaultPlannerState() {
+    return { ...DEFAULT_STATE };
+  }
+
+  function normalizePlannerState(value = {}) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new TypeError("저장된 입력 데이터 형식이 올바르지 않습니다.");
+    }
+
+    const progress = normalizeProgress({
+      level: value.currentLevel ?? DEFAULT_STATE.currentLevel,
+      currentExp: value.currentExp ?? DEFAULT_STATE.currentExp,
+      extraLevel: value.currentExtraLevel ?? DEFAULT_STATE.currentExtraLevel,
+    });
+    const targetMode = value.targetMode ?? DEFAULT_STATE.targetMode;
+    if (targetMode !== "level" && targetMode !== "extra") {
+      throw new TypeError("저장된 목표 유형이 올바르지 않습니다.");
+    }
+    const targetLevel = integer(value.targetLevel ?? DEFAULT_STATE.targetLevel, "목표 레벨");
+    if (targetLevel < 2 || targetLevel > MAX_SERIES_LEVEL) {
+      throw new RangeError(`목표 레벨은 2부터 ${MAX_SERIES_LEVEL}까지 입력해 주세요.`);
+    }
+    const targetExtraLevel = integer(
+      value.targetExtraLevel ?? DEFAULT_STATE.targetExtraLevel,
+      "목표 추가 레벨",
+    );
+    if (targetExtraLevel < 1 || targetExtraLevel > MAX_EXTRA_LEVEL) {
+      throw new RangeError(`목표 추가 레벨은 1부터 ${MAX_EXTRA_LEVEL}까지 입력해 주세요.`);
+    }
+
+    const deadline = value.deadline ?? DEFAULT_STATE.deadline;
+    if (typeof deadline !== "string") throw new TypeError("저장된 마감일 형식이 올바르지 않습니다.");
+    if (deadline) parseISODate(deadline, "마감일");
+
+    return {
+      currentLevel: progress.level,
+      currentExp: progress.currentExp,
+      currentExtraLevel: progress.extraLevel,
+      targetMode,
+      targetLevel,
+      targetExtraLevel,
+      deadline,
+    };
+  }
+
+  function loadPlannerState(storage) {
+    const fallback = defaultPlannerState();
+    if (!storage || typeof storage.getItem !== "function") return fallback;
+
+    try {
+      const raw = storage.getItem(STORAGE_KEY);
+      if (!raw) return fallback;
+      const payload = JSON.parse(raw);
+      if (!payload || payload.version !== STORAGE_VERSION) return fallback;
+      return normalizePlannerState(payload.state);
+    } catch (_error) {
+      return fallback;
+    }
+  }
+
+  function savePlannerState(storage, state) {
+    if (!storage || typeof storage.setItem !== "function") return false;
+
+    try {
+      const normalized = normalizePlannerState(state);
+      storage.setItem(STORAGE_KEY, JSON.stringify({ version: STORAGE_VERSION, state: normalized }));
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function browserStorage() {
+    try {
+      return root.localStorage || null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function initApp(doc = document, storage) {
+    const plannerStorage = storage === undefined ? browserStorage() : storage;
     const elements = {
       form: doc.getElementById("plannerForm"),
       currentLevel: doc.getElementById("currentLevelInput"),
@@ -260,6 +343,28 @@
 
     function selectedMode() {
       return modeInputs.find((input) => input.checked)?.value || "level";
+    }
+
+    function applyPlannerState(state) {
+      elements.currentLevel.value = String(state.currentLevel);
+      elements.currentExp.value = String(state.currentExp);
+      elements.currentExtra.value = String(state.currentExtraLevel);
+      modeInputs.forEach((input) => { input.checked = input.value === state.targetMode; });
+      elements.targetLevel.value = String(state.targetLevel);
+      elements.targetExtra.value = String(state.targetExtraLevel);
+      elements.deadline.value = state.deadline;
+    }
+
+    function persistPlannerState() {
+      savePlannerState(plannerStorage, {
+        currentLevel: elements.currentLevel.value,
+        currentExp: elements.currentExp.value,
+        currentExtraLevel: elements.currentExtra.value,
+        targetMode: selectedMode(),
+        targetLevel: elements.targetLevel.value,
+        targetExtraLevel: elements.targetExtra.value,
+        deadline: elements.deadline.value,
+      });
     }
 
     function clampCurrentExp() {
@@ -380,6 +485,7 @@
             selectedMode() === "level" && Number(elements.targetLevel.value) === Number(button.dataset.targetLevel),
           );
         });
+        persistPlannerState();
       } catch (error) {
         elements.resultContent.hidden = true;
         elements.resultError.hidden = false;
@@ -388,13 +494,7 @@
     }
 
     function reset() {
-      elements.currentLevel.value = String(DEFAULT_STATE.currentLevel);
-      elements.currentExp.value = String(DEFAULT_STATE.currentExp);
-      elements.currentExtra.value = String(DEFAULT_STATE.currentExtraLevel);
-      modeInputs.forEach((input) => { input.checked = input.value === DEFAULT_STATE.targetMode; });
-      elements.targetLevel.value = String(DEFAULT_STATE.targetLevel);
-      elements.targetExtra.value = String(DEFAULT_STATE.targetExtraLevel);
-      elements.deadline.value = DEFAULT_STATE.deadline;
+      applyPlannerState(defaultPlannerState());
       updateControls({ clampExp: true });
       render();
     }
@@ -426,13 +526,17 @@
     });
     elements.reset.addEventListener("click", reset);
 
-    reset();
+    applyPlannerState(loadPlannerState(plannerStorage));
+    updateControls({ clampExp: true });
+    render();
   }
 
   const api = {
     MAX_SERIES_LEVEL,
     EXTRA_LEVEL_EXP,
     MAX_EXTRA_LEVEL,
+    STORAGE_KEY,
+    STORAGE_VERSION,
     DEFAULT_STATE,
     REWARDS,
     expToNextLevel,
@@ -450,6 +554,10 @@
     formatNumber,
     describeProgress,
     describeTarget,
+    defaultPlannerState,
+    normalizePlannerState,
+    loadPlannerState,
+    savePlannerState,
     initApp,
   };
 

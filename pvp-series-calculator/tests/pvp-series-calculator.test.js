@@ -10,6 +10,9 @@ const calculator = require("../app.js");
 const {
   MAX_SERIES_LEVEL,
   EXTRA_LEVEL_EXP,
+  STORAGE_KEY,
+  STORAGE_VERSION,
+  DEFAULT_STATE,
   REWARDS,
   expToNextLevel,
   cumulativeExpAtLevel,
@@ -19,7 +22,22 @@ const {
   calculateMatchEstimates,
   calendarDayDifference,
   calculateDeadlinePlan,
+  normalizePlannerState,
+  loadPlannerState,
+  savePlannerState,
 } = calculator;
+
+function memoryStorage() {
+  const values = new Map();
+  return {
+    getItem(key) {
+      return values.has(key) ? values.get(key) : null;
+    },
+    setItem(key, value) {
+      values.set(key, String(value));
+    },
+  };
+}
 
 test("시리즈 경험치 구간과 30레벨 누적 경험치가 공개 데이터와 일치한다", () => {
   assert.equal(MAX_SERIES_LEVEL, 30);
@@ -129,6 +147,60 @@ test("지난 마감일과 이미 달성한 목표의 계획 상태를 구분한�
   assert.equal(complete.dailyExp, 0);
 });
 
+test("계산기 입력 상태를 버전과 함께 저장하고 다시 복원한다", () => {
+  const storage = memoryStorage();
+  const state = {
+    currentLevel: 30,
+    currentExp: 12_345,
+    currentExtraLevel: 3,
+    targetMode: "extra",
+    targetLevel: 25,
+    targetExtraLevel: 8,
+    deadline: "2026-09-30",
+  };
+
+  assert.equal(savePlannerState(storage, state), true);
+  assert.deepEqual(JSON.parse(storage.getItem(STORAGE_KEY)), {
+    version: STORAGE_VERSION,
+    state,
+  });
+  assert.deepEqual(loadPlannerState(storage), state);
+});
+
+test("손상됐거나 접근할 수 없는 저장 데이터는 기본값으로 안전하게 대체한다", () => {
+  const storage = memoryStorage();
+  storage.setItem(STORAGE_KEY, "{broken-json");
+  assert.deepEqual(loadPlannerState(storage), DEFAULT_STATE);
+
+  storage.setItem(STORAGE_KEY, JSON.stringify({
+    version: STORAGE_VERSION,
+    state: { currentLevel: 15, currentExp: 99_999 },
+  }));
+  assert.deepEqual(loadPlannerState(storage), DEFAULT_STATE);
+
+  const blockedStorage = {
+    getItem() { throw new Error("blocked"); },
+    setItem() { throw new Error("blocked"); },
+  };
+  assert.deepEqual(loadPlannerState(blockedStorage), DEFAULT_STATE);
+  assert.equal(savePlannerState(blockedStorage, DEFAULT_STATE), false);
+});
+
+test("저장 상태는 목표와 날짜 범위를 함께 검증한다", () => {
+  assert.throws(
+    () => normalizePlannerState({ ...DEFAULT_STATE, targetMode: "unknown" }),
+    /목표 유형/,
+  );
+  assert.throws(
+    () => normalizePlannerState({ ...DEFAULT_STATE, targetExtraLevel: 1_000 }),
+    /1부터 999/,
+  );
+  assert.throws(
+    () => normalizePlannerState({ ...DEFAULT_STATE, deadline: "2026-02-30" }),
+    /올바른 날짜/,
+  );
+});
+
 test("페이지는 계산기 메타데이터와 핵심 입력·결과 영역을 제공한다", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   assert.match(html, /<html lang="ko">/);
@@ -136,7 +208,8 @@ test("페이지는 계산기 메타데이터와 핵심 입력·결과 영역을 
   assert.match(html, /id="currentLevelInput"/);
   assert.match(html, /id="remainingExp"/);
   assert.match(html, /id="deadlineResult"/);
-  assert.match(html, /app\.js\?v=/);
+  assert.match(html, /app\.js\?v=20260826-storage/);
+  assert.match(html, /입력값은 서버로 전송하지 않고 이 브라우저에만 저장해요/);
 });
 
 test("사용자에게 보이는 글자는 10px보다 작게 축소하지 않는다", () => {
