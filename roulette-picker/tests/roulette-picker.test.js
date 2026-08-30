@@ -16,6 +16,7 @@ const {
   activeEntries,
   entryGroups,
   probabilityForLabel,
+  segmentColors,
   randomIndex,
   normalizeAngle,
   winningRotation,
@@ -53,6 +54,18 @@ test("중복 횟수가 해당 이름의 당첨 확률이 된다", () => {
   assert.equal(probabilityForLabel(rows, "치킨"), 0.5);
   assert.equal(probabilityForLabel(rows, "피자"), 0.25);
   assert.equal(probabilityForLabel(rows, "없는 항목"), 0);
+});
+
+test("서로 다른 이름은 다른 색을 받고 같은 이름은 같은 색을 공유한다", () => {
+  const colors = segmentColors(["치킨", "피자", "치킨", "초밥"]);
+  assert.equal(colors.length, 4);
+  assert.equal(colors[0], colors[2]);
+  assert.notEqual(colors[0], colors[1]);
+  assert.notEqual(colors[1], colors[3]);
+  assert.equal(new Set(colors).size, 3);
+
+  const manyColors = segmentColors(Array.from({ length: 60 }, (_, index) => `항목 ${index + 1}`));
+  assert.equal(new Set(manyColors).size, 60);
 });
 
 test("암호학적 난수의 모듈로 편향 구간을 버리고 유효한 칸을 고른다", () => {
@@ -119,5 +132,5 @@ test("페이지는 룰렛 입력·회전·결과 영역과 공개 메타데이�
   assert.match(html, /id="spinButton"/);
   assert.match(html, /id="resultLabel"/);
   assert.match(html, /같은 선택지를 여러 번 적으면 합치지 않고/);
-  assert.match(html, /app\.js\?v=20260830/);
+  assert.match(html, /app\.js\?v=20260830-colors/);
 });

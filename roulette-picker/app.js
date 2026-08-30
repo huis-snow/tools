@@ -10,18 +10,6 @@
   const STORAGE_VERSION = 1;
   const DEFAULT_ROWS = Object.freeze(["", "", "", ""]);
   const SAMPLE_ROWS = Object.freeze(["치킨", "피자", "초밥", "치킨"]);
-  const COLORS = Object.freeze([
-    "#f06a40",
-    "#f2b84b",
-    "#4f8f82",
-    "#6c86b5",
-    "#d56f89",
-    "#8f75b5",
-    "#68a66e",
-    "#df8d4b",
-    "#4b9aa8",
-    "#bd6b55",
-  ]);
 
   function normalizeLabel(value) {
     return String(value ?? "").trim().slice(0, MAX_LABEL_LENGTH);
@@ -49,6 +37,24 @@
     const entries = activeEntries(entriesValue);
     if (!label || entries.length === 0) return 0;
     return entries.filter((entry) => entry === label).length / entries.length;
+  }
+
+  function colorForUniqueIndex(indexValue) {
+    const index = Number(indexValue);
+    if (!Number.isInteger(index) || index < 0) throw new RangeError("색상 번호는 0 이상이어야 합니다.");
+    const hue = (12 + index * 137.508) % 360;
+    const saturation = 58 + index % 2 * 6;
+    const lightness = 42 + index % 3 * 3;
+    return `hsl(${hue.toFixed(3)} ${saturation}% ${lightness}%)`;
+  }
+
+  function segmentColors(entriesValue) {
+    const entries = activeEntries(entriesValue);
+    const colorsByLabel = new Map();
+    entries.forEach((label) => {
+      if (!colorsByLabel.has(label)) colorsByLabel.set(label, colorForUniqueIndex(colorsByLabel.size));
+    });
+    return entries.map((label) => colorsByLabel.get(label));
   }
 
   function randomIndex(lengthValue, cryptoSource = root.crypto) {
@@ -146,12 +152,6 @@
     }
   }
 
-  function labelColor(label) {
-    let hash = 0;
-    for (const character of label) hash = ((hash << 5) - hash + character.codePointAt(0)) | 0;
-    return COLORS[Math.abs(hash) % COLORS.length];
-  }
-
   function fitCanvasText(context, text, maxWidth) {
     if (context.measureText(text).width <= maxWidth) return text;
     const characters = Array.from(text);
@@ -240,6 +240,7 @@
       const center = size / 2;
       const radius = center - 14;
       const arc = TAU / state.entries.length;
+      const colors = segmentColors(state.entries);
       const fontSize = state.entries.length <= 6 ? 19 : state.entries.length <= 12 ? 15 : state.entries.length <= 24 ? 12 : 10;
       context.clearRect(0, 0, size, size);
       context.save();
@@ -252,7 +253,7 @@
         context.moveTo(0, 0);
         context.arc(0, 0, radius, start, end);
         context.closePath();
-        context.fillStyle = labelColor(label);
+        context.fillStyle = colors[index];
         context.fill();
         context.strokeStyle = "#fffaf0";
         context.lineWidth = state.entries.length > 30 ? 1 : 2;
@@ -553,6 +554,8 @@
     activeEntries,
     entryGroups,
     probabilityForLabel,
+    colorForUniqueIndex,
+    segmentColors,
     randomIndex,
     normalizeAngle,
     winningRotation,
