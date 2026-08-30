@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 파판14 PvP 시리즈 경험치 계산기, 블루투스 오디오 지연 측정 등을 설치 없이 사용하는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 랜덤 룰렛, 파판14 PvP 경험치 계산기 등을 설치 없이 사용하는 무료 웹 도구 모음"
     />
     <meta name="theme-color" content="#f4f1e8" />
     <meta property="og:type" content="website" />
@@ -14,26 +14,26 @@
     <meta property="og:title" content="작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구" />
     <meta
       property="og:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 파판14 PvP 시리즈 경험치 계산과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 랜덤 룰렛과 파판14 PvP 경험치 계산까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <meta property="og:url" content="https://huis-snow.github.io/tools/" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구" />
     <meta
       name="twitter:description"
-      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 파판14 PvP 시리즈 경험치 계산과 생활 기록까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
+      content="한글 아스키 테이블 생성기부터 일정표, 익명 투표, 랜덤 룰렛과 파판14 PvP 경험치 계산까지 설치 없이 바로 쓰는 무료 웹 도구 모음"
     />
     <title>작은 도구함 | 한글 아스키 테이블·일정표·익명 투표 웹 도구</title>
     <link rel="canonical" href="https://huis-snow.github.io/tools/" />
     <link rel="icon" href="favicon.svg?v=20260715" type="image/svg+xml" />
-    <link rel="stylesheet" href="hub.css?v=20260826-series" />
+    <link rel="stylesheet" href="hub.css?v=20260830-roulette" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "작은 도구함",
         "url": "https://huis-snow.github.io/tools/",
-        "description": "한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 파판14 PvP 시리즈 경험치 계산기 등을 설치 없이 사용하는 무료 웹 도구 모음",
+        "description": "한글 아스키 테이블 생성기, 주간 일정표, 익명 투표소, 랜덤 룰렛, 파판14 PvP 경험치 계산기 등을 설치 없이 사용하는 무료 웹 도구 모음",
         "inLanguage": "ko-KR"
       }
     </script>
@@ -197,7 +197,7 @@
       <section class="tools-section" id="tools" aria-labelledby="tools-title">
         <div class="section-heading">
           <div>
-            <p>TOOLS / 10</p>
+            <p>TOOLS / 11</p>
             <h2 id="tools-title">지금 쓸 수 있는 도구</h2>
           </div>
           <span>도구는 천천히 하나씩 늘어납니다.</span>
@@ -496,6 +496,33 @@
             </div>
             <div class="card-footer">
               <span>콘텐츠별 판수 · 마감일까지 하루 목표</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
+
+          <a class="tool-card active-card" href="./roulette-picker/">
+            <div class="card-topline">
+              <span class="status"><i></i> 사용 가능</span>
+              <span class="card-index">011</span>
+            </div>
+            <div class="card-preview roulette-preview" aria-hidden="true">
+              <div class="mini-roulette">
+                <div class="mini-wheel"><i></i><span></span></div>
+                <div class="mini-roulette-options">
+                  <span><i>01</i><b>치킨</b></span>
+                  <span><i>02</i><b>피자</b></span>
+                  <span class="duplicate"><i>03</i><b>치킨</b></span>
+                  <em>치킨 ×2칸 · 50%</em>
+                </div>
+              </div>
+            </div>
+            <div class="card-content">
+              <p>RANDOM · WEIGHTED · LOCAL</p>
+              <h3>빙글뽑기 <span aria-hidden="true">↗</span></h3>
+              <p class="description">입력칸마다 한 조각을 만들고 같은 선택지는 적은 횟수만큼 확률이 커지는 랜덤 룰렛</p>
+            </div>
+            <div class="card-footer">
+              <span>중복 입력 가능 · 최근 결과 자동 저장</span>
               <span class="arrow" aria-hidden="true">→</span>
             </div>
           </a>

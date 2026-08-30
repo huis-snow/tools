@@ -62,6 +62,11 @@ const PAGES = [
     url: "https://huis-snow.github.io/tools/pvp-series-calculator/",
     indexed: true,
   },
+  {
+    file: "roulette-picker/index.html",
+    url: "https://huis-snow.github.io/tools/roulette-picker/",
+    indexed: true,
+  },
 ];
 
 function read(relativePath) {
@@ -127,14 +132,17 @@ test("반듯표는 한글 아스키 테이블 검색 의도와 실제 사용 안
   assert.match(read("index.html"), /한글 아스키\(ASCII\) 테이블 생성기/);
 });
 
-test("작은 도구함은 열 번째 PvP 시리즈 경험치 계산기를 검색 설명과 카드에 함께 제공한다", () => {
+test("작은 도구함은 PvP 계산기와 열한 번째 랜덤 룰렛을 검색 설명과 카드에 함께 제공한다", () => {
   const source = read("index.html");
 
-  assert.match(source, /<meta\s+name="description"\s+content="[^"]*PvP 시리즈 경험치 계산기[^"]*"\s*\/>/);
-  assert.match(source, /<p>TOOLS \/ 10<\/p>/);
+  assert.match(source, /<meta\s+name="description"\s+content="[^"]*랜덤 룰렛[^"]*"\s*\/>/);
+  assert.match(source, /<p>TOOLS \/ 11<\/p>/);
   assert.match(source, /href="\.\/pvp-series-calculator\/"/);
   assert.match(source, /<span class="card-index">010<\/span>/);
   assert.match(source, /<h3>시리즈 작전표/);
+  assert.match(source, /href="\.\/roulette-picker\/"/);
+  assert.match(source, /<span class="card-index">011<\/span>/);
+  assert.match(source, /<h3>빙글뽑기/);
 });
 
 test("사이트와 반듯표 구조화 데이터는 실제 페이지 정보와 일치한다", () => {

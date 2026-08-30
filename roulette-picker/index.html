@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="선택지를 입력한 칸 수만큼 룰렛을 만들고 중복 항목은 입력 횟수만큼 당첨 확률을 높여 무작위로 추첨하는 무료 랜덤 룰렛"
+    />
+    <meta name="theme-color" content="#f4efe4" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="작은 도구함" />
+    <meta property="og:title" content="랜덤 룰렛 추첨기 | 빙글뽑기" />
+    <meta
+      property="og:description"
+      content="한 줄에 한 칸, 같은 선택지는 입력한 횟수만큼 넓어지는 가중치 랜덤 룰렛을 바로 돌려보세요."
+    />
+    <meta property="og:url" content="https://huis-snow.github.io/tools/roulette-picker/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="랜덤 룰렛 추첨기 | 빙글뽑기" />
+    <meta
+      name="twitter:description"
+      content="입력한 항목 수만큼 칸을 만들고 중복 입력은 그대로 가중치가 되는 랜덤 룰렛"
+    />
+    <title>랜덤 룰렛 추첨기 | 빙글뽑기</title>
+    <link rel="canonical" href="https://huis-snow.github.io/tools/roulette-picker/" />
+    <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=20260830" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "빙글뽑기",
+        "alternateName": "랜덤 룰렛 추첨기",
+        "url": "https://huis-snow.github.io/tools/roulette-picker/",
+        "description": "입력한 항목 수와 중복 횟수를 그대로 반영해 무작위로 추첨하는 웹 룰렛",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "ko-KR",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "KRW"
+        }
+      }
+    </script>
+    <script src="app.js?v=20260830" defer></script>
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#rouletteMaker">룰렛 만들기로 바로가기</a>
+
+    <header class="site-header">
+      <a class="back-link" href="../"><span aria-hidden="true">←</span> 작은 도구함</a>
+      <a class="brand" href="./" aria-label="빙글뽑기 홈">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>빙글뽑기</span>
+      </a>
+      <span class="header-note"><i aria-hidden="true"></i> FAIR &amp; RANDOM</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="introTitle">
+        <div class="intro-copy">
+          <p class="eyebrow"><span aria-hidden="true"></span> ONE FIELD, ONE CHANCE</p>
+          <h1 id="introTitle">같은 이름은,<br /><em>한 번 더 유리하게.</em></h1>
+          <p>
+            입력칸 하나가 룰렛 한 칸이 됩니다. 같은 선택지를 여러 번 적으면 합치지 않고,<br class="desktop-only" />
+            적은 횟수만큼 당첨 확률이 자연스럽게 커져요.
+          </p>
+          <a class="intro-cta" href="#rouletteMaker">룰렛 만들기 <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="rule-card" aria-hidden="true">
+          <div class="rule-card-head"><span>HOW WE WEIGHT</span><b>4 SLOTS</b></div>
+          <div class="rule-rows">
+            <span><i>01</i><b>치킨</b><em>25%</em></span>
+            <span><i>02</i><b>피자</b><em>25%</em></span>
+            <span class="is-duplicate"><i>03</i><b>치킨</b><em>+25%</em></span>
+            <span><i>04</i><b>초밥</b><em>25%</em></span>
+          </div>
+          <div class="rule-total"><span>치킨의 최종 확률</span><strong>50%</strong></div>
+          <div class="rule-stamp">DUPLICATES<br />STAY IN</div>
+        </div>
+      </section>
+
+      <section class="roulette-section" id="rouletteMaker" aria-labelledby="makerTitle">
+        <div class="section-heading">
+          <div>
+            <p>01 / BUILD THE WHEEL</p>
+            <h2 id="makerTitle">선택지를 한 칸씩 적어주세요</h2>
+          </div>
+          <p>빈 입력칸은 제외하고, 같은 텍스트는 입력한 수만큼 각각 한 칸으로 남겨요.</p>
+        </div>
+
+        <div class="roulette-shell">
+          <section class="entry-panel" aria-labelledby="entryTitle">
+            <div class="panel-heading">
+              <div>
+                <span>YOUR OPTIONS</span>
+                <h3 id="entryTitle">추첨 항목</h3>
+              </div>
+              <button class="text-button" id="clearEntriesButton" type="button">모두 지우기</button>
+            </div>
+
+            <ol class="entry-list" id="entryList" aria-label="룰렛 선택지"></ol>
+
+            <div class="entry-actions">
+              <button class="add-button" id="addEntryButton" type="button">
+                <span aria-hidden="true">＋</span> 항목 추가
+              </button>
+              <button class="sample-button" id="sampleButton" type="button">중복 예시 채우기</button>
+            </div>
+
+            <div class="weight-summary" aria-live="polite">
+              <div>
+                <span><b id="slotCount">0</b>칸</span>
+                <span><b id="uniqueCount">0</b>종류</span>
+              </div>
+              <p id="duplicateSummary">두 개 이상 입력하면 룰렛이 만들어져요.</p>
+            </div>
+
+            <p class="storage-note"><span aria-hidden="true">●</span> 입력 항목과 최근 결과는 이 브라우저에만 자동 저장됩니다.</p>
+          </section>
+
+          <section class="wheel-panel" aria-labelledby="wheelTitle">
+            <div class="wheel-heading">
+              <div>
+                <span>02 / SPIN TO PICK</span>
+                <h3 id="wheelTitle">랜덤 룰렛</h3>
+              </div>
+              <strong id="wheelCount">0 SLOTS</strong>
+            </div>
+
+            <div class="wheel-wrap" id="wheelWrap">
+              <canvas id="rouletteCanvas" width="720" height="720" role="img" aria-label="선택지를 두 개 이상 입력하면 룰렛이 표시됩니다."></canvas>
+              <span class="wheel-pointer" aria-hidden="true"></span>
+              <button class="spin-button" id="spinButton" type="button" disabled>
+                <span id="spinButtonLabel">2칸 필요</span>
+                <small>SPIN</small>
+              </button>
+            </div>
+
+            <div class="result-card" id="resultCard" aria-live="assertive">
+              <div>
+                <span>SELECTED</span>
+                <p id="resultLead">아직 룰렛을 돌리지 않았어요.</p>
+              </div>
+              <strong id="resultLabel">—</strong>
+              <p id="resultDetail">선택지를 입력하고 가운데 버튼을 눌러주세요.</p>
+            </div>
+
+            <div class="history" id="historySection" hidden>
+              <div class="history-head">
+                <h4>최근 결과</h4>
+                <button class="text-button" id="clearHistoryButton" type="button">기록 지우기</button>
+              </div>
+              <ol id="historyList"></ol>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="guide-section" aria-labelledby="guideTitle">
+        <div class="section-heading">
+          <div>
+            <p>03 / HOW IT WORKS</p>
+            <h2 id="guideTitle">중복은 이렇게 확률이 됩니다</h2>
+          </div>
+        </div>
+        <div class="guide-grid">
+          <article><span>01</span><h3>입력칸 하나가 룰렛 한 칸</h3><p>내용이 있는 입력칸만 같은 넓이의 조각으로 룰렛에 들어갑니다.</p></article>
+          <article><span>02</span><h3>같은 이름도 합치지 않기</h3><p>같은 텍스트를 세 번 적으면 서로 다른 세 칸으로 남아 당첨 기회도 세 배가 됩니다.</p></article>
+          <article><span>03</span><h3>브라우저 난수로 한 칸 선택</h3><p>회전하기 전에 브라우저의 암호학적 난수로 당첨 칸을 고르고, 룰렛은 그 칸에서 멈춥니다.</p></article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="./"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>빙글뽑기</span></a>
+      <p>같은 칸은 같은 확률, 중복 칸은 중복된 만큼.</p>
+      <a href="#top">맨 위로 ↑</a>
+    </footer>
+  </body>
+</html>

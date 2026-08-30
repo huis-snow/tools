@@ -1662,6 +1662,110 @@ footer {
   font-size: 7px;
 }
 
+.roulette-preview {
+  padding: 17px 22px;
+}
+
+.mini-roulette {
+  width: min(100%, 390px);
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  font-family: var(--mono);
+}
+
+.mini-wheel {
+  position: relative;
+  width: 126px;
+  height: 126px;
+  border: 3px solid #fffdf6;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -45deg,
+    #f06a40 0 25%,
+    #6c86b5 25% 50%,
+    #f06a40 50% 75%,
+    #4f8f82 75% 100%
+  );
+  box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.2);
+}
+
+.mini-wheel::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: -8px;
+  left: 50%;
+  border-right: 7px solid transparent;
+  border-left: 7px solid transparent;
+  border-top: 17px solid #fffdf6;
+  transform: translateX(-50%);
+}
+
+.mini-wheel i {
+  position: absolute;
+  inset: 45px;
+  border: 2px solid #193832;
+  border-radius: 50%;
+  background: #fffdf6;
+}
+
+.mini-wheel span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.7);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.mini-roulette-options {
+  min-width: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mini-roulette-options > span {
+  min-height: 26px;
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mini-roulette-options > span i {
+  color: #82958c;
+  font-size: 6px;
+  font-style: normal;
+}
+
+.mini-roulette-options > span b {
+  overflow: hidden;
+  color: #d7e2dc;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-roulette-options > span.duplicate {
+  box-shadow: inset 3px 0 0 #f9946f;
+}
+
+.mini-roulette-options > em {
+  display: block;
+  padding: 7px 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f9946f;
+  font-size: 6px;
+  font-style: normal;
+}
+
 .card-content > p:first-child {
   margin: 0 0 8px;
   font-size: 9px;
