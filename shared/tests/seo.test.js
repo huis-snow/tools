@@ -58,11 +58,6 @@ const PAGES = [
   { file: "daily-log/index.html", url: "https://huis-snow.github.io/tools/daily-log/", indexed: true },
   { file: "audio-latency/index.html", url: "https://huis-snow.github.io/tools/audio-latency/", indexed: true },
   {
-    file: "pvp-series-calculator/index.html",
-    url: "https://huis-snow.github.io/tools/pvp-series-calculator/",
-    indexed: true,
-  },
-  {
     file: "roulette-picker/index.html",
     url: "https://huis-snow.github.io/tools/roulette-picker/",
     indexed: true,
@@ -132,16 +127,13 @@ test("반듯표는 한글 아스키 테이블 검색 의도와 실제 사용 안
   assert.match(read("index.html"), /한글 아스키\(ASCII\) 테이블 생성기/);
 });
 
-test("작은 도구함은 PvP 계산기와 열한 번째 랜덤 룰렛을 검색 설명과 카드에 함께 제공한다", () => {
+test("작은 도구함은 열 개의 도구와 랜덤 룰렛을 검색 설명과 카드에 제공한다", () => {
   const source = read("index.html");
 
   assert.match(source, /<meta\s+name="description"\s+content="[^"]*랜덤 룰렛[^"]*"\s*\/>/);
-  assert.match(source, /<p>TOOLS \/ 11<\/p>/);
-  assert.match(source, /href="\.\/pvp-series-calculator\/"/);
+  assert.match(source, /<p>TOOLS \/ 10<\/p>/);
   assert.match(source, /<span class="card-index">010<\/span>/);
-  assert.match(source, /<h3>시리즈 작전표/);
   assert.match(source, /href="\.\/roulette-picker\/"/);
-  assert.match(source, /<span class="card-index">011<\/span>/);
   assert.match(source, /<h3>빙글뽑기/);
 });
 
