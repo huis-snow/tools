@@ -3,79 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>메인퀘 어디쯤? | 파판14 주요 퀘스트 진행률</title>
-  <meta name="description" content="파이널판타지14 한국 공식 가이드의 주요 퀘스트를 검색하고 전체 이야기와 현재 확장팩의 퀘스트 개수 기준 진행률을 확인하세요." />
-  <meta name="theme-color" content="#243d38" />
-  <meta property="og:type" content="website" />
-  <meta property="og:locale" content="ko_KR" />
-  <meta property="og:site_name" content="작은 도구함" />
-  <meta property="og:title" content="메인퀘 어디쯤? | 파판14 주요 퀘스트 진행률" />
-  <meta property="og:description" content="지금 하는 메인 퀘스트를 찾아 전체·확장팩별 진행률을 확인하세요. 신생부터 황금까지, 후속 패치 이야기 포함." />
-  <meta property="og:url" content="https://huis-snow.github.io/tools/msq-tracker/" />
-  <meta name="twitter:card" content="summary" />
-  <link rel="canonical" href="https://huis-snow.github.io/tools/msq-tracker/" />
-  <link rel="icon" href="../favicon.svg?v=20260715" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260906" />
-  <script src="data.js?v=20260906" defer></script>
-  <script src="progress.js?v=20260906" defer></script>
-  <script src="app.js?v=20260906" defer></script>
+  <title>메인퀘 어디쯤? · 새 주소로 이동</title>
+  <meta name="robots" content="noindex, follow" />
+  <link rel="canonical" href="https://huis-snow.github.io/ffxiv/msq-tracker/" />
+  <meta http-equiv="refresh" content="0; url=https://huis-snow.github.io/ffxiv/msq-tracker/" />
+  <script>window.location.replace('https://huis-snow.github.io/ffxiv/msq-tracker/');</script>
 </head>
-<body id="top">
-  <a class="skip-link" href="#questSearch">퀘스트 검색으로 바로가기</a>
-  <header class="site-header">
-    <a href="../" class="back-link">← 작은 도구함</a>
-    <a href="./" class="brand">메인퀘 어디쯤?</a>
-    <span class="header-note">FFXIV · 한국 서버</span>
-  </header>
-  <main>
-    <div class="intro">
-      <p class="eyebrow">MAIN SCENARIO / JOURNEY TRACKER</p>
-      <h1>내 모험은 <em>어디쯤?</em></h1>
-      <p>지금 하는 메인 퀘스트로, 전체 이야기와 확장팩의 진행률을 확인하세요.</p>
-    </div>
-    <div class="workspace">
-      <section class="search-panel" aria-labelledby="searchTitle">
-        <div class="panel-heading"><span class="step">01</span><h2 id="searchTitle">현재 퀘스트 찾기</h2></div>
-        <label for="questSearch">퀘스트 이름</label>
-        <div class="search-box"><span aria-hidden="true">⌕</span><input id="questSearch" type="search" autocomplete="off" placeholder="퀘스트 이름의 일부를 입력하세요" aria-describedby="searchHelp" disabled /></div>
-        <p id="searchHelp" class="help">띄어쓰기 없이, 초성으로도 찾을 수 있어요.</p>
-        <label for="expansionFilter">확장팩으로 좁히기</label>
-        <select id="expansionFilter" disabled><option value="">모든 확장팩</option></select>
-        <div class="results-heading"><span id="searchSummary" role="status">공식 가이드 데이터를 불러오는 중…</span></div>
-        <div id="searchResults" class="search-results" aria-label="퀘스트 검색 결과"></div>
-        <button id="showMore" class="text-button" type="button" hidden>검색 결과 더 보기 ↓</button>
-        <p class="spoiler-note">검색 결과에는 퀘스트 이름이 표시돼요.<br />줄거리와 이후 퀘스트는 자동으로 펼치지 않아요.</p>
-      </section>
-      <section class="progress-panel" aria-labelledby="progressTitle">
-        <div class="panel-heading"><span class="step">02</span><h2 id="progressTitle">내 이야기 진행률</h2><span class="count-badge">퀘스트 개수 기준</span></div>
-        <div id="emptyState" class="empty-state"><span class="empty-symbol" aria-hidden="true">◇</span><h3>지금의 퀘스트를 찾아주세요</h3><p>게임 화면의 주요 퀘스트 안내에 나온<br />이름을 검색하고 선택하면 시작해요.</p><div class="empty-route" aria-hidden="true"><i></i><b></b><i></i><b></b><i></i><b></b><i></i></div></div>
-        <div id="selectedState" hidden>
-          <div class="current-quest"><p id="selectedMeta" class="eyebrow"></p><h3 id="selectedName"></h3><a id="questLink" target="_blank" rel="noopener noreferrer">공식 가이드에서 보기 ↗</a></div>
-          <fieldset class="status-control"><legend>이 퀘스트를</legend><label><input type="radio" name="questStatus" value="current" checked /><span>진행 중이에요</span></label><label><input type="radio" name="questStatus" value="completed" /><span>완료했어요</span></label></fieldset>
-          <p id="completionNote" class="help"></p>
-          <div class="metrics" aria-live="polite" aria-atomic="true">
-            <article class="metric overall"><p>전체 메인 퀘스트</p><strong id="overallPercent">—</strong><div class="progress-track" id="overallBar" role="progressbar" aria-label="전체 진행률" aria-valuemin="0" aria-valuemax="100"><i></i></div><div class="metric-bottom"><span id="overallCount"></span><b id="overallRemaining"></b></div></article>
-            <article class="metric expansion"><p id="expansionName"></p><strong id="expansionPercent">—</strong><div class="progress-track" id="expansionBar" role="progressbar" aria-label="현재 확장팩 진행률" aria-valuemin="0" aria-valuemax="100"><i></i></div><div class="metric-bottom"><span id="expansionCount"></span><b id="expansionRemaining"></b></div></article>
-          </div>
-          <p id="rangeNote" class="range-note" hidden></p>
-          <div class="route-setting"><label for="startCity">신생 시작 도시</label><select id="startCity"><option value="">모르겠어요 · 가능한 경로 범위</option><option value="gridania">그리다니아</option><option value="limsa">림사 로민사</option><option value="uldah">울다하</option></select><p class="help">시작 도시에 따라 퀘스트 수가 달라져요. 초반 퀘스트는 도시를 자동으로 맞춰요.</p></div>
-        </div>
-      </section>
-    </div>
-    <section class="journey" aria-labelledby="journeyTitle">
-      <div class="section-heading"><div><p class="eyebrow">YOUR JOURNEY</p><h2 id="journeyTitle">확장팩별 여정</h2></div><p>각 확장팩의 후속 패치 이야기 포함</p></div>
-      <div id="expansionJourney" class="journey-grid"></div>
-    </section>
-    <details class="method"><summary>진행률은 어떻게 계산하나요?</summary><div>
-      <p><b>포함 범위</b> · 한국 공식 가이드의 ‘주요 퀘스트 1’, ‘주요 퀘스트 2’ 하위 분류만 포함해요. 진행에 필요한 경우라도 연대기·잡·역할·부가 퀘스트는 계산에서 제외해요.</p>
-      <p><b>계산 방법</b> · 완료한 주요 퀘스트 수 ÷ 해당 경로의 전체 주요 퀘스트 수 × 100. ‘진행 중’은 선택한 퀘스트를 제외하고, ‘완료’는 포함해요. 이전 이야기 분류는 모두 완료한 것으로 계산해요.</p>
-      <p><b>서로 다른 경로</b> · 시작 도시·초기 클래스·총사령부의 대체 퀘스트를 중복으로 세지 않아요. 두 갈래를 원하는 순서로 진행할 수 있는 구간에서는 다른 갈래의 완료 여부를 알 수 없어 최소~최대 범위를 보여줘요.</p>
-      <p><b>확장팩의 끝</b> · 확장팩 본편 엔딩 뒤의 후속 패치 퀘스트도 그 확장팩에 포함해요. 가장 최근 확장팩은 아래 데이터 확인일에 공식 가이드에 등록된 이야기까지만 계산해요.</p>
-      <p>퀘스트마다 길이가 달라 <b>플레이 시간이나 줄거리 분량의 비율은 아니에요.</b> 검색어와 선택 내용은 서버에 전송하지 않으며, 새로고침하면 초기화돼요.</p>
-    </div></details>
-    <p id="dataInfo" class="data-info"></p>
-    <noscript><p class="error">검색과 진행률 계산을 사용하려면 브라우저의 JavaScript를 켜 주세요.</p></noscript>
-  </main>
-  <footer><span>메인퀘 어디쯤? · 작은 도구함</span><a href="https://guide.ff14.co.kr/lodestone/db/quest" target="_blank" rel="noopener noreferrer">데이터 출처: 파이널판타지14 공식 가이드 ↗</a></footer>
+<body>
+  <h1>메인퀘 어디쯤?의 주소가 바뀌었어요.</h1>
+  <p>자동으로 이동하지 않으면 <a href="https://huis-snow.github.io/ffxiv/msq-tracker/">새 주소에서 열기</a>를 눌러 주세요.</p>
 </body>
 </html>
