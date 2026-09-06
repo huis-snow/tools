@@ -17,7 +17,6 @@
 - [소리차](./audio-latency/) — 유선과 블루투스의 청각 반응 시간 차이로 무선 오디오의 추가 지연을 가늠하는 도구
 - [시리즈 작전표](./pvp-series-calculator/) — 파이널판타지14 PvP 시리즈 목표까지 남은 경험치와 콘텐츠별 예상 판수를 계산하는 도구
 - [빙글뽑기](./roulette-picker/) — 입력칸 수와 중복 횟수를 그대로 확률에 반영하는 랜덤 룰렛 추첨기
-- [메인퀘 어디쯤?](https://huis-snow.github.io/ffxiv/msq-tracker/) — 주요 퀘스트를 이름·초성으로 검색하고 전체·확장팩별 진행률을 확인하는 도구. [ffxiv 저장소](https://github.com/huis-snow/ffxiv)로 이전했으며, 기존 `msq-tracker/` 주소는 새 앱으로 이동합니다.
 
 ## 새 도구 추가
 
@@ -43,8 +42,7 @@
 ├── daily-log/
 ├── audio-latency/
 ├── pvp-series-calculator/
-├── roulette-picker/
-└── msq-tracker/   # ffxiv/msq-tracker/로 이동하는 안내 페이지
+└── roulette-picker/
 ```
 
 GitHub Pages의 배포 원본은 `main` 브랜치의 `/ (root)`로 설정합니다.
