@@ -38,7 +38,6 @@
       </div>
     </section>
     <section id="profileView" class="view" hidden>
-      <div class="section-intro"><p class="eyebrow">MY ADVENTURER CARD</p><h2>한 번 기록하고, 바로 신청.</h2><p>자주 쓰는 자리와 날개 기록을 저장해 두세요. 이번 모집에서만 따로 바꿀 수도 있어요.</p></div>
       <form id="profileForm" class="profile-layout">
         <div class="profile-fields panel">
           <div class="block-heading"><span class="step">01</span><div><h3>모험가 정보</h3><p>모집표에 표시할 이름이에요.</p></div></div>
@@ -52,7 +51,7 @@
         <div class="profile-save-bar"><p><span>◉</span> 이 정보는 같은 브라우저에 저장돼요.<small>다른 기기·브라우저로 이동하거나 사이트 데이터를 지우면 불러올 수 없어요.</small></p><button class="primary-button" id="saveProfileButton" type="submit">내 정보 저장 <span>→</span></button></div>
       </form>
     </section>
-    <section id="hostView" class="view" hidden><div class="section-intro"><p class="eyebrow">PARTY ORGANIZER</p><h2>여덟 자리를, 함께 맞추기.</h2><p>선호도를 반영해 추천하고, 고정할 자리는 직접 정하세요.</p></div><div class="host-toolbar"><label>관리할 모집방<select id="hostRoomSelect"></select></label><button class="secondary-button" data-action="create">＋ 새 모집방</button></div><div id="hostDetail"></div></section>
+    <section id="hostView" class="view" hidden><div class="host-toolbar"><label>관리할 모집방<select id="hostRoomSelect"></select></label><button class="secondary-button" data-action="create">＋ 새 모집방</button></div><div id="hostDetail"></div></section>
     <footer><span>파밍 모집표 <small>작은 도구함</small></span><p>한 번의 신청이, 다음 다섯 판으로.</p><a href="#main">맨 위로 ↑</a></footer>
   </main>
   <dialog id="signupDialog" class="app-dialog"><form id="signupForm"><div class="dialog-heading"><div><p class="eyebrow">JOIN THE PARTY</p><h2>이 정보로 참여할게요.</h2></div><button class="icon-button" type="button" data-close="signupDialog" aria-label="닫기">×</button></div><div id="signupSummary"></div><details class="signup-overrides"><summary>이번 모집의 자리·메모 변경</summary><p>내 기본 정보는 그대로 유지됩니다.</p><div id="signupSeats" class="seat-options"></div><label>이번 모집 메모<textarea id="signupMemo" maxlength="200" rows="2"></textarea></label></details><p class="signup-note">신청 후 방장이 편성을 확정하면 배정된 자리를 확인할 수 있어요.</p><button class="primary-button full" type="submit">이 정보로 5클 신청 <span>→</span></button></form></dialog>
