@@ -70,7 +70,7 @@
   async function connect() {
     connection("모집방을 연결하고 있어요.");
     try {
-      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-multi"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
+      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-videos"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
       else await onAccount(store.currentUser());
     } catch (error) { connected = false; connection(errorMessage(error), true); roomMessage = "모집방에 연결하지 못했어요. 내 정보는 계속 수정할 수 있습니다."; renderAll(); }
   }
@@ -141,7 +141,7 @@
     if (!guides) return "";
     return `<section class="room-guide-section"><div class="block-topline"><h3>공략 자료</h3><span>선택한 토벌전</span></div><div class="room-guide-grid">${core.trials(item).map(index => {
       const guide = guides[index];
-      return `<article class="trial-guide-card ${guide.images.length ? "has-diagrams" : ""}"><h4>${TRIALS[index]}</h4><a class="trial-video-link" href="${esc(guide.video)}" target="_blank" rel="noopener noreferrer" aria-label="${TRIALS[index]} ${esc(guide.author)} 공략 영상 새 탭에서 열기">▶ ${esc(guide.author)} 공략 영상 <span>↗</span></a>${guide.images.length ? `<details class="trial-diagrams" data-guide-key="${esc(item.id)}:${index}"><summary>${esc(guide.imageLabel || "산개도")} ${guide.images.length}장 보기</summary>${[...new Set(guide.images.map(image => image.phase))].map(phase => `<section class="diagram-phase"><h5>${esc(phase)}</h5><div class="diagram-gallery">${guide.images.filter(image => image.phase === phase).map(image => `<figure><a href="${esc(image.src)}" target="_blank" rel="noopener noreferrer" aria-label="${TRIALS[index]} ${esc(image.alt)} 원본 크게 보기"><img src="${esc(image.src)}" alt="${esc(image.alt)}" loading="lazy"></a><figcaption>${esc(image.alt)} <span>↗</span></figcaption></figure>`).join("")}</div></section>`).join("")}</details>` : ""}</article>`;
+      return `<article class="trial-guide-card"><h4>${TRIALS[index]}</h4><a class="trial-video-link" href="${esc(guide.video)}" target="_blank" rel="noopener noreferrer" aria-label="${TRIALS[index]} ${esc(guide.author)} 공략 영상 새 탭에서 열기">▶ ${esc(guide.author)} 공략 영상 <span>↗</span></a></article>`;
     }).join("")}</div></section>`;
   }
 
@@ -190,7 +190,6 @@
     $("accountContent").innerHTML = google() ? `<p><b>${esc(user.displayName || "Google 계정")}</b><br>${esc(user.email || "")}</p><p>내 정보와 내가 만든 모집방을 다른 기기에서도 불러올 수 있어요.</p><p class="signup-note">로그아웃하면 새 익명 참여자로 접속합니다. 기존 계정의 신청·모집방을 관리하려면 다시 로그인하세요.</p><button class="secondary-button full" data-action="logout" ${busy ? "disabled" : ""}>로그아웃</button>` : `<p>참여 신청은 로그인 없이 가능합니다. 방을 만들고 관리할 때는 Google 로그인이 필요해요.</p><p class="signup-note">계정을 연결하면 저장된 내 정보를 계정에도 저장합니다. 닉네임·자리·날개·신청 메모는 신청한 모집방에서 공개됩니다.</p>${pending ? '<div class="account-warning"><p>이미 사용 중인 Google 계정입니다. 전환하면 익명으로 한 기존 신청은 자동으로 옮겨지지 않습니다. 기존 신청은 전환 전에 취소해 주세요.</p><button class="primary-button full" data-action="switch-account">기존 계정으로 전환</button></div>' : `<button class="primary-button full" data-action="login" ${busy || !store ? "disabled" : ""}>Google로 연결</button>`}`;
   }
   function renderAll() {
-    const expandedGuides = new Set([...document.querySelectorAll('.trial-diagrams[open]')].map(details => details.dataset.guideKey));
     const item = room(); renderMyCard(); renderAccount();
     document.querySelectorAll('.room-sidebar > [data-action="create"], .host-toolbar > [data-action="create"]').forEach(button => button.disabled = busy);
     document.querySelectorAll('#signupForm button[type="submit"], #createForm button[type="submit"], #closeDialog [data-action]').forEach(button => button.disabled = busy);
@@ -202,7 +201,6 @@
     if (!google()) $("hostDetail").innerHTML = emptyPanel("방장 계정을 연결해 주세요.", "Google 계정으로 내가 만든 모집방을 관리할 수 있어요.", "account", "Google 계정 연결");
     else if (!item || item.ownerUid !== user.uid) $("hostDetail").innerHTML = emptyPanel("내 모집방을 선택해 주세요.", ownedRooms.length ? "위 목록에서 관리할 모집방을 선택하세요." : "새 모집방을 만들고 참여자를 모집하세요.");
     else $("hostDetail").innerHTML = `<div class="host-columns"><article class="room-detail">${roomHeader(item)}${roomGuides(item)}${partyBoard(item, true)}<div class="host-controls">${item.status === "open" ? `<button class="secondary-button" data-action="recommend">✦ 추천 편성</button><button class="primary-button" data-action="confirm" ${count(item) !== 8 ? "disabled" : ""}>편성 확정 →</button>` : item.status === "confirmed" ? '<button class="secondary-button" data-action="reopen">편성 다시 열기</button>' : '<p>종료한 모집방입니다.</p>'}${item.status !== "closed" ? '<button class="quiet-button" data-action="close">모집 종료</button>' : ""}</div></article><section class="panel host-applicants"><div class="block-topline"><h3>신청자 목록<span class="count-mono">${item.applicants.length}</span></h3><span>신청순</span></div>${applicantsTable(item, true)}<p class="host-hint">가능한 자리에서 8인 편성을 우선하고, 선호 자리를 최대한 반영합니다.<br>◇를 눌러 배정을 고정하면 다음 추천에서도 유지됩니다.<br>날개 보유 여부는 편성 우선순위에 반영하지 않습니다.</p><button class="new-room-button" data-action="duplicate">이 모집 설정으로 다음 회차 만들기 ↗</button></section></div>`;
-    document.querySelectorAll('.trial-diagrams').forEach(details => details.open = expandedGuides.has(details.dataset.guideKey));
     if (busy) document.querySelectorAll('[data-action]:not([data-action="profile"]):not([data-action="account"]), [data-assign], [data-lock], form button[type="submit"]').forEach(button => button.disabled = true);
   }
   function selectView(view, preserveRoom = false) {

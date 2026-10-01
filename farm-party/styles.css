@@ -1974,27 +1974,12 @@ footer p {
 .trial-video-link { display:flex; align-items:center; gap:5px; font-size:12px; color:#365649; text-decoration:none; }
 .trial-video-link:hover { text-decoration:underline; }
 .trial-video-link span { margin-left:auto; }
-.trial-diagrams { margin-top:12px; font-size:12px; }
-.trial-diagrams summary { cursor:pointer; }
-.trial-diagrams a { display:block; margin-top:10px; color:#365649; }
-.trial-diagrams img { display:block; width:100%; height:auto; }
-.trial-guide-card.has-diagrams { grid-column:1 / -1; }
-.diagram-phase { margin-top:16px; }
-.diagram-phase h5 { margin:0 0 8px; font-size:13px; }
-.diagram-gallery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-.diagram-gallery figure { margin:0; min-width:0; }
-.diagram-gallery a { margin:0; }
-.diagram-gallery img { background:#111; border-radius:4px; }
-.diagram-gallery figcaption { margin-top:6px; font-size:11px; color:#746f61; }
-.diagram-gallery:has(figure:only-child) { grid-template-columns:1fr; }
-.diagram-gallery figure:only-child img { width:auto; max-width:100%; }
 @media (max-width:480px) {
   .create-trials { grid-template-columns:1fr; }
   .app-dialog .trial-choice { padding:8px 10px; }
   .trial-wing-details .trial-wing-list > span { font-size:11px; }
   .room-guide-section { padding:20px 16px; }
   .room-guide-grid { grid-template-columns:1fr; }
-  .diagram-gallery { grid-template-columns:1fr; }
 }
 .host-controls { flex-wrap:wrap; }
 button:disabled { cursor:default; opacity:.55; }
