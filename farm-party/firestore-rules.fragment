@@ -16,10 +16,29 @@
         data.server is string && data.server == data.server.trim() && data.server.size() <= 20 &&
         data.memo is string && data.memo == data.memo.trim() && data.memo.size() <= 200 && validFarmPreferences(data.preferences);
     }
-    function validFarmApplicant(data) {
-      return data is map && data.keys().hasAll(['nickname', 'server', 'memo', 'preferences', 'wing', 'joinedAt', 'updatedAt']) &&
-        data.keys().hasOnly(['nickname', 'server', 'memo', 'preferences', 'wing', 'joinedAt', 'updatedAt']) &&
-        validFarmPerson(data) && data.wing is bool && data.joinedAt is timestamp && data.updatedAt == request.time;
+    function validFarmTrials(trials) {
+      return trials is list && trials.size() >= 1 && trials.size() <= 7 &&
+        trials.toSet().size() == trials.size() && trials.toSet().hasOnly([0, 1, 2, 3, 4, 5, 6]) &&
+        trials[0] is int && (trials.size() < 2 || trials[1] is int) && (trials.size() < 3 || trials[2] is int) &&
+        (trials.size() < 4 || trials[3] is int) && (trials.size() < 5 || trials[4] is int) &&
+        (trials.size() < 6 || trials[5] is int) && (trials.size() < 7 || trials[6] is int);
+    }
+    function validFarmWings(wings, trials) {
+      return wings is map && wings.size() == trials.size() && wings.keys().hasOnly(['0', '1', '2', '3', '4', '5', '6']) &&
+        (!('0' in wings) || (0 in trials && wings['0'] is bool)) &&
+        (!('1' in wings) || (1 in trials && wings['1'] is bool)) &&
+        (!('2' in wings) || (2 in trials && wings['2'] is bool)) &&
+        (!('3' in wings) || (3 in trials && wings['3'] is bool)) &&
+        (!('4' in wings) || (4 in trials && wings['4'] is bool)) &&
+        (!('5' in wings) || (5 in trials && wings['5'] is bool)) &&
+        (!('6' in wings) || (6 in trials && wings['6'] is bool));
+    }
+    function validFarmApplicant(data, room) {
+      return data is map && data.keys().hasAll(['nickname', 'server', 'memo', 'preferences', 'joinedAt', 'updatedAt']) &&
+        (room.version == 1 ?
+          data.keys().hasOnly(['nickname', 'server', 'memo', 'preferences', 'wing', 'joinedAt', 'updatedAt']) && data.wing is bool :
+          data.keys().hasOnly(['nickname', 'server', 'memo', 'preferences', 'wings', 'joinedAt', 'updatedAt']) && validFarmWings(data.wings, room.trials)) &&
+        validFarmPerson(data) && data.joinedAt is timestamp && data.updatedAt == request.time;
     }
     function validFarmSeat(data, seat) {
       return !(seat in data.assignments) || (
@@ -30,16 +49,8 @@
     function validFarmLock(data, seat) {
       return !(seat in data.locks) || (data.locks[seat] == true && seat in data.assignments);
     }
-    function validFarmRoom(data) {
-      return data.keys().hasAll(['version', 'trial', 'title', 'description', 'date', 'time', 'ownerUid', 'status', 'applicants', 'assignments', 'locks', 'revision', 'createdAt', 'updatedAt']) &&
-        data.keys().hasOnly(['version', 'trial', 'title', 'description', 'date', 'time', 'ownerUid', 'status', 'applicants', 'assignments', 'locks', 'revision', 'createdAt', 'updatedAt']) &&
-        data.version == 1 && data.trial is int && data.trial >= 0 && data.trial < 7 &&
-        data.title is string && data.title == data.title.trim() && data.title.size() > 0 && data.title.size() <= 60 &&
-        data.description is string && data.description == data.description.trim() && data.description.size() <= 500 &&
-        data.date is string && data.date.matches('[1-9][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])') &&
-        data.time is string && data.time.matches('([01][0-9]|2[0-3]):[0-5][0-9]') &&
-        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
-        data.status in ['open', 'confirmed', 'closed'] && data.applicants is map && data.applicants.size() <= 100 &&
+    function validFarmAllocation(data) {
+      return data.status in ['open', 'confirmed', 'closed'] &&
         data.assignments is map && data.assignments.keys().hasOnly(['T1', 'T2', 'H1', 'H2', 'D1', 'D2', 'D3', 'D4']) &&
         data.assignments.values().toSet().size() == data.assignments.size() &&
         data.locks is map && data.locks.keys().hasOnly(['T1', 'T2', 'H1', 'H2', 'D1', 'D2', 'D3', 'D4']) &&
@@ -47,23 +58,36 @@
         validFarmSeat(data, 'D1') && validFarmSeat(data, 'D2') && validFarmSeat(data, 'D3') && validFarmSeat(data, 'D4'))) &&
         (data.locks.size() == 0 || (validFarmLock(data, 'T1') && validFarmLock(data, 'T2') && validFarmLock(data, 'H1') && validFarmLock(data, 'H2') &&
         validFarmLock(data, 'D1') && validFarmLock(data, 'D2') && validFarmLock(data, 'D3') && validFarmLock(data, 'D4'))) &&
-        (data.status != 'confirmed' || data.assignments.size() == 8) &&
+        (data.status != 'confirmed' || data.assignments.size() == 8);
+    }
+    function validFarmRoom(data) {
+      return data.keys().hasAll(['version', 'title', 'description', 'date', 'time', 'ownerUid', 'status', 'applicants', 'assignments', 'locks', 'revision', 'createdAt', 'updatedAt']) &&
+        ((data.version == 1 && data.keys().hasOnly(['version', 'trial', 'title', 'description', 'date', 'time', 'ownerUid', 'status', 'applicants', 'assignments', 'locks', 'revision', 'createdAt', 'updatedAt']) && data.trial is int && data.trial >= 0 && data.trial < 7) ||
+        (data.version == 2 && data.keys().hasOnly(['version', 'trials', 'title', 'description', 'date', 'time', 'ownerUid', 'status', 'applicants', 'assignments', 'locks', 'revision', 'createdAt', 'updatedAt']) && validFarmTrials(data.trials))) &&
+        data.title is string && data.title == data.title.trim() && data.title.size() > 0 && data.title.size() <= 60 &&
+        data.description is string && data.description == data.description.trim() && data.description.size() <= 500 &&
+        data.date is string && data.date.matches('[1-9][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])') &&
+        data.time is string && data.time.matches('([01][0-9]|2[0-3]):[0-5][0-9]') &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.applicants is map && data.applicants.size() <= 100 && validFarmAllocation(data) &&
         data.revision is int && data.revision >= 0 && data.createdAt is timestamp && data.updatedAt is timestamp;
     }
     match /farmRooms/{roomId} {
       function farmOwner() {
         return signedIn() && farmGoogleAccount() && resource.data.ownerUid == request.auth.uid;
       }
-      function farmOwnSeatRemoval(seat, changedSeats, changedLocks) {
+      function farmOwnSeatRemoval(changedSeats, changedLocks) {
         let before = resource.data;
         let after = request.resource.data;
-        return (
-          !changedSeats.hasAny([seat]) && !changedLocks.hasAny([seat])
-        ) || (
-          seat in before.assignments && before.assignments[seat] == request.auth.uid &&
+        let seats = before.assignments;
+        let uid = request.auth.uid;
+        let seat = seats.get('T1', '') == uid ? 'T1' : seats.get('T2', '') == uid ? 'T2' :
+          seats.get('H1', '') == uid ? 'H1' : seats.get('H2', '') == uid ? 'H2' :
+          seats.get('D1', '') == uid ? 'D1' : seats.get('D2', '') == uid ? 'D2' :
+          seats.get('D3', '') == uid ? 'D3' : seats.get('D4', '') == uid ? 'D4' : '';
+        return seat != '' && changedSeats.hasOnly([seat]) && changedLocks.hasOnly([seat]) &&
           !(seat in after.assignments) && !(seat in after.locks) &&
-          (!(request.auth.uid in after.applicants) || after.applicants[request.auth.uid].preferences[seat] == 0)
-        );
+          (!(uid in after.applicants) || after.applicants[uid].preferences[seat] == 0);
       }
       function farmSelfUpdate() {
         let before = resource.data;
@@ -77,18 +101,11 @@
           changed.hasOnly([request.auth.uid]) && changed.hasAll([request.auth.uid]) &&
           (
             !(request.auth.uid in after.applicants) || (
-              validFarmApplicant(after.applicants[request.auth.uid]) &&
+              validFarmApplicant(after.applicants[request.auth.uid], before) &&
               after.applicants[request.auth.uid].joinedAt == (request.auth.uid in before.applicants ? before.applicants[request.auth.uid].joinedAt : request.time)
             )
           ) &&
-          (changedSeats.size() == 0 && changedLocks.size() == 0 || (
-            changedSeats.hasOnly(['T1', 'T2', 'H1', 'H2', 'D1', 'D2', 'D3', 'D4']) &&
-            changedLocks.hasOnly(['T1', 'T2', 'H1', 'H2', 'D1', 'D2', 'D3', 'D4']) &&
-            farmOwnSeatRemoval('T1', changedSeats, changedLocks) && farmOwnSeatRemoval('T2', changedSeats, changedLocks) &&
-            farmOwnSeatRemoval('H1', changedSeats, changedLocks) && farmOwnSeatRemoval('H2', changedSeats, changedLocks) &&
-            farmOwnSeatRemoval('D1', changedSeats, changedLocks) && farmOwnSeatRemoval('D2', changedSeats, changedLocks) &&
-            farmOwnSeatRemoval('D3', changedSeats, changedLocks) && farmOwnSeatRemoval('D4', changedSeats, changedLocks)
-          ));
+          (changedSeats.size() == 0 && changedLocks.size() == 0 || farmOwnSeatRemoval(changedSeats, changedLocks));
       }
       function farmOwnerUpdate() {
         let before = resource.data;
@@ -109,7 +126,7 @@
         request.resource.data.revision == 0 && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
       allow update: if signedIn() && validFarmRoomId(roomId) &&
         request.resource.data.revision == resource.data.revision + 1 && request.resource.data.updatedAt == request.time &&
-        ((farmOwnerUpdate() && validFarmRoom(request.resource.data)) || farmSelfUpdate());
+        ((farmOwnerUpdate() && validFarmAllocation(request.resource.data)) || farmSelfUpdate());
       allow delete: if false;
     }
     match /farmProfiles/{userId} {

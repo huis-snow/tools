@@ -11,7 +11,9 @@ const id = 'abcdefghijklmnopqrstuv';
 const prefs = (...seats) => Object.fromEntries(core.SEATS.map(s => [s, seats.includes(s) ? 2 : 0]));
 const applicant = (name, seats) => ({ nickname: name, server: '', memo: '', preferences: prefs(...seats), wing: false });
 const google = { firebase: { sign_in_provider: 'google.com', identities: { 'google.com': ['test'] } } };
-test('Firestore ownership, privacy, concurrency, complete allocation and closed-state permissions', async () => {
+for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, concurrency, complete allocation and closed-state permissions`, async () => {
+  const selected = version === 2 ? { trials: [0, 1, 2, 3, 4, 5, 6] } : { trial: 0 };
+  const applicant = (name, seats) => ({ nickname: name, server: '', memo: '', preferences: prefs(...seats), ...core.applicationWings({ ...selected, version }, [true, false, true, false, true, false, true]) });
   const fragment = fs.readFileSync(path.join(__dirname, '../firestore-rules.fragment'), 'utf8');
   const rules = `rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { function signedIn() { return request.auth != null; } ${fragment} } }`;
   const env = await initializeTestEnvironment({ projectId: 'demo-farm-party', firestore: { host: '127.0.0.1', port: 8080, rules } });
@@ -20,9 +22,19 @@ test('Firestore ownership, privacy, concurrency, complete allocation and closed-
     const owner = env.authenticatedContext('owner', google).firestore(), stranger = env.authenticatedContext('stranger', google).firestore();
     const anon = env.authenticatedContext('anon').firestore(), publicDb = env.unauthenticatedContext().firestore();
     const ref = db => doc(db, 'farmRooms', id);
-    const draft = { ...core.draft({ trial: 0, title: '테스트', description: '', date: '2026-10-02', time: '21:00' }), ownerUid: 'owner', status: 'open', applicants: {}, assignments: {}, locks: {}, revision: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    const draft = { ...core.draft({ ...selected, title: '테스트', description: '', date: '2026-10-02', time: '21:00' }), ownerUid: 'owner', status: 'open', applicants: {}, assignments: {}, locks: {}, revision: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
     await assertFails(setDoc(ref(anon), { ...draft, ownerUid: 'anon' }));
     await assertSucceeds(setDoc(ref(owner), draft));
+    if (version === 2) {
+      const otherId = core.createRoomId();
+      const otherRef = doc(owner, 'farmRooms', otherId);
+      for (const trials of [[], [0, 0], [7], [0.5], ['0']]) await assertFails(setDoc(otherRef, { ...draft, trials }));
+      await assertSucceeds(setDoc(otherRef, { ...draft, trials: [0, 6] }));
+      const two = doc(anon, 'farmRooms', otherId);
+      const write = wings => updateDoc(two, { applicants: { anon: { ...applicant('두 토벌전', ['T1']), wings, joinedAt: serverTimestamp(), updatedAt: serverTimestamp() } }, revision: 1, updatedAt: serverTimestamp() });
+      for (const wings of [{ '0': true }, { '0': true, '1': false }, { '0': true, '6': 'false' }, { '0': true, '6': false, '2': false }]) await assertFails(write(wings));
+      await assertSucceeds(write({ '0': true, '6': false }));
+    }
     console.log('Room creation passed');
     await assertFails(getDoc(ref(publicDb))); await assertSucceeds(getDoc(ref(anon)));
     await assertSucceeds(getDocs(query(collection(anon, 'farmRooms'), where('status', 'in', ['open', 'confirmed']), orderBy('createdAt', 'desc'), limit(30))));
@@ -42,16 +54,33 @@ test('Firestore ownership, privacy, concurrency, complete allocation and closed-
     await assertFails(apply(anon, 'stranger', applicant('변조', ['D1'])));
     await assertFails(change(stranger, { type: 'recommend' }));
     await assertSucceeds(change(owner, { type: 'recommend' }));
+    console.log('Initial recommendation passed');
     await assertSucceeds(change(owner, { type: 'lock', seat: 'T2' }));
     await assertSucceeds(apply(anon, 'anon', applicant('익명 수정', ['D1'])));
+    console.log('Locked own seat removal passed');
     assert.equal((await getDoc(ref(owner))).data().assignments.T2, undefined);
     await assertFails(updateDoc(ref(anon), { title: '탈취', revision: 99, updatedAt: serverTimestamp() }));
     await assertSucceeds(apply(anon, 'anon', null));
     for (const seat of core.SEATS.slice(1)) { const db = env.authenticatedContext('seat' + seat).firestore(); await assertSucceeds(apply(db, 'seat' + seat, applicant(seat, [seat]))); }
     await assertSucceeds(change(owner, { type: 'recommend' }));
+    console.log('Complete recommendation passed');
     const before = (await getDoc(ref(owner))).data().revision;
     let lockRevision = before;
     await assertSucceeds(updateDoc(ref(owner), { locks: Object.fromEntries(core.SEATS.map(seat => [seat, true])), revision: lockRevision + 1, updatedAt: serverTimestamp() }));
+    console.log('Eight locks passed');
+    const locked = (await getDoc(ref(owner))).data();
+    const forged = { ...locked.applicants, stranger: { ...applicant('다른 자리 탈취', ['T1']), joinedAt: locked.applicants.stranger.joinedAt, updatedAt: serverTimestamp() } };
+    const badAssignments = { ...locked.assignments }; delete badAssignments.H1;
+    const badLocks = { ...locked.locks }; delete badLocks.H1;
+    await assertFails(updateDoc(ref(stranger), { applicants: forged, assignments: badAssignments, locks: badLocks, revision: locked.revision + 1, updatedAt: serverTimestamp() }));
+    const unlockOwn = { ...locked.locks }; delete unlockOwn.T1;
+    await assertFails(updateDoc(ref(stranger), { applicants: forged, locks: unlockOwn, revision: locked.revision + 1, updatedAt: serverTimestamp() }));
+    const lastSeatDb = env.authenticatedContext('seatD4').firestore();
+    await assertSucceeds(apply(lastSeatDb, 'seatD4', null));
+    assert.equal((await getDoc(ref(owner))).data().locks.D4, undefined);
+    await assertSucceeds(apply(lastSeatDb, 'seatD4', applicant('D4 재신청', ['D4'])));
+    await assertSucceeds(change(owner, { type: 'recommend' }));
+    await assertSucceeds(change(owner, { type: 'lock', seat: 'D4' }));
     await assertSucceeds(apply(stranger, 'stranger', { ...applicant('수정', ['T1']), memo: '갱신' }));
     await assert.rejects(change(owner, { type: 'confirm' }, before), /stale revision/);
     await assertSucceeds(change(owner, { type: 'confirm' }));

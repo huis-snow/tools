@@ -29,15 +29,31 @@
     const bytes = new Uint8Array(16); globalThis.crypto.getRandomValues(bytes);
     return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
+  function trials(value) {
+    const selected = value.trials === undefined ? [value.trial] : value.trials;
+    if (!Array.isArray(selected) || selected.length < 1 || selected.length > 7 || new Set(selected).size !== selected.length || !selected.every(index => Number.isInteger(index) && index >= 0 && index < 7)) fail("토벌전을 하나 이상 선택해 주세요.");
+    return [...selected].sort((a, b) => a - b);
+  }
+  function wing(value, person, index) { return value.version === 2 ? person.wings[String(index)] : person.wing; }
+  function applicationWings(value, wings) { return value.version === 2 ? { wings: Object.fromEntries(trials(value).map(index => [String(index), wings[index]])) } : { wing: wings[value.trial] }; }
   function draft(value) {
-    if (!plain(value) || !Number.isInteger(value.trial) || value.trial < 0 || value.trial >= 7) fail("토벌전을 선택해 주세요.");
+    if (!plain(value)) fail("토벌전을 하나 이상 선택해 주세요.");
+    const selected = trials(value);
     if (typeof value.date !== "string" || !/^[1-9]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value.date) || new Date(`${value.date}T00:00:00Z`).toISOString().slice(0, 10) !== value.date) fail("출발 날짜를 확인해 주세요.");
     if (typeof value.time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.time)) fail("출발 시간을 확인해 주세요.");
-    return { version: 1, trial: value.trial, title: text(value.title, 60, "모집 제목", true), date: value.date, time: value.time, description: text(value.description, 500, "모집 설명") };
+    return { ...(value.trials === undefined ? { version: 1, trial: selected[0] } : { version: 2, trials: selected }), title: text(value.title, 60, "모집 제목", true), date: value.date, time: value.time, description: text(value.description, 500, "모집 설명") };
   }
-  function applicant(value) {
-    if (!plain(value) || typeof value.wing !== "boolean") fail("신청 정보가 올바르지 않습니다.");
-    return { nickname: text(value.nickname, 30, "닉네임", true), server: text(value.server, 20, "서버"), memo: text(value.memo, 200, "메모"), preferences: preferences(value.preferences), wing: value.wing };
+  function applicant(value, selected) {
+    if (!plain(value)) fail("신청 정보가 올바르지 않습니다.");
+    let wings;
+    if (selected) {
+      if (!plain(value.wings) || Object.keys(value.wings).length !== selected.length || !selected.every(index => typeof value.wings[String(index)] === "boolean")) fail("선택한 토벌전의 날개 기록을 확인해 주세요.");
+      wings = { wings: Object.fromEntries(selected.map(index => [String(index), value.wings[String(index)]])) };
+    } else {
+      if (typeof value.wing !== "boolean") fail("신청 정보가 올바르지 않습니다.");
+      wings = { wing: value.wing };
+    }
+    return { nickname: text(value.nickname, 30, "닉네임", true), server: text(value.server, 20, "서버"), memo: text(value.memo, 200, "메모"), preferences: preferences(value.preferences), ...wings };
   }
   function allocations(assignments, locks, applicants) {
     if (!plain(assignments) || !plain(locks) || Object.keys(assignments).some((seat) => !SEATS.includes(seat)) || Object.keys(locks).some((seat) => !SEATS.includes(seat))) fail("편성 정보가 올바르지 않습니다.");
@@ -53,8 +69,8 @@
   function room(value, id) {
     const base = draft(value);
     uid(value.ownerUid);
-    if (value.version !== 1 || !["open", "confirmed", "closed"].includes(value.status) || !Number.isInteger(value.revision) || value.revision < 0 || !plain(value.applicants) || Object.keys(value.applicants).length > MAX_APPLICANTS) fail("모집방 데이터를 읽을 수 없습니다.");
-    const applicants = Object.fromEntries(Object.entries(value.applicants).map(([key, item]) => [uid(key), { ...applicant(item), joinedAt: item.joinedAt, updatedAt: item.updatedAt }]));
+    if (value.version !== base.version || !["open", "confirmed", "closed"].includes(value.status) || !Number.isInteger(value.revision) || value.revision < 0 || !plain(value.applicants) || Object.keys(value.applicants).length > MAX_APPLICANTS) fail("모집방 데이터를 읽을 수 없습니다.");
+    const applicants = Object.fromEntries(Object.entries(value.applicants).map(([key, item]) => [uid(key), { ...applicant(item, value.version === 2 ? trials(value) : undefined), joinedAt: item.joinedAt, updatedAt: item.updatedAt }]));
     const allocation = allocations(value.assignments, value.locks, applicants);
     if (value.status === "confirmed" && Object.keys(allocation.assignments).length !== 8) fail("확정 편성에는 여덟 명이 필요합니다.");
     return { ...base, id: roomId(id), ownerUid: value.ownerUid, status: value.status, revision: value.revision, ...allocation, applicants, createdAt: value.createdAt, updatedAt: value.updatedAt };
@@ -70,7 +86,7 @@
     const locks = { ...value.locks };
     if (input === null) delete applicants[id];
     else {
-      const next = applicant(input);
+      const next = applicant(input, value.version === 2 ? trials(value) : undefined);
       if (!own(applicants, id) && Object.keys(applicants).length >= MAX_APPLICANTS) fail("신청자는 최대 100명까지 받을 수 있습니다.");
       applicants[id] = { ...next, joinedAt: applicants[id]?.joinedAt || timestamp, updatedAt: timestamp };
     }
@@ -118,5 +134,5 @@
     }
     return { ...allocations(assignments, locks, value.applicants), status };
   }
-  return { TRIALS, SEATS, MAX_APPLICANTS, profile, preferences, roomId, uid, createRoomId, draft, applicant, allocations, room, orderedApplicants, applyApplication, recommend, manage, millis };
+  return { TRIALS, SEATS, MAX_APPLICANTS, profile, preferences, roomId, uid, createRoomId, trials, wing, applicationWings, draft, applicant, allocations, room, orderedApplicants, applyApplication, recommend, manage, millis };
 });

@@ -7,6 +7,22 @@
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const emptyProfile = () => ({ nickname: "", server: "", memo: "", preferences: Object.fromEntries(SEATS.map(s => [s, 0])), wings: TRIALS.map(() => false) });
   const seatLabel = (seat) => '<span class="seat-label role-' + seat[0] + '">' + seat + '</span>';
+  const trialNames = item => core.trials(item).map(index => TRIALS[index]);
+  const trialLabel = item => trialNames(item)[0] + (core.trials(item).length > 1 ? ` 외 ${core.trials(item).length - 1}개` : "");
+  const clearLabel = item => core.trials(item).length > 1 ? `각 5클 · 총 ${core.trials(item).length * 5}클` : "5클";
+  const joinLabel = item => core.trials(item).length > 1 ? "선택한 토벌전 신청" : "이 정보로 5클 신청";
+  function wingSummary(item, person) {
+    const selected = core.trials(item), owned = selected.filter(index => core.wing(item, person, index)).length;
+    return selected.length === 1 ? owned ? "날개 보유" : "날개 미보유" : `날개 ${owned} / ${selected.length} 보유`;
+  }
+  function wingDetails(item, person) {
+    return `<div class="trial-wing-list">${core.trials(item).map(index => `<span class="${core.wing(item, person, index) ? "owned" : ""}">${TRIALS[index]}<b>${core.wing(item, person, index) ? "✦ 보유" : "○ 미보유"}</b></span>`).join("")}</div>`;
+  }
+  function wingCell(item, person) {
+    if (core.trials(item).length > 1) return `<td class="wing-status"><details class="trial-wing-details"><summary aria-label="토벌전별 ${wingSummary(item, person)}">${wingSummary(item, person).replace("날개 ", "")}</summary>${wingDetails(item, person)}</details></td>`;
+    const owned = core.wing(item, person, core.trials(item)[0]);
+    return `<td class="wing-status ${owned ? "owned" : ""}"><b>${owned ? "✦" : "○"}</b>${owned ? "보유" : "미보유"}</td>`;
+  }
   let profile = null, profileDraft = emptyProfile(), storage, storageAvailable = false, corruptStorage = false;
   let store, user, rooms = [], ownedRooms = [], selectedId = new URL(location.href).searchParams.get("r"), selectedRoom = null;
   let currentView = "rooms", busy = false, profileLoading = false, connected = false, listLoaded = false;
@@ -47,14 +63,14 @@
       profile = readCache(PROFILE_KEY);
     } catch { storageAvailable = false; }
     if (profile) profileDraft = structuredClone(profile);
-    $("createTrial").innerHTML = TRIALS.map((name, i) => '<option value="' + i + '">' + name + '</option>').join("");
+    $("createTrials").innerHTML = TRIALS.map((name, i) => `<label class="trial-choice"><input type="checkbox" data-create-trial="${i}" value="${i}"><span>${name}</span></label>`).join("");
     attachEvents(); renderProfile(); renderAll();
     await connect();
   }
   async function connect() {
     connection("모집방을 연결하고 있어요.");
     try {
-      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-live"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
+      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-multi"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
       else await onAccount(store.currentUser());
     } catch (error) { connected = false; connection(errorMessage(error), true); roomMessage = "모집방에 연결하지 못했어요. 내 정보는 계속 수정할 수 있습니다."; renderAll(); }
   }
@@ -116,21 +132,31 @@
   }
 
   function roomHeader(item) {
-    return `<header class="room-head"><div class="room-topline"><p class="eyebrow">TRIAL ${String(item.trial + 1).padStart(2, "0")} / WING FARM</p>${statusTag(item)}</div><h2>${TRIALS[item.trial]}</h2><p class="room-title-sub">${esc(item.title)}</p><div class="room-meta"><span><i>◷</i><b>${dateLabel(item)}</b></span><span><i>↻</i><b>5클 반복</b></span><span><i>♧</i>8인 파티</span></div><div class="room-share"><button class="secondary-button" data-action="share">모집 링크 복사 ↗</button><button class="quiet-button" data-action="copy">편성표 복사</button></div><p class="room-description"><span>모집 안내</span>${esc(item.description || "5클 함께할 모험가를 모집합니다.")}</p></header>`;
+    const selected = core.trials(item);
+    return `<header class="room-head"><div class="room-topline"><p class="eyebrow">${selected.length > 1 ? `${selected.length} TRIALS` : `TRIAL ${String(selected[0] + 1).padStart(2, "0")}`} / WING FARM</p>${statusTag(item)}</div><h2>${selected.length > 1 ? `토벌전 ${selected.length}개` : trialNames(item)[0]}</h2>${selected.length > 1 ? `<div class="room-trials">${trialNames(item).map(name => `<span>${name}</span>`).join("")}</div>` : ""}<p class="room-title-sub">${esc(item.title)}</p><div class="room-meta"><span><i>◷</i><b>${dateLabel(item)}</b></span><span><i>↻</i><b>${clearLabel(item)}</b></span><span><i>♧</i>8인 파티</span></div><div class="room-share"><button class="secondary-button" data-action="share">모집 링크 복사 ↗</button><button class="quiet-button" data-action="copy">편성표 복사</button></div><p class="room-description"><span>모집 안내</span>${esc(item.description || "선택한 토벌전을 각각 5클 진행합니다.")}</p></header>`;
+  }
+
+  function roomGuides(item) {
+    const guides = globalThis.FarmPartyTrialGuides;
+    if (!guides) return "";
+    return `<section class="room-guide-section"><div class="block-topline"><h3>공략 자료</h3><span>선택한 토벌전</span></div><div class="room-guide-grid">${core.trials(item).map(index => {
+      const guide = guides[index];
+      return `<article class="trial-guide-card ${guide.images.length ? "has-diagrams" : ""}"><h4>${TRIALS[index]}</h4><a class="trial-video-link" href="${esc(guide.video)}" target="_blank" rel="noopener noreferrer" aria-label="${TRIALS[index]} ${esc(guide.author)} 공략 영상 새 탭에서 열기">▶ ${esc(guide.author)} 공략 영상 <span>↗</span></a>${guide.images.length ? `<details class="trial-diagrams" data-guide-key="${esc(item.id)}:${index}"><summary>${esc(guide.imageLabel || "산개도")} ${guide.images.length}장 보기</summary>${[...new Set(guide.images.map(image => image.phase))].map(phase => `<section class="diagram-phase"><h5>${esc(phase)}</h5><div class="diagram-gallery">${guide.images.filter(image => image.phase === phase).map(image => `<figure><a href="${esc(image.src)}" target="_blank" rel="noopener noreferrer" aria-label="${TRIALS[index]} ${esc(image.alt)} 원본 크게 보기"><img src="${esc(image.src)}" alt="${esc(image.alt)}" loading="lazy"></a><figcaption>${esc(image.alt)} <span>↗</span></figcaption></figure>`).join("")}</div></section>`).join("")}</details>` : ""}</article>`;
+    }).join("")}</div></section>`;
   }
 
   function partyBoard(item, host = false) {
     const missing = SEATS.filter((seat) => !memberForSeat(item, seat));
     return `<section class="party-section"><div class="block-topline"><h3>파티 편성<span class="count-mono">${count(item)} / 8</span></h3><div class="role-key"><span><i class="tank-dot"></i>탱커</span><span><i class="healer-dot"></i>힐러</span><span><i class="dps-dot"></i>딜러</span></div></div><div class="party-grid">${SEATS.map((seat) => {
       const person = memberForSeat(item, seat);
-      return `<div class="party-seat ${person ? "" : "empty"}">${seatLabel(seat)}${person?.preferences[seat] === 2 ? '<span class="preferred-mark" aria-label="선호 자리">★</span>' : ""}<h4>${person ? esc(person.nickname) : "함께할 모험가"}</h4><small>${person ? (person.wing ? "날개 보유" : "날개 미보유") : "아직 비어 있어요"}</small>${host ? `<div class="host-seat-controls"><select data-assign="${seat}" aria-label="${seat} 자리 배정" ${item.status !== "open" || item.locks[seat] || busy ? "disabled" : ""}><option value="">빈자리</option>${item.applicants.filter((candidate) => candidate.preferences[seat]).map((candidate) => `<option value="${esc(candidate.id)}" ${person?.id === candidate.id ? "selected" : ""}>${esc(candidate.nickname)}${candidate.preferences[seat] === 2 ? " ★" : ""}</option>`).join("")}</select><button class="lock-button ${item.locks[seat] ? "locked" : ""}" data-lock="${seat}" aria-label="${seat} 자리 ${item.locks[seat] ? "고정 해제" : "고정"}" aria-pressed="${Boolean(item.locks[seat])}" ${!person || item.status !== "open" || busy ? "disabled" : ""}>${item.locks[seat] ? "◆" : "◇"}</button></div>` : ""}</div>`;
+      return `<div class="party-seat ${person ? "" : "empty"}">${seatLabel(seat)}${person?.preferences[seat] === 2 ? '<span class="preferred-mark" aria-label="선호 자리">★</span>' : ""}<h4>${person ? esc(person.nickname) : "함께할 모험가"}</h4><small>${person ? wingSummary(item, person) : "아직 비어 있어요"}</small>${host ? `<div class="host-seat-controls"><select data-assign="${seat}" aria-label="${seat} 자리 배정" ${item.status !== "open" || item.locks[seat] || busy ? "disabled" : ""}><option value="">빈자리</option>${item.applicants.filter((candidate) => candidate.preferences[seat]).map((candidate) => `<option value="${esc(candidate.id)}" ${person?.id === candidate.id ? "selected" : ""}>${esc(candidate.nickname)}${candidate.preferences[seat] === 2 ? " ★" : ""}</option>`).join("")}</select><button class="lock-button ${item.locks[seat] ? "locked" : ""}" data-lock="${seat}" aria-label="${seat} 자리 ${item.locks[seat] ? "고정 해제" : "고정"}" aria-pressed="${Boolean(item.locks[seat])}" ${!person || item.status !== "open" || busy ? "disabled" : ""}>${item.locks[seat] ? "◆" : "◇"}</button></div>` : ""}</div>`;
     }).join("")}</div>${missing.length ? `<p class="empty-callout"><span>↗</span><span>아직 <b>${missing.join(" · ")}</b> 자리가 비어 있어요.${host ? " 신청자를 배정하거나 추천 편성을 실행해 보세요." : " 가능한 자리가 있다면 함께해 주세요."}</span></p>` : ""}</section>`;
   }
 
   function applicantsTable(item, host = false) {
     return `<table class="applicant-list"><thead><tr><th scope="col">모험가</th><th scope="col">가능한 자리 · ★ 선호</th>${host ? "" : '<th scope="col">날개</th>'}<th scope="col">${host ? "날개" : "배정"}</th></tr></thead><tbody>${item.applicants.map((person) => {
       const assigned = assignedSeat(item, person.id);
-      return `<tr><td class="applicant-name">${esc(person.nickname)}${person.id === user?.uid ? '<span class="me-tag">나</span>' : ""}<small>${host ? (assigned ? `${assigned} ${item.status === "confirmed" ? "확정" : "배정"}` : "대기") : esc(person.server || "")}</small>${person.memo ? `<details class="applicant-memo"><summary>메모</summary><p>${esc(person.memo)}</p></details>` : ""}</td><td><div class="applicant-seats">${preferenceChips(person.preferences)}</div></td><td class="wing-status ${person.wing ? "owned" : ""}"><b>${person.wing ? "✦" : "○"}</b>${person.wing ? "보유" : "미보유"}</td>${host ? "" : `<td class="member-status ${assigned ? "" : "waiting"}">${assigned || "대기"}${assigned && item.status === "confirmed" ? " 확정" : ""}</td>`}</tr>`;
+      return `<tr><td class="applicant-name">${esc(person.nickname)}${person.id === user?.uid ? '<span class="me-tag">나</span>' : ""}<small>${host ? (assigned ? `${assigned} ${item.status === "confirmed" ? "확정" : "배정"}` : "대기") : esc(person.server || "")}</small>${person.memo ? `<details class="applicant-memo"><summary>메모</summary><p>${esc(person.memo)}</p></details>` : ""}</td><td><div class="applicant-seats">${preferenceChips(person.preferences)}</div></td>${wingCell(item, person)}${host ? "" : `<td class="member-status ${assigned ? "" : "waiting"}">${assigned || "대기"}${assigned && item.status === "confirmed" ? " 확정" : ""}</td>`}</tr>`;
     }).join("") || `<tr><td colspan="${host ? 3 : 4}">첫 번째 신청을 기다리고 있어요.</td></tr>`}</tbody></table>`;
   }
 
@@ -153,7 +179,7 @@
   function joinPanel(item) {
     const mine = item.applicants.find(p => p.id === user?.uid), assigned = mine && assignedSeat(item, mine.id);
     if (item.status !== "open") return `<section class="join-section"><div><h3>${item.status === "closed" ? "모집이 종료됐어요." : mine ? assigned ? `내 자리 ${assigned} · 편성 확정` : "이번 편성에서는 대기 상태예요." : "편성이 확정됐어요."}</h3><p>새 신청과 신청 변경을 받지 않습니다.</p></div></section>`;
-    return `<section class="join-section"><div><h3>${mine ? assigned ? `${assigned} 배정 · 최종 확정을 기다려 주세요.` : "신청 완료 · 편성 대기" : profile ? `${esc(profile.nickname)}님, 저장된 정보로 신청하세요.` : "내 정보를 저장하고 신청하세요."}</h3><p>${mine ? "신청 정보는 내 기본 정보와 별도로 저장됩니다." : profile ? `이번 토벌전 날개 ${profile.wings[item.trial] ? "보유" : "미보유"} · 5클 모두 참여` : "닉네임·가능한 자리·날개를 같은 브라우저에서 불러옵니다."}</p></div><div class="join-actions">${mine ? '<button class="quiet-button" data-action="withdraw">신청 취소</button>' : profile ? '<button class="quiet-button" data-action="signup-edit">이번 신청만 변경</button>' : ""}<button class="primary-button" data-action="${mine ? "signup-edit" : "signup"}" ${busy || !connected || profileLoading ? "disabled" : ""}>${mine ? "내 신청 수정" : profile ? "이 정보로 5클 신청" : "내 정보 등록하고 신청"}<span>→</span></button></div></section>`;
+    return `<section class="join-section"><div><h3>${mine ? assigned ? `${assigned} 배정 · 최종 확정을 기다려 주세요.` : "신청 완료 · 편성 대기" : profile ? `${esc(profile.nickname)}님, 저장된 정보로 신청하세요.` : "내 정보를 저장하고 신청하세요."}</h3><p>${mine ? "신청 정보는 내 기본 정보와 별도로 저장됩니다." : profile ? `${wingSummary(item, { ...core.applicationWings(item, profile.wings) })} · ${clearLabel(item)} 모두 참여` : "닉네임·가능한 자리·날개를 같은 브라우저에서 불러옵니다."}</p></div><div class="join-actions">${mine ? '<button class="quiet-button" data-action="withdraw">신청 취소</button>' : profile ? '<button class="quiet-button" data-action="signup-edit">이번 신청만 변경</button>' : ""}<button class="primary-button" data-action="${mine ? "signup-edit" : "signup"}" ${busy || !connected || profileLoading ? "disabled" : ""}>${mine ? "내 신청 수정" : profile ? joinLabel(item) : "내 정보 등록하고 신청"}<span>→</span></button></div></section>`;
   }
   function renderAccount() {
     $("accountButton").innerHTML = google() ? '계정 연결됨 <span>↗</span>' : '계정 연결 <span>↗</span>';
@@ -164,17 +190,19 @@
     $("accountContent").innerHTML = google() ? `<p><b>${esc(user.displayName || "Google 계정")}</b><br>${esc(user.email || "")}</p><p>내 정보와 내가 만든 모집방을 다른 기기에서도 불러올 수 있어요.</p><p class="signup-note">로그아웃하면 새 익명 참여자로 접속합니다. 기존 계정의 신청·모집방을 관리하려면 다시 로그인하세요.</p><button class="secondary-button full" data-action="logout" ${busy ? "disabled" : ""}>로그아웃</button>` : `<p>참여 신청은 로그인 없이 가능합니다. 방을 만들고 관리할 때는 Google 로그인이 필요해요.</p><p class="signup-note">계정을 연결하면 저장된 내 정보를 계정에도 저장합니다. 닉네임·자리·날개·신청 메모는 신청한 모집방에서 공개됩니다.</p>${pending ? '<div class="account-warning"><p>이미 사용 중인 Google 계정입니다. 전환하면 익명으로 한 기존 신청은 자동으로 옮겨지지 않습니다. 기존 신청은 전환 전에 취소해 주세요.</p><button class="primary-button full" data-action="switch-account">기존 계정으로 전환</button></div>' : `<button class="primary-button full" data-action="login" ${busy || !store ? "disabled" : ""}>Google로 연결</button>`}`;
   }
   function renderAll() {
+    const expandedGuides = new Set([...document.querySelectorAll('.trial-diagrams[open]')].map(details => details.dataset.guideKey));
     const item = room(); renderMyCard(); renderAccount();
     document.querySelectorAll('.room-sidebar > [data-action="create"], .host-toolbar > [data-action="create"]').forEach(button => button.disabled = busy);
     document.querySelectorAll('#signupForm button[type="submit"], #createForm button[type="submit"], #closeDialog [data-action]').forEach(button => button.disabled = busy);
     $("roomCount").textContent = rooms.length;
-    $("roomList").innerHTML = rooms.map(candidate => `<button class="room-card ${candidate.id === selectedId ? "selected" : ""}" data-room="${esc(candidate.id)}" aria-pressed="${candidate.id === selectedId}"><div class="room-card-top"><span class="trial-number">TRIAL / ${String(candidate.trial + 1).padStart(2, "0")}</span>${statusTag(candidate)}</div><h3>${TRIALS[candidate.trial]}</h3><p><span>${dateLabel(candidate)}</span><strong>${count(candidate)}<small> / 8</small></strong></p><div class="tiny-progress"><span style="width:${count(candidate) / 8 * 100}%"></span></div></button>`).join("") || `<p class="empty-list">${listLoaded ? "모집 중인 파티가 없어요." : "모집 목록을 불러오는 중입니다."}</p>`;
-    $("roomDetail").innerHTML = item ? `${roomHeader(item)}${partyBoard(item)}<section class="applicants-section"><div class="block-topline"><h3>신청한 모험가<span class="count-mono">${item.applicants.length}</span></h3><span>8인 초과 신청은 대기로 관리</span></div>${applicantsTable(item)}</section>${joinPanel(item)}` : emptyPanel(selectedId ? "모집방 확인" : "새 파티를 모집해 보세요.", selectedId ? roomMessage : listLoaded ? "새 모집방을 만들고 링크로 참여자를 초대하세요." : $("connectionText").textContent);
-    $("hostRoomSelect").innerHTML = '<option value="">내 모집방 선택</option>' + ownedRooms.map(candidate => `<option value="${esc(candidate.id)}" ${candidate.id === selectedId ? "selected" : ""}>${candidate.status === "closed" ? "[종료] " : ""}${TRIALS[candidate.trial]} · ${dateLabel(candidate)}</option>`).join("");
+    $("roomList").innerHTML = rooms.map(candidate => `<button class="room-card ${candidate.id === selectedId ? "selected" : ""}" data-room="${esc(candidate.id)}" aria-pressed="${candidate.id === selectedId}"><div class="room-card-top"><span class="trial-number">${core.trials(candidate).length > 1 ? `${core.trials(candidate).length} TRIALS / 각 5클` : `TRIAL / ${String(core.trials(candidate)[0] + 1).padStart(2, "0")}`}</span>${statusTag(candidate)}</div><h3>${trialLabel(candidate)}</h3><p><span>${dateLabel(candidate)}</span><strong>${count(candidate)}<small> / 8</small></strong></p><div class="tiny-progress"><span style="width:${count(candidate) / 8 * 100}%"></span></div></button>`).join("") || `<p class="empty-list">${listLoaded ? "모집 중인 파티가 없어요." : "모집 목록을 불러오는 중입니다."}</p>`;
+    $("roomDetail").innerHTML = item ? `${roomHeader(item)}${roomGuides(item)}${partyBoard(item)}<section class="applicants-section"><div class="block-topline"><h3>신청한 모험가<span class="count-mono">${item.applicants.length}</span></h3><span>8인 초과 신청은 대기로 관리</span></div>${applicantsTable(item)}</section>${joinPanel(item)}` : emptyPanel(selectedId ? "모집방 확인" : "새 파티를 모집해 보세요.", selectedId ? roomMessage : listLoaded ? "새 모집방을 만들고 링크로 참여자를 초대하세요." : $("connectionText").textContent);
+    $("hostRoomSelect").innerHTML = '<option value="">내 모집방 선택</option>' + ownedRooms.map(candidate => `<option value="${esc(candidate.id)}" ${candidate.id === selectedId ? "selected" : ""}>${candidate.status === "closed" ? "[종료] " : ""}${trialLabel(candidate)} · ${dateLabel(candidate)}</option>`).join("");
     $("hostRoomSelect").disabled = !google() || busy;
     if (!google()) $("hostDetail").innerHTML = emptyPanel("방장 계정을 연결해 주세요.", "Google 계정으로 내가 만든 모집방을 관리할 수 있어요.", "account", "Google 계정 연결");
     else if (!item || item.ownerUid !== user.uid) $("hostDetail").innerHTML = emptyPanel("내 모집방을 선택해 주세요.", ownedRooms.length ? "위 목록에서 관리할 모집방을 선택하세요." : "새 모집방을 만들고 참여자를 모집하세요.");
-    else $("hostDetail").innerHTML = `<div class="host-columns"><article class="room-detail">${roomHeader(item)}${partyBoard(item, true)}<div class="host-controls">${item.status === "open" ? `<button class="secondary-button" data-action="recommend">✦ 추천 편성</button><button class="primary-button" data-action="confirm" ${count(item) !== 8 ? "disabled" : ""}>편성 확정 →</button>` : item.status === "confirmed" ? '<button class="secondary-button" data-action="reopen">편성 다시 열기</button>' : '<p>종료한 모집방입니다.</p>'}${item.status !== "closed" ? '<button class="quiet-button" data-action="close">모집 종료</button>' : ""}</div></article><section class="panel host-applicants"><div class="block-topline"><h3>신청자 목록<span class="count-mono">${item.applicants.length}</span></h3><span>신청순</span></div>${applicantsTable(item, true)}<p class="host-hint">가능한 자리에서 8인 편성을 우선하고, 선호 자리를 최대한 반영합니다.<br>◇를 눌러 배정을 고정하면 다음 추천에서도 유지됩니다.<br>날개 보유 여부는 편성 우선순위에 반영하지 않습니다.</p><button class="new-room-button" data-action="duplicate">이 모집 설정으로 다음 회차 만들기 ↗</button></section></div>`;
+    else $("hostDetail").innerHTML = `<div class="host-columns"><article class="room-detail">${roomHeader(item)}${roomGuides(item)}${partyBoard(item, true)}<div class="host-controls">${item.status === "open" ? `<button class="secondary-button" data-action="recommend">✦ 추천 편성</button><button class="primary-button" data-action="confirm" ${count(item) !== 8 ? "disabled" : ""}>편성 확정 →</button>` : item.status === "confirmed" ? '<button class="secondary-button" data-action="reopen">편성 다시 열기</button>' : '<p>종료한 모집방입니다.</p>'}${item.status !== "closed" ? '<button class="quiet-button" data-action="close">모집 종료</button>' : ""}</div></article><section class="panel host-applicants"><div class="block-topline"><h3>신청자 목록<span class="count-mono">${item.applicants.length}</span></h3><span>신청순</span></div>${applicantsTable(item, true)}<p class="host-hint">가능한 자리에서 8인 편성을 우선하고, 선호 자리를 최대한 반영합니다.<br>◇를 눌러 배정을 고정하면 다음 추천에서도 유지됩니다.<br>날개 보유 여부는 편성 우선순위에 반영하지 않습니다.</p><button class="new-room-button" data-action="duplicate">이 모집 설정으로 다음 회차 만들기 ↗</button></section></div>`;
+    document.querySelectorAll('.trial-diagrams').forEach(details => details.open = expandedGuides.has(details.dataset.guideKey));
     if (busy) document.querySelectorAll('[data-action]:not([data-action="profile"]):not([data-action="account"]), [data-assign], [data-lock], form button[type="submit"]').forEach(button => button.disabled = true);
   }
   function selectView(view, preserveRoom = false) {
@@ -196,15 +224,22 @@
     if (!profile) { selectView("profile"); $("nickname").focus(); return notify("내 정보를 저장한 뒤 신청해 주세요."); }
     const existing = item.applicants.find(p => p.id === user?.uid); signupRoomId = item.id;
     signupPreferences = { ...(existing?.preferences || profile.preferences) }; $("signupMemo").value = existing?.memo ?? profile.memo;
-    $("signupSummary").innerHTML = `<div class="signup-card"><h3>${TRIALS[item.trial]}</h3><p>${dateLabel(item)} · 5클 모두 참여</p><dl class="signup-info"><dt>모험가</dt><dd>${esc(profile.nickname)}${profile.server ? ` @${esc(profile.server)}` : ""}</dd><dt>가능한 자리</dt><dd id="signupSeatSummary"><div class="applicant-seats">${preferenceChips(signupPreferences)}</div></dd><dt>날개</dt><dd>${profile.wings[item.trial] ? "✦ 보유" : "○ 미보유"}</dd></dl></div>`;
+    $("signupSummary").innerHTML = `<div class="signup-card"><h3>${core.trials(item).length > 1 ? `토벌전 ${core.trials(item).length}개` : trialNames(item)[0]}</h3><p>${dateLabel(item)} · ${clearLabel(item)} 모두 참여</p><dl class="signup-info"><dt>모험가</dt><dd>${esc(profile.nickname)}${profile.server ? ` @${esc(profile.server)}` : ""}</dd><dt>가능한 자리</dt><dd id="signupSeatSummary"><div class="applicant-seats">${preferenceChips(signupPreferences)}</div></dd><dt>날개</dt><dd>${wingDetails(item, { ...core.applicationWings(item, profile.wings) })}</dd></dl></div>`;
     renderSeatOptions("signupSeats", signupPreferences); document.querySelector(".signup-overrides").open = false;
-    $("signupForm").querySelector('button[type="submit"]').innerHTML = `${existing ? "이 정보로 신청 수정" : "이 정보로 5클 신청"}<span>→</span>`;
+    $("signupForm").querySelector('button[type="submit"]').innerHTML = `${existing ? "이 정보로 신청 수정" : joinLabel(item)}<span>→</span>`;
     $("signupDialog").showModal();
   }
   function today() { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()); return ["year", "month", "day"].map(type => parts.find(p => p.type === type).value).join("-"); }
+  function createSelection() { return [...$("createTrials").querySelectorAll("input:checked")].map(input => Number(input.value)); }
+  function updateCreateSummary() {
+    const selected = createSelection();
+    $("createTrialSummary").textContent = selected.length ? `${selected.length}개 선택 · 각 5클 · 총 ${selected.length * 5}클` : "토벌전을 하나 이상 선택해 주세요.";
+  }
   function showCreate(duplicate = false) {
     if (!google()) { showAccount(); return; }
-    const item = room(); $("createForm").reset(); $("createDate").value = today(); $("createTrial").value = duplicate && item ? item.trial : 0;
+    const item = room(); $("createForm").reset(); $("createDate").value = today();
+    const selected = duplicate && item ? core.trials(item) : [0];
+    $("createTrials").querySelectorAll("input").forEach(input => input.checked = selected.includes(Number(input.value))); updateCreateSummary();
     $("createTitle").value = duplicate && item ? item.title : "5클 반복 파티 모집";
     $("createDescription").value = duplicate && item ? item.description : ""; if (duplicate && item) $("createTime").value = item.time;
     $("createDialog").showModal();
@@ -212,7 +247,7 @@
   async function submitSignup(preferences, memo, id = selectedId) {
     if (!profile || profileLoading || !store || !connected) return notify("내 정보와 서버 연결을 확인해 주세요.");
     const item = room(); if (!item || item.id !== id) return notify("모집방이 바뀌었어요. 신청 화면을 다시 열어 주세요.");
-    const snapshot = { nickname: profile.nickname, server: profile.server, preferences: { ...preferences }, wing: profile.wings[item.trial], memo: memo.trim() };
+    const snapshot = { nickname: profile.nickname, server: profile.server, preferences: { ...preferences }, ...core.applicationWings(item, profile.wings), memo: memo.trim() };
     await work(async () => { await store.apply(id, snapshot); $("signupDialog").close(); }, "신청 정보를 저장했어요.");
   }
   function manage(command) {
@@ -223,7 +258,7 @@
   function copyText(text, message) { if (!navigator.clipboard) return notify("이 브라우저에서는 복사를 지원하지 않아요."); navigator.clipboard.writeText(text).then(() => notify(message), () => notify("복사 권한을 확인해 주세요.")); }
   function copyParty() {
     const item = room(); if (!item) return;
-    copyText([`${TRIALS[item.trial]} · 5클`, `${item.date} ${item.time} (한국 시간)`, item.title, "", ...SEATS.map(seat => `${seat} ${memberForSeat(item, seat)?.nickname || "모집 중"}`)].join("\n"), "편성표를 복사했어요.");
+    copyText([...trialNames(item).map(name => `${name} · 5클`), `${item.date} ${item.time} (한국 시간)`, item.title, "", ...SEATS.map(seat => `${seat} ${memberForSeat(item, seat)?.nickname || "모집 중"}`)].join("\n"), "편성표를 복사했어요.");
   }
   function attachEvents() {
     $("retryButton").addEventListener("click", connect);
@@ -278,9 +313,11 @@
     });
     $("signupForm").addEventListener("submit", event => { event.preventDefault(); submitSignup(signupPreferences, $("signupMemo").value, signupRoomId); });
     $("createForm").addEventListener("submit", event => {
-      event.preventDefault(); const draft = { trial: Number($("createTrial").value), title: $("createTitle").value, date: $("createDate").value, time: $("createTime").value, description: $("createDescription").value };
+      event.preventDefault(); const draft = { trials: createSelection(), title: $("createTitle").value, date: $("createDate").value, time: $("createTime").value, description: $("createDescription").value };
+      try { core.draft(draft); } catch (error) { return notify(error.message); }
       work(async () => { const id = await store.createRoom(draft); $("createDialog").close(); selectRoom(id); selectView("host", true); }, "모집방을 만들었어요. 모집 링크를 복사해 공유하세요.");
     });
+    $("createTrials").addEventListener("change", updateCreateSummary);
     $("hostRoomSelect").addEventListener("change", event => { if (event.target.value) selectRoom(event.target.value); });
     document.addEventListener("change", event => { if (event.target.dataset.assign) manage({ type: "assign", seat: event.target.dataset.assign, uid: event.target.value }); });
   }

@@ -1948,5 +1948,53 @@ footer p {
 .applicant-memo summary { cursor:pointer; color:#777b70; }
 .account-warning { padding:16px; background:#fae8dc; border-radius:8px; }
 .account-dialog p { line-height:1.7; }
+
+/* Multiple trials share one party, with a separate wing record for each trial. */
+.create-trial-field { margin:0 0 20px; padding:0; border:0; min-width:0; }
+.create-trial-field legend { margin-bottom:10px; font-weight:600; font-size:14px; }
+.create-trials { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.app-dialog .trial-choice { display:flex; align-items:center; gap:8px; margin:0; padding:10px 12px; border:1px solid var(--line); border-radius:6px; cursor:pointer; font-size:13px; }
+.trial-choice:has(input:checked) { background:#edf3e9; border-color:#789483; }
+.app-dialog .trial-choice input { width:17px; height:17px; margin:0; padding:0; flex-shrink:0; accent-color:#173b33; }
+.create-trial-summary { margin:10px 0 0; font-size:13px; color:#365649; }
+.room-trials { display:flex; flex-wrap:wrap; gap:7px; margin:14px 0; }
+.room-trials span { padding:6px 10px; background:#edf1e8; border-radius:5px; font-size:13px; color:#365649; }
+.trial-wing-list { display:grid; gap:7px; }
+.trial-wing-list > span { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 12px; font-size:12px; color:#746f61; }
+.trial-wing-list > span.owned { color:#365649; }
+.trial-wing-list b { font-weight:500; white-space:nowrap; }
+.trial-wing-details { text-align:left; white-space:normal; min-width:80px; }
+.trial-wing-details summary { cursor:pointer; font-size:12px; }
+.trial-wing-details .trial-wing-list { margin-top:10px; }
+.signup-info .trial-wing-list { min-width:0; }
+.room-guide-section { padding:24px 30px; border-bottom:1px solid var(--line); }
+.room-guide-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.trial-guide-card { min-width:0; padding:13px 15px; background:#f5f5ed; border:1px solid var(--line); border-radius:6px; }
+.trial-guide-card h4 { margin:0 0 9px; font-size:14px; }
+.trial-video-link { display:flex; align-items:center; gap:5px; font-size:12px; color:#365649; text-decoration:none; }
+.trial-video-link:hover { text-decoration:underline; }
+.trial-video-link span { margin-left:auto; }
+.trial-diagrams { margin-top:12px; font-size:12px; }
+.trial-diagrams summary { cursor:pointer; }
+.trial-diagrams a { display:block; margin-top:10px; color:#365649; }
+.trial-diagrams img { display:block; width:100%; height:auto; }
+.trial-guide-card.has-diagrams { grid-column:1 / -1; }
+.diagram-phase { margin-top:16px; }
+.diagram-phase h5 { margin:0 0 8px; font-size:13px; }
+.diagram-gallery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.diagram-gallery figure { margin:0; min-width:0; }
+.diagram-gallery a { margin:0; }
+.diagram-gallery img { background:#111; border-radius:4px; }
+.diagram-gallery figcaption { margin-top:6px; font-size:11px; color:#746f61; }
+.diagram-gallery:has(figure:only-child) { grid-template-columns:1fr; }
+.diagram-gallery figure:only-child img { width:auto; max-width:100%; }
+@media (max-width:480px) {
+  .create-trials { grid-template-columns:1fr; }
+  .app-dialog .trial-choice { padding:8px 10px; }
+  .trial-wing-details .trial-wing-list > span { font-size:11px; }
+  .room-guide-section { padding:20px 16px; }
+  .room-guide-grid { grid-template-columns:1fr; }
+  .diagram-gallery { grid-template-columns:1fr; }
+}
 .host-controls { flex-wrap:wrap; }
 button:disabled { cursor:default; opacity:.55; }

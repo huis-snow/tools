@@ -49,3 +49,38 @@ test('validates the seven-trial profile, dates, and untrusted IDs', () => {
   assert.throws(() => core.uid('__proto__'));
   assert.equal(core.roomId(core.createRoomId()).length, 22);
 });
+
+test('multiple trials validate selection and snapshot only selected wing records', () => {
+  const input = { trials: [6, 0, 2], title: '여러 토벌전', date: '2026-10-02', time: '21:00', description: '' };
+  const draft = core.draft(input);
+  assert.equal(draft.version, 2); assert.deepEqual(draft.trials, [0, 2, 6]);
+  for (const trials of [[], [0, 0], [7], [-1], ['0'], [0.5], null]) assert.throws(() => core.draft({ ...input, trials }));
+  const wings = [true, true, false, true, true, true, true];
+  const snapshot = core.applicationWings(draft, wings);
+  assert.deepEqual(snapshot, { wings: { '0': true, '2': false, '6': true } });
+  const value = { ...room({}), ...draft, ownerUid: 'host', revision: 0 };
+  const patch = core.applyApplication(value, 'me', { ...person(['D2']), ...snapshot }, 2);
+  const loaded = core.room({ ...value, ...patch }, 'abcdefghijklmnopqrstuv');
+  assert.deepEqual(loaded.applicants.me.wings, snapshot.wings);
+  assert.equal(core.wing(loaded, loaded.applicants.me, 2), false);
+  assert.equal(core.wing(loaded, loaded.applicants.me, 6), true);
+  assert.equal(loaded.applicants.me.wing, undefined);
+  for (const invalid of [{ '0': true }, { ...snapshot.wings, '1': false }, { ...snapshot.wings, '6': 'true' }]) {
+    assert.throws(() => core.applyApplication(value, 'me', { ...person(['D2']), wings: invalid }, 2));
+  }
+  assert.deepEqual(core.recommend(loaded), { D2: 'me' });
+  assert.deepEqual(core.applyApplication(loaded, 'me', null, 3).applicants, {});
+});
+
+test('legacy single-trial rooms retain their schema and applications', () => {
+  const draft = core.draft({ trial: 4, title: '기존 방', date: '2026-10-02', time: '21:00', description: '' });
+  const value = { ...room({ me: person(['T1']) }), ...draft, ownerUid: 'host', revision: 0 };
+  const loaded = core.room(value, 'abcdefghijklmnopqrstuv');
+  assert.equal(loaded.version, 1); assert.deepEqual(core.trials(loaded), [4]);
+  const snapshot = core.applicationWings(loaded, [false, false, false, false, true, false, false]);
+  assert.deepEqual(snapshot, { wing: true });
+  const patch = core.applyApplication(loaded, 'me', { ...person(['T1']), ...snapshot }, 3);
+  assert.equal(patch.applicants.me.wing, true); assert.equal(patch.applicants.me.wings, undefined);
+  assert.equal(core.wing(loaded, patch.applicants.me, 4), true);
+  assert.throws(() => core.room({ ...value, version: 2 }, 'abcdefghijklmnopqrstuv'));
+});
