@@ -1935,3 +1935,18 @@ footer p {
   }
 }
 
+/* Live connection and room states. */
+.connection-strip { display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 20px; background:#e7ece4; font-size:12px; color:#173b33; flex-wrap:wrap; }
+.connection-strip.failed { background:#fae8dc; color:#853b23; }
+.empty-panel { padding:64px 32px; min-height:360px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:18px; }
+.empty-panel h2 { font-size:26px; margin:0; }
+.empty-panel p { line-height:1.7; }
+.empty-list { padding:24px 8px; font-size:13px; color:#777b70; }
+.room-share { display:flex; gap:12px; flex-wrap:wrap; margin-top:22px; }
+.room-description, .applicant-memo p { white-space:pre-wrap; overflow-wrap:anywhere; }
+.applicant-memo { font-weight:normal; font-size:11px; max-width:220px; margin-top:8px; }
+.applicant-memo summary { cursor:pointer; color:#777b70; }
+.account-warning { padding:16px; background:#fae8dc; border-radius:8px; }
+.account-dialog p { line-height:1.7; }
+.host-controls { flex-wrap:wrap; }
+button:disabled { cursor:default; opacity:.55; }

@@ -3,13 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex, follow">
+  <meta name="description" content="극 토벌전 5클 반복 파티를 모집하고, 자리 선호도와 날개 보유 현황으로 8인 편성을 정하는 도구" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:site_name" content="작은 도구함" />
+  <meta property="og:title" content="5클 반복 파티 모집 | 파밍 모집표" />
+  <meta property="og:description" content="내 정보를 저장하고 극 토벌전 5클 파티에 바로 신청하세요." />
+  <meta property="og:url" content="https://huis-snow.github.io/tools/farm-party/" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="canonical" href="https://huis-snow.github.io/tools/farm-party/" />
   <meta name="theme-color" content="#f4f1e8">
-  <title>파밍 모집표 · UI 미리보기</title>
+  <title>5클 반복 파티 모집 | 파밍 모집표</title>
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261001-live">
   <script src="../shared/vault-storage.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="core.js?v=20261001-live" defer></script>
+  <script src="firebase-config.js?v=20261001-live" defer></script>
+  <script src="app.js?v=20261001-live" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로 이동</a>
@@ -18,18 +28,18 @@
     <a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M15 26C8 24 3 18 2 7c5 2 9 6 13 12V8l3-5 3 5v11c4-6 8-10 13-12-1 11-6 17-13 19l-3 4Z" transform="translate(-2 0)"/></svg>파밍 모집표<span>FARM PARTY</span></a>
     <button class="account-button" id="accountButton" type="button">계정 연결 <span>↗</span></button>
   </header>
-  <div class="preview-strip"><span class="preview-dot"></span>UI 미리보기<span class="preview-description">예시 모집방으로 신청과 편성을 체험해 보세요. 실제 모집으로 전송되지 않습니다.</span></div>
+  <div class="connection-strip" id="connectionStrip" role="status"><span class="preview-dot"></span><span id="connectionText">모집방을 연결하고 있어요.</span><button id="retryButton" class="quiet-button" type="button" hidden>다시 연결</button></div>
   <main id="main" tabindex="-1">
     <section class="page-heading">
       <div><p class="eyebrow">EXTREME TRIAL / FIVE CLEARS</p><h1>5클 반복 파티 모집</h1><p class="intro">내 자리는 미리 기록하고, 다음 파밍은 가볍게 신청하세요.</p></div>
       <div class="heading-note"><span class="note-number">05<span>×</span>08</span><p>같은 목표, 각자의 자리.<br>날개를 향한 다음 다섯 판.</p></div>
     </section>
-    <div class="workspace-nav"><nav aria-label="화면 선택"><button class="nav-tab active" data-view="rooms" aria-current="page">모집방 <span id="roomCount">3</span></button><button class="nav-tab" data-view="profile">내 정보 <span class="small-dot" id="profileDot"></span></button><button class="nav-tab" data-view="host">방장 화면</button></nav><span class="browser-note"><i></i><span id="storageStatus">같은 브라우저에서 불러오기</span></span></div>
+    <div class="workspace-nav"><nav aria-label="화면 선택"><button class="nav-tab active" data-view="rooms" aria-current="page">모집방 <span id="roomCount">0</span></button><button class="nav-tab" data-view="profile">내 정보 <span class="small-dot" id="profileDot"></span></button><button class="nav-tab" data-view="host">방장 화면</button></nav><span class="browser-note"><i></i><span id="storageStatus">같은 브라우저에서 불러오기</span></span></div>
     <section id="roomsView" class="view">
       <div class="rooms-layout">
         <aside class="room-sidebar">
           <section class="my-card" id="myCard" aria-labelledby="myCardTitle"></section>
-          <div class="list-heading"><h2>모집 중인 파티</h2><span>예시</span></div>
+          <div class="list-heading"><h2>모집 중인 파티</h2><span>최근 30개</span></div>
           <div class="room-list" id="roomList"></div>
           <button class="new-room-button" data-action="create">＋ 새 모집방 만들기</button>
           <p class="sidebar-footnote">한 모집방에서 한 토벌전을 5클 진행합니다.</p>
@@ -48,15 +58,16 @@
           <label class="memo-field">기본 메모 <span class="optional">선택</span><textarea id="memo" name="memo" rows="3" maxlength="200" placeholder="사용 직업이나 미리 전할 내용을 적어 주세요."></textarea></label>
         </div>
         <div class="wings-panel panel"><div class="block-heading"><span class="step">03</span><div><h3>나의 날개 기록</h3><p>이미 날개를 얻은 토벌전만 체크하세요.</p></div></div><div id="wingChecklist" class="wing-checklist"></div><div class="wing-summary"><span>보유한 날개</span><strong><span id="wingCount">0</span><small> / 7</small></strong></div><p class="wing-note">신청할 때 해당 토벌전의 기록을 자동으로 가져와요. 새 날개를 얻으면 여기서 수정해 주세요.</p></div>
-        <div class="profile-save-bar"><p><span>◉</span> 이 정보는 같은 브라우저에 저장돼요.<small>다른 기기·브라우저로 이동하거나 사이트 데이터를 지우면 불러올 수 없어요.</small></p><button class="primary-button" id="saveProfileButton" type="submit">내 정보 저장 <span>→</span></button></div>
+        <div class="profile-save-bar"><p id="profileSaveNote"><span>◉</span> 이 정보는 같은 브라우저에 저장돼요.<small>다른 기기·브라우저로 이동하거나 사이트 데이터를 지우면 불러올 수 없어요.</small></p><button class="primary-button" id="saveProfileButton" type="submit">내 정보 저장 <span>→</span></button></div>
       </form>
     </section>
     <section id="hostView" class="view" hidden><div class="host-toolbar"><label>관리할 모집방<select id="hostRoomSelect"></select></label><button class="secondary-button" data-action="create">＋ 새 모집방</button></div><div id="hostDetail"></div></section>
     <footer><span>파밍 모집표 <small>작은 도구함</small></span><p>한 번의 신청이, 다음 다섯 판으로.</p><a href="#main">맨 위로 ↑</a></footer>
   </main>
   <dialog id="signupDialog" class="app-dialog"><form id="signupForm"><div class="dialog-heading"><div><p class="eyebrow">JOIN THE PARTY</p><h2>이 정보로 참여할게요.</h2></div><button class="icon-button" type="button" data-close="signupDialog" aria-label="닫기">×</button></div><div id="signupSummary"></div><details class="signup-overrides"><summary>이번 모집의 자리·메모 변경</summary><p>내 기본 정보는 그대로 유지됩니다.</p><div id="signupSeats" class="seat-options"></div><label>이번 모집 메모<textarea id="signupMemo" maxlength="200" rows="2"></textarea></label></details><p class="signup-note">신청 후 방장이 편성을 확정하면 배정된 자리를 확인할 수 있어요.</p><button class="primary-button full" type="submit">이 정보로 5클 신청 <span>→</span></button></form></dialog>
-  <dialog id="createDialog" class="app-dialog"><form id="createForm"><div class="dialog-heading"><div><p class="eyebrow">NEW FARM PARTY</p><h2>다음 파밍을 열어볼까요?</h2></div><button class="icon-button" type="button" data-close="createDialog" aria-label="닫기">×</button></div><label>토벌전<select id="createTrial"></select></label><div class="field-grid"><label>출발 날짜<input id="createDate" type="date" required></label><label>출발 시간<input id="createTime" type="time" value="21:00" required></label></div><label>모집 제목<input id="createTitle" required maxlength="60" placeholder="날개 파밍 5클 · 편하게 함께해요"></label><label>모집 설명<textarea id="createDescription" rows="3" maxlength="500" placeholder="사용할 공략, 참여 조건, 전할 내용을 적어 주세요."></textarea></label><p class="signup-note">5클 · 8인 파티로 생성돼요. 시안에서 만든 모집방은 현재 탭에서만 유지됩니다.</p><button class="primary-button full" type="submit">예시 모집방 만들기 <span>＋</span></button></form></dialog>
-  <dialog id="accountDialog" class="app-dialog account-dialog"><div class="dialog-heading"><h2>어디서든, 같은 내 정보.</h2><button class="icon-button" data-close="accountDialog" aria-label="닫기">×</button></div><p>계정을 연결하면 다른 기기에서도 내 정보와 모집방을 불러올 수 있어요.</p><button class="secondary-button full" disabled>Google로 계속하기</button><p class="signup-note">계정 연결은 다음 단계에서 제공됩니다. 지금은 로그인 없이 같은 브라우저에 내 정보를 저장할 수 있어요.</p><button class="primary-button full" data-close="accountDialog">브라우저 저장으로 이용하기</button></dialog>
+  <dialog id="createDialog" class="app-dialog"><form id="createForm"><div class="dialog-heading"><div><p class="eyebrow">NEW FARM PARTY</p><h2>새 모집방</h2></div><button class="icon-button" type="button" data-close="createDialog" aria-label="닫기">×</button></div><label>토벌전<select id="createTrial"></select></label><div class="field-grid"><label>출발 날짜<input id="createDate" type="date" required></label><label>출발 시간<input id="createTime" type="time" value="21:00" required></label></div><label>모집 제목<input id="createTitle" required maxlength="60" placeholder="극 토벌전 5클 반복"></label><label>모집 설명<textarea id="createDescription" rows="3" maxlength="500" placeholder="사용할 공략, 참여 조건, 전할 내용을 적어 주세요."></textarea></label><p class="signup-note">5클 · 8인 파티로 생성됩니다. 모집 목록과 공유 링크에서 닉네임·자리·날개·신청 메모가 공개됩니다.</p><button class="primary-button full" type="submit">모집방 만들기 <span>＋</span></button></form></dialog>
+  <dialog id="accountDialog" class="app-dialog account-dialog"><div class="dialog-heading"><h2>계정 연결</h2><button class="icon-button" data-close="accountDialog" aria-label="닫기">×</button></div><div id="accountContent"></div></dialog>
+  <dialog id="closeDialog" class="app-dialog"><div class="dialog-heading"><h2>모집 종료</h2><button class="icon-button" data-close="closeDialog" aria-label="닫기">×</button></div><p>종료하면 새 신청과 편성 변경을 받지 않습니다. 기존 기록과 공유 링크는 유지됩니다.</p><p class="signup-note">다음 회차는 모집 설정을 복제해서 만들 수 있어요.</p><button class="primary-button full" data-action="finish-close">모집 종료하기</button></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <noscript><p>파밍 모집표를 이용하려면 JavaScript를 켜 주세요.</p></noscript>
 </body>
