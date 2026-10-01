@@ -26,7 +26,7 @@
   let profile = null, profileDraft = emptyProfile(), storage, storageAvailable = false, corruptStorage = false;
   let store, user, rooms = [], ownedRooms = [], selectedId = new URL(location.href).searchParams.get("r"), selectedRoom = null;
   let currentView = "rooms", busy = false, profileLoading = false, connected = false, listLoaded = false;
-  let signupPreferences, signupRoomId, closeRoomId, toastTimer, accountGeneration = 0;
+  let signupPreferences, signupRoomId, closeRoomId, deleteTarget, toastTimer, accountGeneration = 0;
   let stopList = () => {}, stopOwned = () => {}, stopRoom = () => {};
   let roomMessage = "모집방을 불러오고 있어요.";
   const google = () => Boolean(store?.isGoogle(user));
@@ -70,7 +70,7 @@
   async function connect() {
     connection("모집방을 연결하고 있어요.");
     try {
-      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-videos"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
+      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-delete"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
       else await onAccount(store.currentUser());
     } catch (error) { connected = false; connection(errorMessage(error), true); roomMessage = "모집방에 연결하지 못했어요. 내 정보는 계속 수정할 수 있습니다."; renderAll(); }
   }
@@ -192,7 +192,7 @@
   function renderAll() {
     const item = room(); renderMyCard(); renderAccount();
     document.querySelectorAll('.room-sidebar > [data-action="create"], .host-toolbar > [data-action="create"]').forEach(button => button.disabled = busy);
-    document.querySelectorAll('#signupForm button[type="submit"], #createForm button[type="submit"], #closeDialog [data-action]').forEach(button => button.disabled = busy);
+    document.querySelectorAll('#signupForm button[type="submit"], #createForm button[type="submit"], #closeDialog [data-action], #deleteDialog button').forEach(button => button.disabled = busy);
     $("roomCount").textContent = rooms.length;
     $("roomList").innerHTML = rooms.map(candidate => `<button class="room-card ${candidate.id === selectedId ? "selected" : ""}" data-room="${esc(candidate.id)}" aria-pressed="${candidate.id === selectedId}"><div class="room-card-top"><span class="trial-number">${core.trials(candidate).length > 1 ? `${core.trials(candidate).length} TRIALS / 각 5클` : `TRIAL / ${String(core.trials(candidate)[0] + 1).padStart(2, "0")}`}</span>${statusTag(candidate)}</div><h3>${trialLabel(candidate)}</h3><p><span>${dateLabel(candidate)}</span><strong>${count(candidate)}<small> / 8</small></strong></p><div class="tiny-progress"><span style="width:${count(candidate) / 8 * 100}%"></span></div></button>`).join("") || `<p class="empty-list">${listLoaded ? "모집 중인 파티가 없어요." : "모집 목록을 불러오는 중입니다."}</p>`;
     $("roomDetail").innerHTML = item ? `${roomHeader(item)}${roomGuides(item)}${partyBoard(item)}<section class="applicants-section"><div class="block-topline"><h3>신청한 모험가<span class="count-mono">${item.applicants.length}</span></h3><span>8인 초과 신청은 대기로 관리</span></div>${applicantsTable(item)}</section>${joinPanel(item)}` : emptyPanel(selectedId ? "모집방 확인" : "새 파티를 모집해 보세요.", selectedId ? roomMessage : listLoaded ? "새 모집방을 만들고 링크로 참여자를 초대하세요." : $("connectionText").textContent);
@@ -200,7 +200,7 @@
     $("hostRoomSelect").disabled = !google() || busy;
     if (!google()) $("hostDetail").innerHTML = emptyPanel("방장 계정을 연결해 주세요.", "Google 계정으로 내가 만든 모집방을 관리할 수 있어요.", "account", "Google 계정 연결");
     else if (!item || item.ownerUid !== user.uid) $("hostDetail").innerHTML = emptyPanel("내 모집방을 선택해 주세요.", ownedRooms.length ? "위 목록에서 관리할 모집방을 선택하세요." : "새 모집방을 만들고 참여자를 모집하세요.");
-    else $("hostDetail").innerHTML = `<div class="host-columns"><article class="room-detail">${roomHeader(item)}${roomGuides(item)}${partyBoard(item, true)}<div class="host-controls">${item.status === "open" ? `<button class="secondary-button" data-action="recommend">✦ 추천 편성</button><button class="primary-button" data-action="confirm" ${count(item) !== 8 ? "disabled" : ""}>편성 확정 →</button>` : item.status === "confirmed" ? '<button class="secondary-button" data-action="reopen">편성 다시 열기</button>' : '<p>종료한 모집방입니다.</p>'}${item.status !== "closed" ? '<button class="quiet-button" data-action="close">모집 종료</button>' : ""}</div></article><section class="panel host-applicants"><div class="block-topline"><h3>신청자 목록<span class="count-mono">${item.applicants.length}</span></h3><span>신청순</span></div>${applicantsTable(item, true)}<p class="host-hint">가능한 자리에서 8인 편성을 우선하고, 선호 자리를 최대한 반영합니다.<br>◇를 눌러 배정을 고정하면 다음 추천에서도 유지됩니다.<br>날개 보유 여부는 편성 우선순위에 반영하지 않습니다.</p><button class="new-room-button" data-action="duplicate">이 모집 설정으로 다음 회차 만들기 ↗</button></section></div>`;
+    else $("hostDetail").innerHTML = `<div class="host-columns"><article class="room-detail">${roomHeader(item)}${roomGuides(item)}${partyBoard(item, true)}<div class="host-controls">${item.status === "open" ? `<button class="secondary-button" data-action="recommend">✦ 추천 편성</button><button class="primary-button" data-action="confirm" ${count(item) !== 8 ? "disabled" : ""}>편성 확정 →</button>` : item.status === "confirmed" ? '<button class="secondary-button" data-action="reopen">편성 다시 열기</button>' : '<p>종료한 모집방입니다.</p>'}${item.status !== "closed" ? '<button class="quiet-button" data-action="close">모집 종료</button>' : ""}<button class="quiet-button delete-room-button" data-action="delete-room">모집방 삭제</button></div></article><section class="panel host-applicants"><div class="block-topline"><h3>신청자 목록<span class="count-mono">${item.applicants.length}</span></h3><span>신청순</span></div>${applicantsTable(item, true)}<p class="host-hint">가능한 자리에서 8인 편성을 우선하고, 선호 자리를 최대한 반영합니다.<br>◇를 눌러 배정을 고정하면 다음 추천에서도 유지됩니다.<br>날개 보유 여부는 편성 우선순위에 반영하지 않습니다.</p><button class="new-room-button" data-action="duplicate">이 모집 설정으로 다음 회차 만들기 ↗</button></section></div>`;
     if (busy) document.querySelectorAll('[data-action]:not([data-action="profile"]):not([data-action="account"]), [data-assign], [data-lock], form button[type="submit"]').forEach(button => button.disabled = true);
   }
   function selectView(view, preserveRoom = false) {
@@ -217,6 +217,28 @@
     finally { clearTimeout(timeout); }
   }
   function showAccount() { renderAccount(); if (!$("accountDialog").open) $("accountDialog").showModal(); }
+  function showDelete() {
+    const item = room();
+    if (!item || !google() || item.ownerUid !== user.uid) return notify("방장만 모집방을 삭제할 수 있어요.");
+    deleteTarget = { id: item.id, ownerUid: user.uid, revision: item.revision };
+    $("deleteSummary").innerHTML = `<strong>${esc(item.title)}</strong><p>${trialNames(item).map(esc).join(" · ")}</p><p>${dateLabel(item)} · 신청자 ${item.applicants.length}명 · 배정 ${count(item)} / 8</p>`;
+    $("deleteDialog").showModal();
+  }
+  async function finishDelete() {
+    const target = deleteTarget, item = room();
+    if (!target || !google() || target.ownerUid !== user?.uid || item?.id !== target.id || item.ownerUid !== user.uid) {
+      $("deleteDialog").close(); return notify("모집방과 계정이 바뀌었어요. 삭제할 방을 다시 선택해 주세요.");
+    }
+    await work(async () => {
+      await store.removeRoom(target.id, target.revision);
+      $("deleteDialog").close(); deleteTarget = null;
+      if (selectedId !== target.id) return;
+      stopRoom(); selectedId = null; selectedRoom = null;
+      rooms = rooms.filter(candidate => candidate.id !== target.id); ownedRooms = ownedRooms.filter(candidate => candidate.id !== target.id);
+      const url = new URL(location.href); url.searchParams.delete("r"); history.replaceState(null, "", url);
+      const next = currentView === "host" ? ownedRooms[0] : rooms[0] || ownedRooms[0]; if (next) selectRoom(next.id);
+    }, "모집방과 신청·편성 기록을 완전히 삭제했어요.");
+  }
   function showSignup() {
     const item = room(); if (!item || item.status !== "open") return notify("신청 가능한 모집방을 선택해 주세요.");
     if (!profile) { selectView("profile"); $("nickname").focus(); return notify("내 정보를 저장한 뒤 신청해 주세요."); }
@@ -285,6 +307,8 @@
         case "recommend": case "confirm": case "reopen": return manage({ type: button.dataset.action });
         case "withdraw": if (item) return work(() => store.apply(item.id, null), "신청을 취소했어요."); return;
         case "close": if (item) { closeRoomId = item.id; $("closeDialog").showModal(); } return;
+        case "delete-room": return showDelete();
+        case "finish-delete": return finishDelete();
         case "finish-close": if (closeRoomId && item?.id === closeRoomId) return work(async () => { await store.manage(closeRoomId, { type: "close" }, item.revision); $("closeDialog").close(); }, "모집을 종료했어요."); return;
         case "copy": return copyParty();
         case "share": if (item) { const url = new URL(location.href); url.search = ""; url.hash = ""; url.searchParams.set("r", item.id); copyText(url.href, "모집 링크를 복사했어요."); } return;

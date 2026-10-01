@@ -1948,6 +1948,14 @@ footer p {
 .applicant-memo summary { cursor:pointer; color:#777b70; }
 .account-warning { padding:16px; background:#fae8dc; border-radius:8px; }
 .account-dialog p { line-height:1.7; }
+.danger-button { border:1px solid #b74735; background:#b74735; color:#fff; border-radius:5px; padding:12px 16px; font:inherit; font-size:13px; cursor:pointer; }
+.danger-button:hover { background:#983a2b; }
+.danger-button:disabled { opacity:.5; cursor:wait; }
+.delete-summary { border:1px solid var(--line); padding:16px; background:#f5f5ed; border-radius:5px; overflow-wrap:anywhere; }
+.delete-summary p { margin:8px 0 0; font-size:13px; line-height:1.6; }
+.delete-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+.delete-room-button { color:#a83d2d; }
+#deleteDialog > p { line-height:1.7; }
 
 /* Multiple trials share one party, with a separate wing record for each trial. */
 .create-trial-field { margin:0 0 20px; padding:0; border:0; min-width:0; }

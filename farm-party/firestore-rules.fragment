@@ -127,7 +127,7 @@
       allow update: if signedIn() && validFarmRoomId(roomId) &&
         request.resource.data.revision == resource.data.revision + 1 && request.resource.data.updatedAt == request.time &&
         ((farmOwnerUpdate() && validFarmAllocation(request.resource.data)) || farmSelfUpdate());
-      allow delete: if false;
+      allow delete: if validFarmRoomId(roomId) && farmOwner();
     }
     match /farmProfiles/{userId} {
       function validFarmProfile(data) {

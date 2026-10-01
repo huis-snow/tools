@@ -15,12 +15,12 @@
   <meta name="theme-color" content="#f4f1e8">
   <title>5클 반복 파티 모집 | 파밍 모집표</title>
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=20261001-videos">
+  <link rel="stylesheet" href="styles.css?v=20261001-delete">
   <script src="../shared/vault-storage.js" defer></script>
-  <script src="core.js?v=20261001-videos" defer></script>
-  <script src="trial-guides.js?v=20261001-videos" defer></script>
-  <script src="firebase-config.js?v=20261001-videos" defer></script>
-  <script src="app.js?v=20261001-videos" defer></script>
+  <script src="core.js?v=20261001-delete" defer></script>
+  <script src="trial-guides.js?v=20261001-delete" defer></script>
+  <script src="firebase-config.js?v=20261001-delete" defer></script>
+  <script src="app.js?v=20261001-delete" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문으로 이동</a>
@@ -69,6 +69,7 @@
   <dialog id="createDialog" class="app-dialog"><form id="createForm"><div class="dialog-heading"><div><p class="eyebrow">NEW FARM PARTY</p><h2>새 모집방</h2></div><button class="icon-button" type="button" data-close="createDialog" aria-label="닫기">×</button></div><fieldset class="create-trial-field"><legend>토벌전 <span class="optional">여러 개 선택 가능</span></legend><div id="createTrials" class="create-trials"></div><p id="createTrialSummary" class="create-trial-summary" aria-live="polite"></p></fieldset><div class="field-grid"><label>출발 날짜<input id="createDate" type="date" required></label><label>출발 시간<input id="createTime" type="time" value="21:00" required></label></div><label>모집 제목<input id="createTitle" required maxlength="60" placeholder="극 토벌전 5클 반복"></label><label>모집 설명<textarea id="createDescription" rows="3" maxlength="500" placeholder="사용할 공략, 참여 조건, 전할 내용을 적어 주세요."></textarea></label><p class="signup-note">같은 8인 파티로 선택한 토벌전을 각각 5클 진행합니다. 모집 목록과 공유 링크에서 닉네임·자리·날개·신청 메모가 공개됩니다.</p><button class="primary-button full" type="submit">모집방 만들기 <span>＋</span></button></form></dialog>
   <dialog id="accountDialog" class="app-dialog account-dialog"><div class="dialog-heading"><h2>계정 연결</h2><button class="icon-button" data-close="accountDialog" aria-label="닫기">×</button></div><div id="accountContent"></div></dialog>
   <dialog id="closeDialog" class="app-dialog"><div class="dialog-heading"><h2>모집 종료</h2><button class="icon-button" data-close="closeDialog" aria-label="닫기">×</button></div><p>종료하면 새 신청과 편성 변경을 받지 않습니다. 기존 기록과 공유 링크는 유지됩니다.</p><p class="signup-note">다음 회차는 모집 설정을 복제해서 만들 수 있어요.</p><button class="primary-button full" data-action="finish-close">모집 종료하기</button></dialog>
+  <dialog id="deleteDialog" class="app-dialog" aria-labelledby="deleteDialogTitle"><div class="dialog-heading"><h2 id="deleteDialogTitle">모집방 완전 삭제</h2><button class="icon-button" data-close="deleteDialog" aria-label="닫기">×</button></div><div id="deleteSummary" class="delete-summary"></div><p>이 방의 신청자와 편성 기록이 모두 삭제됩니다. 공유 링크로도 다시 볼 수 없으며, 삭제 후 복구할 수 없습니다.</p><div class="delete-actions"><button class="secondary-button" data-close="deleteDialog">취소</button><button class="danger-button" data-action="finish-delete">완전히 삭제</button></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <noscript><p>파밍 모집표를 이용하려면 JavaScript를 켜 주세요.</p></noscript>
 </body>

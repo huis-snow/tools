@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const runtime = process.env.FARM_TEST_RUNTIME || path.resolve(__dirname, '../../../.cache/farm-party-runtime');
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require(path.join(runtime, 'node_modules/@firebase/rules-unit-testing'));
-const { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where, limit, orderBy, serverTimestamp, runTransaction } = require(path.join(runtime, 'node_modules/firebase/firestore'));
+const { doc, setDoc, getDoc, updateDoc, deleteDoc, getDocs, collection, query, where, limit, orderBy, serverTimestamp, runTransaction } = require(path.join(runtime, 'node_modules/firebase/firestore'));
 const core = require('../core.js');
 const id = 'abcdefghijklmnopqrstuv';
 const prefs = (...seats) => Object.fromEntries(core.SEATS.map(s => [s, seats.includes(s) ? 2 : 0]));
@@ -25,6 +25,14 @@ for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, c
     const draft = { ...core.draft({ ...selected, title: '테스트', description: '', date: '2026-10-02', time: '21:00' }), ownerUid: 'owner', status: 'open', applicants: {}, assignments: {}, locks: {}, revision: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
     await assertFails(setDoc(ref(anon), { ...draft, ownerUid: 'anon' }));
     await assertSucceeds(setDoc(ref(owner), draft));
+    await assertFails(deleteDoc(ref(publicDb)));
+    await assertFails(deleteDoc(ref(anon)));
+    await assertFails(deleteDoc(ref(stranger)));
+    await assertFails(deleteDoc(ref(env.authenticatedContext('owner').firestore())));
+    const openId = core.createRoomId();
+    await assertSucceeds(setDoc(doc(owner, 'farmRooms', openId), draft));
+    await assertSucceeds(deleteDoc(doc(owner, 'farmRooms', openId)));
+    assert.equal((await getDoc(doc(anon, 'farmRooms', openId))).exists(), false);
     if (version === 2) {
       const otherId = core.createRoomId();
       const otherRef = doc(owner, 'farmRooms', otherId);
@@ -85,6 +93,11 @@ for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, c
     await assert.rejects(change(owner, { type: 'confirm' }, before), /stale revision/);
     await assertSucceeds(change(owner, { type: 'confirm' }));
     let current = (await getDoc(ref(owner))).data();
+    const confirmedId = core.createRoomId();
+    await env.withSecurityRulesDisabled(async context => { await setDoc(doc(context.firestore(), 'farmRooms', confirmedId), current); });
+    await assertFails(deleteDoc(doc(stranger, 'farmRooms', confirmedId)));
+    await assertSucceeds(deleteDoc(doc(owner, 'farmRooms', confirmedId)));
+    assert.equal((await getDoc(doc(anon, 'farmRooms', confirmedId))).exists(), false);
     await assertFails(updateDoc(ref(anon), { applicants: { ...current.applicants, anon: { ...applicant('늦은 신청', ['T1']), joinedAt: serverTimestamp(), updatedAt: serverTimestamp() } }, revision: current.revision + 1, updatedAt: serverTimestamp() }));
     await assertFails(updateDoc(ref(owner), { assignments: {}, revision: current.revision + 1, updatedAt: serverTimestamp() }));
     await assertSucceeds(change(owner, { type: 'reopen' }));
@@ -108,6 +121,12 @@ for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, c
     current = (await getDoc(ref(owner))).data();
     await assertFails(updateDoc(ref(owner), { status: 'open', revision: current.revision + 1, updatedAt: serverTimestamp() }));
     await assertSucceeds(getDocs(query(collection(owner, 'farmRooms'), where('ownerUid', '==', 'owner'), orderBy('createdAt', 'desc'), limit(30))));
+    await assertFails(deleteDoc(ref(stranger)));
+    await assertSucceeds(deleteDoc(ref(owner)));
+    assert.equal((await getDoc(ref(anon))).exists(), false);
+    const remaining = await getDocs(query(collection(owner, 'farmRooms'), where('ownerUid', '==', 'owner'), orderBy('createdAt', 'desc'), limit(30)));
+    assert.equal(remaining.docs.some(snapshot => snapshot.id === id), false);
+    await assertSucceeds(getDoc(doc(owner, 'farmProfiles', 'owner')));
     console.log('Ownership, private profiles, simultaneous applications, allocations, stale confirmation, closing: passed');
   } finally { await env.cleanup(); }
 });
