@@ -84,3 +84,16 @@ test('legacy single-trial rooms retain their schema and applications', () => {
   assert.equal(core.wing(loaded, patch.applicants.me, 4), true);
   assert.throws(() => core.room({ ...value, version: 2 }, 'abcdefghijklmnopqrstuv'));
 });
+test('editing upgrades empty legacy rooms, preserves applicants, and blocks trial changes after signup', () => {
+  const original = { ...room({}), ...core.draft({ trial: 0, title: '기존', date: '2026-10-02', time: '21:00', description: '' }) };
+  const input = { trials: [0, 6], title: '수정', date: '2026-10-03', time: '22:00', description: '설명' };
+  assert.equal(core.editRoom(original, input).version, 2);
+  assert.deepEqual(core.editRoom(original, input).trials, [0, 6]);
+  original.applicants.me = person(['T1']);
+  assert.throws(() => core.editRoom(original, input), /신청자/);
+  const patch = core.editRoom(original, { ...input, trials: [0] });
+  assert.equal(patch.version, 1); assert.equal(patch.trial, 0); assert.equal(patch.title, '수정');
+  assert.equal(original.applicants.me.wing, false);
+  assert.equal(core.editRoom({ ...original, status: 'confirmed' }, { ...input, trials: [0] }).time, '22:00');
+  assert.throws(() => core.editRoom({ ...original, status: 'closed' }, input), /종료/);
+});

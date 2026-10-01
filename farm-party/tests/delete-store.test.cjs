@@ -6,7 +6,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const runtime = process.env.FARM_TEST_RUNTIME || path.resolve(__dirname, '../../../.cache/farm-party-runtime');
 const core = require('../core.js');
-test('room deletion preserves unseen applications, then removes the reviewed room and clears listeners', { timeout: 30000 }, async () => {
+test('room editing preserves applications and stale checks; deletion clears the reviewed room and listeners', { timeout: 30000 }, async () => {
   const { initializeTestEnvironment } = require(path.join(runtime, 'node_modules/@firebase/rules-unit-testing'));
   const fragment = fs.readFileSync(path.join(__dirname, '../firestore-rules.fragment'), 'utf8');
   const rules = `rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { function signedIn() { return request.auth != null; } ${fragment} } }`;
@@ -26,11 +26,21 @@ test('room deletion preserves unseen applications, then removes the reviewed roo
   let id, stopRoom = () => {}, stopList = () => {};
   try {
     await assert.rejects(store.removeRoom(core.createRoomId(), 0), /Google/);
+    await assert.rejects(store.editRoom(core.createRoomId(), {}, 0), /Google/);
     const credential = sdkAuth.GoogleAuthProvider.credential(JSON.stringify({ sub: 'delete-store-test', email: 'delete-store-test@example.test', email_verified: true }));
     await sdkAuth.linkWithCredential(auth.currentUser, credential); await auth.currentUser.getIdToken(true);
-    id = await store.createRoom({ trials: [0, 6], title: '삭제 검증용', date: '2026-10-02', time: '21:00', description: '' });
+    id = await store.createRoom({ trial: 0, title: '편집 검증용', date: '2026-10-02', time: '21:00', description: '' });
     const ref = sdkDb.doc(db, 'farmRooms', id);
+    const input = { trials: [0, 6], title: '편집 후 제목', date: '2026-10-03', time: '22:00', description: '공략 안내' };
+    await store.editRoom(id, input, 0);
+    const migrated = (await sdkDb.getDocFromServer(ref)).data();
+    assert.equal(migrated.version, 2); assert.equal(migrated.trial, undefined); assert.deepEqual(migrated.trials, [0, 6]);
+    await assert.rejects(store.editRoom(id, { ...input, title: '덮어쓰기' }, 0), /갱신/);
     await store.apply(id, { nickname: '신청자', server: '', memo: '', preferences: Object.fromEntries(core.SEATS.map(seat => [seat, seat === 'T1' ? 2 : 0])), wings: { '0': false, '6': true } });
+    const beforeEdit = (await sdkDb.getDocFromServer(ref)).data();
+    await assert.rejects(store.editRoom(id, { ...input, trials: [1] }, 2), /신청자/);
+    await store.editRoom(id, { ...input, description: '설명만 수정' }, 2);
+    assert.deepEqual((await sdkDb.getDocFromServer(ref)).data().applicants, beforeEdit.applicants);
     await assert.rejects(store.removeRoom(id, 0), /갱신/);
     assert.equal((await sdkDb.getDoc(ref)).exists(), true);
     const removed = new Promise((resolve, reject) => { stopRoom = store.subscribeRoom(id, value => { if (value === null) resolve(); }, reject); });
@@ -38,10 +48,10 @@ test('room deletion preserves unseen applications, then removes the reviewed roo
     const firstListed = new Promise((resolve, reject) => { resolveListed = resolve; rejectListed = reject; });
     const noLongerListed = new Promise((resolve, reject) => { let listed = false; stopList = store.subscribeList(rooms => { if (rooms.some(room => room.id === id)) { listed = true; resolveListed(); } else if (listed) resolve(); }, error => { rejectListed(error); reject(error); }, true); });
     await firstListed;
-    await store.removeRoom(id, 1);
+    await store.removeRoom(id, 3);
     await Promise.all([removed, noLongerListed]);
     assert.equal((await sdkDb.getDocFromServer(ref)).exists(), false);
-    await assert.rejects(store.removeRoom(id, 1), /이미 삭제/);
+    await assert.rejects(store.removeRoom(id, 3), /이미 삭제/);
     await assert.rejects(store.apply(id, null), /찾지 못/);
   } finally {
     stopRoom(); stopList(); await sdkDb.terminate(db); await sdkApp.deleteApp(app); await env.cleanup();

@@ -26,7 +26,7 @@
   let profile = null, profileDraft = emptyProfile(), storage, storageAvailable = false, corruptStorage = false;
   let store, user, rooms = [], ownedRooms = [], selectedId = new URL(location.href).searchParams.get("r"), selectedRoom = null;
   let currentView = "rooms", busy = false, profileLoading = false, connected = false, listLoaded = false;
-  let signupPreferences, signupRoomId, closeRoomId, deleteTarget, toastTimer, accountGeneration = 0;
+  let signupPreferences, signupRoomId, closeRoomId, deleteTarget, editTarget, toastTimer, accountGeneration = 0;
   let stopList = () => {}, stopOwned = () => {}, stopRoom = () => {};
   let roomMessage = "모집방을 불러오고 있어요.";
   const google = () => Boolean(store?.isGoogle(user));
@@ -70,7 +70,7 @@
   async function connect() {
     connection("모집방을 연결하고 있어요.");
     try {
-      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-delete"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
+      if (!store) { const { createFarmStore } = await import("./firebase-store.js?v=20261001-edit"); store = await createFarmStore(globalThis.FarmPartyFirebaseConfig); store.subscribeAuth(onAccount); }
       else await onAccount(store.currentUser());
     } catch (error) { connected = false; connection(errorMessage(error), true); roomMessage = "모집방에 연결하지 못했어요. 내 정보는 계속 수정할 수 있습니다."; renderAll(); }
   }
@@ -200,7 +200,7 @@
     $("hostRoomSelect").disabled = !google() || busy;
     if (!google()) $("hostDetail").innerHTML = emptyPanel("방장 계정을 연결해 주세요.", "Google 계정으로 내가 만든 모집방을 관리할 수 있어요.", "account", "Google 계정 연결");
     else if (!item || item.ownerUid !== user.uid) $("hostDetail").innerHTML = emptyPanel("내 모집방을 선택해 주세요.", ownedRooms.length ? "위 목록에서 관리할 모집방을 선택하세요." : "새 모집방을 만들고 참여자를 모집하세요.");
-    else $("hostDetail").innerHTML = `<div class="host-columns"><article class="room-detail">${roomHeader(item)}${roomGuides(item)}${partyBoard(item, true)}<div class="host-controls">${item.status === "open" ? `<button class="secondary-button" data-action="recommend">✦ 추천 편성</button><button class="primary-button" data-action="confirm" ${count(item) !== 8 ? "disabled" : ""}>편성 확정 →</button>` : item.status === "confirmed" ? '<button class="secondary-button" data-action="reopen">편성 다시 열기</button>' : '<p>종료한 모집방입니다.</p>'}${item.status !== "closed" ? '<button class="quiet-button" data-action="close">모집 종료</button>' : ""}<button class="quiet-button delete-room-button" data-action="delete-room">모집방 삭제</button></div></article><section class="panel host-applicants"><div class="block-topline"><h3>신청자 목록<span class="count-mono">${item.applicants.length}</span></h3><span>신청순</span></div>${applicantsTable(item, true)}<p class="host-hint">가능한 자리에서 8인 편성을 우선하고, 선호 자리를 최대한 반영합니다.<br>◇를 눌러 배정을 고정하면 다음 추천에서도 유지됩니다.<br>날개 보유 여부는 편성 우선순위에 반영하지 않습니다.</p><button class="new-room-button" data-action="duplicate">이 모집 설정으로 다음 회차 만들기 ↗</button></section></div>`;
+    else $("hostDetail").innerHTML = `<div class="host-columns"><article class="room-detail">${roomHeader(item)}${roomGuides(item)}${partyBoard(item, true)}<div class="host-controls">${item.status === "open" ? `<button class="secondary-button" data-action="recommend">✦ 추천 편성</button><button class="primary-button" data-action="confirm" ${count(item) !== 8 ? "disabled" : ""}>편성 확정 →</button>` : item.status === "confirmed" ? '<button class="secondary-button" data-action="reopen">편성 다시 열기</button>' : '<p>종료한 모집방입니다.</p>'}${item.status !== "closed" ? '<button class="quiet-button" data-action="close">모집 종료</button>' : ""}${item.status !== "closed" ? '<button class="secondary-button" data-action="edit-room">모집방 편집</button>' : ""}<button class="quiet-button delete-room-button" data-action="delete-room">모집방 삭제</button></div></article><section class="panel host-applicants"><div class="block-topline"><h3>신청자 목록<span class="count-mono">${item.applicants.length}</span></h3><span>신청순</span></div>${applicantsTable(item, true)}<p class="host-hint">가능한 자리에서 8인 편성을 우선하고, 선호 자리를 최대한 반영합니다.<br>◇를 눌러 배정을 고정하면 다음 추천에서도 유지됩니다.<br>날개 보유 여부는 편성 우선순위에 반영하지 않습니다.</p><button class="new-room-button" data-action="duplicate">이 모집 설정으로 다음 회차 만들기 ↗</button></section></div>`;
     if (busy) document.querySelectorAll('[data-action]:not([data-action="profile"]):not([data-action="account"]), [data-assign], [data-lock], form button[type="submit"]').forEach(button => button.disabled = true);
   }
   function selectView(view, preserveRoom = false) {
@@ -255,13 +255,22 @@
     const selected = createSelection();
     $("createTrialSummary").textContent = selected.length ? `${selected.length}개 선택 · 각 5클 · 총 ${selected.length * 5}클` : "토벌전을 하나 이상 선택해 주세요.";
   }
-  function showCreate(duplicate = false) {
+  function showCreate(duplicate = false, edit = false) {
     if (!google()) { showAccount(); return; }
-    const item = room(); $("createForm").reset(); $("createDate").value = today();
-    const selected = duplicate && item ? core.trials(item) : [0];
-    $("createTrials").querySelectorAll("input").forEach(input => input.checked = selected.includes(Number(input.value))); updateCreateSummary();
-    $("createTitle").value = duplicate && item ? item.title : "5클 반복 파티 모집";
-    $("createDescription").value = duplicate && item ? item.description : ""; if (duplicate && item) $("createTime").value = item.time;
+    const item = room();
+    if (edit && (!item || item.ownerUid !== user.uid || item.status === "closed")) return notify("편집 가능한 내 모집방을 선택해 주세요.");
+    editTarget = edit ? { id: item.id, ownerUid: user.uid, revision: item.revision } : null;
+    $("createForm").reset(); $("createDate").value = edit ? item.date : today();
+    const copy = (duplicate || edit) && item, locked = edit && item.applicants.length > 0;
+    const selected = copy ? core.trials(item) : [0];
+    $("createTrials").querySelectorAll("input").forEach(input => { input.checked = selected.includes(Number(input.value)); input.disabled = locked; }); updateCreateSummary();
+    $("createDialogTitle").textContent = edit ? "모집방 편집" : "새 모집방";
+    $("createDialogEyebrow").textContent = edit ? "EDIT FARM PARTY" : "NEW FARM PARTY";
+    $("createSubmit").innerHTML = edit ? '변경 내용 저장 <span>→</span>' : '모집방 만들기 <span>＋</span>';
+    $("createEditNote").hidden = !edit;
+    $("createEditNote").textContent = locked ? "신청자가 있어 토벌전은 변경할 수 없습니다. 제목·출발 일시·설명은 수정할 수 있어요." : "기존 모집방의 정보를 수정합니다. 공유 링크는 유지됩니다.";
+    $("createTitle").value = copy ? item.title : "5클 반복 파티 모집";
+    $("createDescription").value = copy ? item.description : ""; if (copy) $("createTime").value = item.time;
     $("createDialog").showModal();
   }
   async function submitSignup(preferences, memo, id = selectedId) {
@@ -304,6 +313,7 @@
         case "signup-edit": return showSignup();
         case "create": return showCreate();
         case "duplicate": return showCreate(true);
+        case "edit-room": return showCreate(false, true);
         case "recommend": case "confirm": case "reopen": return manage({ type: button.dataset.action });
         case "withdraw": if (item) return work(() => store.apply(item.id, null), "신청을 취소했어요."); return;
         case "close": if (item) { closeRoomId = item.id; $("closeDialog").showModal(); } return;
@@ -337,6 +347,11 @@
     $("createForm").addEventListener("submit", event => {
       event.preventDefault(); const draft = { trials: createSelection(), title: $("createTitle").value, date: $("createDate").value, time: $("createTime").value, description: $("createDescription").value };
       try { core.draft(draft); } catch (error) { return notify(error.message); }
+      if (editTarget) {
+        const target = editTarget;
+        if (!google() || target.ownerUid !== user?.uid || room()?.id !== target.id) return notify("모집방과 계정이 바뀌었어요. 편집할 방을 다시 선택해 주세요.");
+        return work(async () => { await store.editRoom(target.id, draft, target.revision); $("createDialog").close(); editTarget = null; }, "모집 정보를 수정했어요.");
+      }
       work(async () => { const id = await store.createRoom(draft); $("createDialog").close(); selectRoom(id); selectView("host", true); }, "모집방을 만들었어요. 모집 링크를 복사해 공유하세요.");
     });
     $("createTrials").addEventListener("change", updateCreateSummary);

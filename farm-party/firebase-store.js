@@ -95,6 +95,18 @@ export async function createFarmStore(config) {
       transaction.delete(ref);
     });
   }
+  async function editRoom(id, input, revision) {
+    const user = requireGoogle(), ref = reference(id);
+    return transact(ref, async (transaction, snapshot) => {
+      if (!snapshot.exists()) throw new Error("모집방을 찾지 못했습니다.");
+      const value = core.room(snapshot.data(), id);
+      if (value.ownerUid !== user.uid) throw new Error("방장만 모집방을 편집할 수 있습니다.");
+      if (value.revision !== revision) throw new Error("모집 정보가 갱신됐어요. 편집 창을 닫고 최신 정보를 확인한 뒤 다시 편집해 주세요.");
+      const next = { ...snapshot.data(), ...core.editRoom(value, input), revision: value.revision + 1, updatedAt: serverTimestamp() };
+      if (next.version === 2) delete next.trial; else delete next.trials;
+      transaction.set(ref, next);
+    });
+  }
   // Rules may reject a stale write before Firestore reports its transaction conflict.
   // Retry only after a server read proves that the document revision changed.
   async function transact(ref, mutate) {
@@ -124,5 +136,5 @@ export async function createFarmStore(config) {
     const user = requireGoogle();
     await setDoc(doc(db, "farmProfiles", user.uid), { ...core.profile(value), version: 1, updatedAt: serverTimestamp() });
   }
-  return { currentUser: () => auth.currentUser, isGoogle, login, logout, switchAccount, hasPendingAccount: () => Boolean(pendingCredential), subscribeAuth: (callback) => onAuthStateChanged(auth, callback), subscribeList, subscribeRoom, createRoom, apply, manage, removeRoom, loadProfile, saveProfile };
+  return { currentUser: () => auth.currentUser, isGoogle, login, logout, switchAccount, hasPendingAccount: () => Boolean(pendingCredential), subscribeAuth: (callback) => onAuthStateChanged(auth, callback), subscribeList, subscribeRoom, createRoom, apply, manage, removeRoom, editRoom, loadProfile, saveProfile };
 }

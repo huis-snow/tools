@@ -55,6 +55,17 @@
     }
     return { nickname: text(value.nickname, 30, "닉네임", true), server: text(value.server, 20, "서버"), memo: text(value.memo, 200, "메모"), preferences: preferences(value.preferences), ...wings };
   }
+  function editRoom(value, input) {
+    if (value.status === "closed") fail("종료한 모집방은 편집할 수 없습니다.");
+    const next = draft({ ...input, trials: trials(input) });
+    const unchanged = JSON.stringify(trials(value)) === JSON.stringify(next.trials);
+    if (Object.keys(value.applicants).length && !unchanged) fail("신청자가 있는 방은 토벌전을 변경할 수 없습니다.");
+    if (value.version === 1 && unchanged) {
+      const { trials: selected, ...fields } = next;
+      return { ...fields, version: 1, trial: value.trial };
+    }
+    return next;
+  }
   function allocations(assignments, locks, applicants) {
     if (!plain(assignments) || !plain(locks) || Object.keys(assignments).some((seat) => !SEATS.includes(seat)) || Object.keys(locks).some((seat) => !SEATS.includes(seat))) fail("편성 정보가 올바르지 않습니다.");
     const ids = new Set();
@@ -134,5 +145,5 @@
     }
     return { ...allocations(assignments, locks, value.applicants), status };
   }
-  return { TRIALS, SEATS, MAX_APPLICANTS, profile, preferences, roomId, uid, createRoomId, trials, wing, applicationWings, draft, applicant, allocations, room, orderedApplicants, applyApplication, recommend, manage, millis };
+  return { TRIALS, SEATS, MAX_APPLICANTS, profile, preferences, roomId, uid, createRoomId, trials, wing, applicationWings, draft, editRoom, applicant, allocations, room, orderedApplicants, applyApplication, recommend, manage, millis };
 });

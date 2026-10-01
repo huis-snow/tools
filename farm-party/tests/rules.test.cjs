@@ -48,6 +48,24 @@ for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, c
     await assertSucceeds(getDocs(query(collection(anon, 'farmRooms'), where('status', 'in', ['open', 'confirmed']), orderBy('createdAt', 'desc'), limit(30))));
     await assertFails(getDocs(collection(anon, 'farmRooms')));
     console.log('Room read/list permissions passed');
+    const edit = (db, fields) => runTransaction(db, async tx => {
+      const snapshot = await tx.get(ref(db)), current = core.room(snapshot.data(), id);
+      const next = { ...snapshot.data(), ...core.editRoom(current, fields), revision: current.revision + 1, updatedAt: serverTimestamp() };
+      if (next.version === 2) delete next.trial; else delete next.trials;
+      tx.set(ref(db), next);
+    });
+    const editFields = { trials: core.trials(draft), title: '편집한 제목', date: '2026-10-03', time: '22:00', description: '편집 설명' };
+    await assertFails(edit(stranger, editFields)); await assertFails(edit(anon, editFields));
+    await assertSucceeds(edit(owner, editFields));
+    assert.equal((await getDoc(ref(anon))).data().title, editFields.title);
+    const emptyRef = doc(owner, 'farmRooms', core.createRoomId());
+    await assertSucceeds(setDoc(emptyRef, draft));
+    await assertSucceeds(runTransaction(owner, async tx => {
+      const snapshot = await tx.get(emptyRef), current = core.room(snapshot.data(), emptyRef.id);
+      const next = { ...snapshot.data(), ...core.editRoom(current, { ...editFields, trials: [0, 6] }), revision: 1, updatedAt: serverTimestamp() };
+      delete next.trial; tx.set(emptyRef, next);
+    }));
+    assert.equal((await getDoc(emptyRef)).data().version, 2);
     const apply = async (db, uid, input) => {
       for (let attempt = 0; attempt < 4; attempt++) {
         let revision;
@@ -58,6 +76,12 @@ for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, c
     const change = (db, command, revision) => runTransaction(db, async tx => { const current = core.room((await tx.get(ref(db))).data(), id); if (revision != null && revision !== current.revision) throw Error('stale revision'); tx.update(ref(db), { ...core.manage(current, command), revision: current.revision + 1, updatedAt: serverTimestamp() }); });
     await Promise.all([assertSucceeds(apply(anon, 'anon', applicant('익명', ['T1', 'T2']))), assertSucceeds(apply(stranger, 'stranger', applicant('다른 계정', ['T1'])))]);
     console.log('Concurrent application passed');
+    let edited = (await getDoc(ref(owner))).data();
+    const revisionPatch = { revision: edited.revision + 1, updatedAt: serverTimestamp() };
+    await assertFails(updateDoc(ref(owner), { ...(version === 1 ? { trial: 6 } : { trials: [0] }), ...revisionPatch }));
+    await assertFails(updateDoc(ref(owner), { title: '', ...revisionPatch }));
+    await assertFails(updateDoc(ref(owner), { ownerUid: 'stranger', title: '탈취', ...revisionPatch }));
+    await assertSucceeds(edit(owner, { ...editFields, description: '신청 이후 설명 변경' }));
     assert.equal(Object.keys((await getDoc(ref(owner))).data().applicants).length, 2);
     await assertFails(apply(anon, 'stranger', applicant('변조', ['D1'])));
     await assertFails(change(stranger, { type: 'recommend' }));
@@ -93,6 +117,10 @@ for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, c
     await assert.rejects(change(owner, { type: 'confirm' }, before), /stale revision/);
     await assertSucceeds(change(owner, { type: 'confirm' }));
     let current = (await getDoc(ref(owner))).data();
+    const allocationBeforeEdit = current.assignments;
+    await assertSucceeds(edit(owner, { ...editFields, time: '23:00' }));
+    current = (await getDoc(ref(owner))).data();
+    assert.deepEqual(current.assignments, allocationBeforeEdit); assert.equal(current.status, 'confirmed');
     const confirmedId = core.createRoomId();
     await env.withSecurityRulesDisabled(async context => { await setDoc(doc(context.firestore(), 'farmRooms', confirmedId), current); });
     await assertFails(deleteDoc(doc(stranger, 'farmRooms', confirmedId)));
@@ -119,6 +147,7 @@ for (const version of [1, 2]) test(`Firestore v${version}: ownership, privacy, c
     await assertSucceeds(change(owner, { type: 'close' }));
     await assertSucceeds(getDoc(ref(anon)));
     current = (await getDoc(ref(owner))).data();
+    await assertFails(updateDoc(ref(owner), { title: '종료 후 수정', revision: current.revision + 1, updatedAt: serverTimestamp() }));
     await assertFails(updateDoc(ref(owner), { status: 'open', revision: current.revision + 1, updatedAt: serverTimestamp() }));
     await assertSucceeds(getDocs(query(collection(owner, 'farmRooms'), where('ownerUid', '==', 'owner'), orderBy('createdAt', 'desc'), limit(30))));
     await assertFails(deleteDoc(ref(stranger)));
