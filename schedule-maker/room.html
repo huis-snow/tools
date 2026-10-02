@@ -220,12 +220,15 @@
             </div>
 
             <div class="schedule-panel" id="onlineSchedulePanel">
-              <div class="setup-bar online-setup-bar">
+              <div class="setup-bar online-setup-bar range-setup">
                 <label class="text-field title-field">
                   <span>닉네임</span>
                   <input id="titleInput" type="text" maxlength="60" autocomplete="off" />
                   <small>취합표에 표시될 이름</small>
                 </label>
+                <details class="schedule-options">
+                  <summary>방 기준·빠른 선택 <span>기간 · 하루 시작 · 시간대</span></summary>
+                  <div class="schedule-options-fields">
                 <label class="select-field start-field">
                   <span>하루 시작</span>
                   <select id="startHourSelect" aria-describedby="startHourHelp"></select>
@@ -254,9 +257,36 @@
                     <button type="button" data-preset="all">전체</button>
                   </div>
                 </div>
+                  </div>
+                </details>
               </div>
 
-              <div class="schedule-toolbar">
+
+              <section class="time-range-editor" aria-labelledby="timeRangeHeading">
+                <div class="time-range-heading">
+                  <h3 id="timeRangeHeading">가능한 시간 추가</h3>
+                  <span>30분 단위 · 여러 요일에 한 번에</span>
+                </div>
+                <form id="timeRangeForm" class="time-range-form">
+                  <fieldset>
+                    <legend>요일</legend>
+                    <div id="timeRangeDays" class="time-range-days"></div>
+                  </fieldset>
+                  <div class="time-range-fields">
+                    <label><span>시작 시간</span><select id="timeRangeStart"></select></label>
+                    <span class="time-range-separator" aria-hidden="true">~</span>
+                    <label><span>종료 시간</span><select id="timeRangeEnd" aria-describedby="timeRangeHelp"></select></label>
+                    <button type="submit" id="timeRangeSubmit">시간 추가</button>
+                    <button type="button" id="timeRangeCancel" hidden>수정 취소</button>
+                  </div>
+                  <p id="timeRangeHelp" class="time-range-help">자정 이후는 ‘익일’ 시간을 골라 주세요. 겹치거나 이어지는 구간은 자동으로 합쳐져요.</p>
+                  <p id="timeRangeError" class="time-range-error" role="alert"></p>
+                </form>
+                <ul id="timeRangeList" class="time-range-list" aria-label="추가한 가능 시간"></ul>
+              </section>
+              <details class="schedule-grid-details">
+                <summary>표로 확인·칠하기 <span>1시간 눈금 · 반 칸은 30분</span></summary>
+<div class="schedule-toolbar">
                 <div class="legend"><i aria-hidden="true">✓</i> 선택한 칸은 <strong>가능한 시간</strong>이에요</div>
                 <div
                   class="paint-mode-control"
@@ -289,9 +319,10 @@
                 <div class="schedule-grid" id="scheduleGrid" role="grid" aria-label="요일과 시간별 내 가능 여부"></div>
               </div>
 
+              </details>
               <div class="schedule-footer">
                 <div class="selection-status">
-                  <p><strong id="selectedCount">0</strong><span> / 168칸 선택</span></p>
+                  <p><strong id="selectedCount">0</strong><span>시간 선택</span></p>
                   <div class="progress" aria-hidden="true"><span id="selectionProgress"></span></div>
                 </div>
                 <div class="edit-actions">
@@ -309,7 +340,7 @@
                   <button id="onlineSaveResponseButton" type="button" disabled>내 일정 서버에 저장 <span aria-hidden="true">→</span></button>
                 </div>
               </div>
-              <p class="mobile-help">칠하기 방식을 고른 뒤 칸을 끌어보세요. 왼쪽 시간 칸을 밀면 표를 스크롤할 수 있어요.</p>
+              <p class="mobile-help">요일과 시간으로 입력하거나, 표를 펼쳐 직접 칠할 수 있어요.</p>
             </div>
             <div class="live-region sr-only" id="liveRegion" role="status" aria-live="polite"></div>
           </section>
@@ -385,11 +416,17 @@
                     <label for="compareCandidateDurationSelect">
                       <span>필요 시간</span>
                       <select id="compareCandidateDurationSelect" aria-describedby="compareCandidateSummary">
+                        <option value="0.5">30분</option>
                         <option value="1">1시간</option>
+                        <option value="1.5">1시간 30분</option>
                         <option value="2">2시간</option>
+                        <option value="2.5">2시간 30분</option>
                         <option value="3" selected>3시간</option>
+                        <option value="3.5">3시간 30분</option>
                         <option value="4">4시간</option>
+                        <option value="4.5">4시간 30분</option>
                         <option value="5">5시간</option>
+                        <option value="5.5">5시간 30분</option>
                         <option value="6">6시간</option>
                       </select>
                     </label>
@@ -553,6 +590,7 @@
     <script src="online-room-core.js"></script>
     <script src="firebase-config.js"></script>
     <script src="availability-candidates.js"></script>
+    <script src="range-editor.js"></script>
     <script src="app.js"></script>
     <script type="module" src="room-page.js"></script>
   </body>

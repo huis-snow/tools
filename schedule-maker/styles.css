@@ -600,6 +600,242 @@ footer {
   display: contents;
 }
 
+/* Half-hour cells share the height and major boundaries of the original hour. */
+.schedule-grid .slot,
+.schedule-grid .time-toggle {
+  height: 21px;
+}
+
+.compare-grid .compare-cell,
+.compare-grid .compare-time {
+  min-height: 21px;
+}
+
+.hour-first > .slot,
+.hour-first > .time-toggle,
+.hour-first > .compare-cell,
+.hour-first > .compare-time {
+  border-bottom-color: transparent;
+}
+
+.hour-first > .time-toggle,
+.hour-first > .compare-time {
+  align-content: end;
+}
+
+.schedule-grid-details > summary {
+  padding: 18px 26px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  border-top: 1px solid var(--line);
+}
+
+.schedule-grid-details > summary span {
+  margin-left: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.time-range-editor {
+  padding: 24px 26px;
+  border-top: 1px solid var(--line);
+}
+
+.setup-bar.range-setup {
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.schedule-options > summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.schedule-options > summary span {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.schedule-options-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.schedule-options-fields > * { min-width: 0; }
+.schedule-options-fields .presets { grid-column: 1 / -1; }
+
+.time-range-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 20px;
+}
+
+.time-range-heading h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.time-range-heading > span,
+.time-range-help,
+.time-range-empty {
+  color: #60736c;
+  font-size: 12px;
+}
+
+.time-range-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 18px;
+  min-width: 0;
+}
+
+.time-range-form legend,
+.time-range-fields label > span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.time-range-days,
+.time-range-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.range-day-option {
+  position: relative;
+  cursor: pointer;
+}
+
+.range-day-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.range-day-option span {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #aebcb3;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.range-day-option input:checked + span {
+  background: var(--ink);
+  color: #fffdf5;
+  border-color: var(--ink);
+}
+
+.range-day-option input:focus-visible + span {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+
+.range-day-option input:disabled + span {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.time-range-fields select {
+  width: 150px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #aebcb3;
+  border-radius: 6px;
+  background: #fffdf5;
+  color: var(--ink);
+  font: 14px var(--mono);
+}
+
+.time-range-fields button {
+  min-height: 44px;
+  padding: 9px 18px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: var(--ink);
+  color: #fffdf5;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.time-range-fields #timeRangeCancel {
+  background: transparent;
+  color: var(--ink);
+}
+
+.time-range-separator {
+  align-self: end;
+  padding-bottom: 14px;
+}
+
+.time-range-error {
+  color: var(--orange-dark);
+  font-size: 13px;
+}
+
+.time-range-error:empty {
+  display: none;
+}
+
+.time-range-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+.time-range-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: #edf2e8;
+  border-radius: 6px;
+}
+
+.time-range-item > span {
+  flex: 1 1 210px;
+  font: 13px var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.time-range-item button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #aebcb3;
+  border-radius: 4px;
+  background: #fffdf5;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .time-range-editor { padding: 20px 18px; }
+  .time-range-fields label { flex: 1 1 110px; }
+  .time-range-fields select { width: 100%; }
+  .time-range-fields button { flex: 1 1 130px; }
+  .schedule-grid-details > summary { padding: 18px; }
+  .schedule-grid-details > summary span { display: block; margin: 8px 0 0; }
+}
+
 .grid-corner,
 .day-toggle {
   position: sticky;

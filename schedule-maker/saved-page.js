@@ -160,7 +160,7 @@
 
   function selectedCount(record) {
     try {
-      return scheduleApi.countSelected(scheduleApi.decodeSlots(record.slots));
+      return scheduleApi.countSelected(scheduleApi.decodeSlots(record.slots)) * scheduleApi.SLOT_STEP;
     } catch (_error) {
       return 0;
     }

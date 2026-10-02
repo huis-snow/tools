@@ -5,7 +5,7 @@
   const MAX_RESPONSES = 8;
   const ROOM_ID_BYTES = 16;
   const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
-  const SLOT_PATTERN = /^[A-Za-z0-9_-]{28}$/;
+  const SLOT_PATTERN = /^([A-Za-z0-9_-]{28}|[A-Za-z0-9_-]{56})$/;
   const MAX_TITLE_LENGTH = 60;
   const MAX_NICKNAME_LENGTH = 60;
   const MAX_TIMEZONE_LENGTH = 40;
@@ -100,7 +100,7 @@
     const normalizedDate = normalizeCalendarDate(startDate);
     const firstDay = normalizeInteger(startDay, "시작 요일", 0, 6);
     const slotDay = normalizeInteger(day, "요일", 0, 6);
-    const slotHour = normalizeInteger(hour, "시간", 0, 23);
+    const slotHour = normalizeInteger(Number(hour) * 2, "30분 시간 칸", 0, 47) / 2;
     const firstHour = normalizeInteger(startHour, "하루 시작", 0, 23);
     const columnOffset = (slotDay - firstDay + 7) % 7;
     return addCalendarDays(normalizedDate, columnOffset + (slotHour < firstHour ? 1 : 0));

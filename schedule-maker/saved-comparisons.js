@@ -125,8 +125,7 @@
     if (member.slots instanceof Uint8Array) {
       slots = api.encodeSlots(member.slots);
     } else if (typeof member.slots === "string") {
-      api.decodeSlots(member.slots);
-      slots = member.slots;
+      slots = api.encodeSlots(api.decodeSlots(member.slots));
     } else if (typeof member.canonicalHash === "string") {
       const parsed = api.parseShareHash(member.canonicalHash);
       if (!parsed) throw new Error("취합할 일정의 선택 데이터가 없습니다.");

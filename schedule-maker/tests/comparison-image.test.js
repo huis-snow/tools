@@ -394,7 +394,7 @@ test("축소된 이미지의 자정선은 익일 00시 행 바로 위로 보정�
   assert.equal(midnightLines.length, 1, "자정 강조선은 한 번만 그려야 합니다");
   assert.equal(
     midnightLines[0].args[1],
-    midnightLabel.args[1] - 15,
+    midnightLabel.args[1] - 7.5,
     "자정 강조선은 원래 24시간 좌표가 아니라 축소된 00시 행 상단에 있어야 합니다",
   );
 });

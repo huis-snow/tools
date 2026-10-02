@@ -47,10 +47,10 @@
           <p class="eyebrow"><span></span> WEEKLY AVAILABILITY</p>
           <h1 id="hero-title">되는 시간을,<br /><em>한눈에.</em></h1>
           <p>
-            월요일부터 일요일까지 가능한 시간을 칠해보세요.<br class="desktop-only" />
+            요일과 시작·종료 시간으로 가능한 시간을 추가해 보세요.<br class="desktop-only" />
             링크나 이미지로 바로 나눌 수 있어요.
           </p>
-          <a class="hero-cta" href="#schedule">시간 칠하기 <span aria-hidden="true">↓</span></a>
+          <a class="hero-cta" href="#schedule">시간 입력하기 <span aria-hidden="true">↓</span></a>
         </div>
 
         <div class="hero-demo" aria-label="선택된 주간 일정표 예시">
@@ -74,15 +74,18 @@
             <p>01 / PAINT YOUR TIME</p>
             <h2 id="schedule-title">주간 가능 시간표</h2>
           </div>
-          <p>빈 칸에서 끌면 선택하고, 색칠된 칸에서 끌면 지워져요.</p>
+          <p>가능한 시간 구간을 추가하고, 필요하면 표에서도 다듬어요.</p>
         </div>
 
         <div class="schedule-panel">
-          <div class="setup-bar">
+          <div class="setup-bar range-setup">
             <label class="text-field title-field">
               <span>일정 이름</span>
               <input id="titleInput" type="text" maxlength="60" autocomplete="off" />
             </label>
+            <details class="schedule-options">
+              <summary>표·시간대 설정 <span>하루 시작 · 시작 요일 · 기준 시간대</span></summary>
+              <div class="schedule-options-fields">
             <label class="select-field start-field">
               <span>하루 시작</span>
               <select id="startHourSelect" aria-describedby="startHourHelp"></select>
@@ -106,9 +109,36 @@
                 <button type="button" data-preset="all">전체</button>
               </div>
             </div>
+              </div>
+            </details>
           </div>
 
-          <div class="schedule-toolbar">
+
+              <section class="time-range-editor" aria-labelledby="timeRangeHeading">
+                <div class="time-range-heading">
+                  <h3 id="timeRangeHeading">가능한 시간 추가</h3>
+                  <span>30분 단위 · 여러 요일에 한 번에</span>
+                </div>
+                <form id="timeRangeForm" class="time-range-form">
+                  <fieldset>
+                    <legend>요일</legend>
+                    <div id="timeRangeDays" class="time-range-days"></div>
+                  </fieldset>
+                  <div class="time-range-fields">
+                    <label><span>시작 시간</span><select id="timeRangeStart"></select></label>
+                    <span class="time-range-separator" aria-hidden="true">~</span>
+                    <label><span>종료 시간</span><select id="timeRangeEnd" aria-describedby="timeRangeHelp"></select></label>
+                    <button type="submit" id="timeRangeSubmit">시간 추가</button>
+                    <button type="button" id="timeRangeCancel" hidden>수정 취소</button>
+                  </div>
+                  <p id="timeRangeHelp" class="time-range-help">자정 이후는 ‘익일’ 시간을 골라 주세요. 겹치거나 이어지는 구간은 자동으로 합쳐져요.</p>
+                  <p id="timeRangeError" class="time-range-error" role="alert"></p>
+                </form>
+                <ul id="timeRangeList" class="time-range-list" aria-label="추가한 가능 시간"></ul>
+              </section>
+              <details class="schedule-grid-details">
+                <summary>표로 확인·칠하기 <span>1시간 눈금 · 반 칸은 30분</span></summary>
+<div class="schedule-toolbar">
             <div class="legend"><i aria-hidden="true">✓</i> 선택한 칸은 <strong>가능한 시간</strong>이에요</div>
             <div
               class="paint-mode-control"
@@ -141,9 +171,10 @@
             <div class="schedule-grid" id="scheduleGrid" role="grid" aria-label="월요일부터 일요일까지 시간별 가능 여부"></div>
           </div>
 
-          <div class="schedule-footer">
+          </details>
+              <div class="schedule-footer">
             <div class="selection-status">
-              <p><strong id="selectedCount">0</strong><span> / 168칸 선택</span></p>
+              <p><strong id="selectedCount">0</strong><span>시간 선택</span></p>
               <div class="progress" aria-hidden="true"><span id="selectionProgress"></span></div>
             </div>
             <div class="edit-actions">
@@ -152,7 +183,7 @@
               <button id="resetButton" type="button"><span aria-hidden="true">↺</span> 초기화</button>
             </div>
           </div>
-          <p class="mobile-help">칠하기 방식을 고른 뒤 칸을 끌어보세요. 왼쪽 시간 칸을 밀면 표를 스크롤할 수 있어요.</p>
+          <p class="mobile-help">요일과 시간으로 입력하거나, 표를 펼쳐 직접 칠할 수 있어요.</p>
         </div>
         <div class="live-region sr-only" id="liveRegion" role="status" aria-live="polite"></div>
       </section>
@@ -236,6 +267,7 @@
     <script src="../shared/vault-storage.js?v=20260715-data-safety"></script>
     <script src="../shared/vault-status.js?v=20260715-data-safety"></script>
     <script src="saved-schedules.js"></script>
+    <script src="range-editor.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

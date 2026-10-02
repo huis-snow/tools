@@ -349,7 +349,7 @@ test("손상된 공유 URL이나 저장 실패는 목록으로 이동하지 않�
   });
   assert.equal(failed.location.replacedWith, undefined);
   assert.equal(failed.elements.get("titleInput").value, "저장 실패 일정");
-  assert.equal(failed.elements.get("selectedCount").textContent, "1");
+  assert.equal(failed.elements.get("selectedCount").textContent, "0.5");
 });
 
 test("이름 수정·개별 조회·삭제가 선택 데이터와 생성 시각을 보존한다", () => {

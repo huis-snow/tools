@@ -177,7 +177,7 @@ function waitForAppController() {
 
 function responseSignature(response) {
   return response
-    ? `${response.nickname}\u0000${response.slots}`
+    ? `${response.nickname}\u0000${scheduleApi.encodeSlots(scheduleApi.decodeSlots(response.slots))}`
     : `\u0000${scheduleApi.encodeSlots(scheduleApi.createSlots())}`;
 }
 

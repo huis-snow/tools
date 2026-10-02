@@ -13,13 +13,13 @@ const {
 } = require("../availability-candidates.js");
 
 function slotIndex(hour, day) {
-  return hour * 7 + day;
+  return hour * 14 + day;
 }
 
 function emptyCells() {
   return Array.from({ length: SLOT_COUNT }, (_value, index) => ({
     index,
-    hour: Math.floor(index / 7),
+    hour: Math.floor(index / 7) / 2,
     day: index % 7,
     participantIndexes: [],
     count: 0,
@@ -27,6 +27,11 @@ function emptyCells() {
 }
 
 function setCell(cells, hour, day, participantIndexes) {
+  setHalfCell(cells, hour, day, participantIndexes);
+  setHalfCell(cells, hour + 0.5, day, participantIndexes);
+}
+
+function setHalfCell(cells, hour, day, participantIndexes) {
   const index = slotIndex(hour, day);
   cells[index] = {
     index,
@@ -44,6 +49,8 @@ function createSlots() {
 function select(slots, hour, day) {
   const index = slotIndex(hour, day);
   slots[index >> 3] |= 1 << (index & 7);
+  const next = slotIndex(hour + 0.5, day);
+  slots[next >> 3] |= 1 << (next & 7);
 }
 
 test("CommonJS와 브라우저 전역에서 같은 후보 API를 제공한다", () => {
@@ -73,11 +80,17 @@ test("같은 고정 참석자 집합의 연속 구간은 한 개의 maximal bloc
   assert.equal(result.candidates[0].duration, 6);
   assert.deepEqual(result.candidates[0].slotIndexes, [
     slotIndex(9, 0),
+    slotIndex(9.5, 0),
     slotIndex(10, 0),
+    slotIndex(10.5, 0),
     slotIndex(11, 0),
+    slotIndex(11.5, 0),
     slotIndex(12, 0),
+    slotIndex(12.5, 0),
     slotIndex(13, 0),
+    slotIndex(13.5, 0),
     slotIndex(14, 0),
+    slotIndex(14.5, 0),
   ]);
 });
 
@@ -117,9 +130,13 @@ test("시작 시각의 하루 열 안에서는 자정을 지나도 연속 구간
   assert.equal(candidate.endDayOffset, 1);
   assert.deepEqual(candidate.slotIndexes, [
     slotIndex(22, 4),
+    slotIndex(22.5, 4),
     slotIndex(23, 4),
+    slotIndex(23.5, 4),
     slotIndex(0, 4),
+    slotIndex(0.5, 4),
     slotIndex(1, 4),
+    slotIndex(1.5, 4),
   ]);
 });
 
@@ -276,6 +293,6 @@ test("기간·인원·취합 셀 경계를 검증한다", () => {
   );
   assert.throws(
     () => findAvailabilityCandidates({ cells: cells.slice(1), participantCount: 1 }),
-    /168개/,
+    /336개/,
   );
 });

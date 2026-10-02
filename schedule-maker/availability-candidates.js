@@ -9,7 +9,9 @@
 
   const DAY_COUNT = 7;
   const HOUR_COUNT = 24;
-  const SLOT_COUNT = DAY_COUNT * HOUR_COUNT;
+  const SLOT_STEP = 0.5;
+  const ROW_COUNT = HOUR_COUNT / SLOT_STEP;
+  const SLOT_COUNT = DAY_COUNT * ROW_COUNT;
   const SLOT_BYTES = SLOT_COUNT / 8;
   const MAX_PARTICIPANTS = 200;
   const DEFAULT_DURATION = 3;
@@ -31,12 +33,12 @@
   }
 
   function slotIndex(hour, day) {
-    return hour * DAY_COUNT + day;
+    return hour / SLOT_STEP * DAY_COUNT + day;
   }
 
   function displayHours(startHour) {
-    return Array.from({ length: HOUR_COUNT }, (_value, offset) => (
-      (startHour + offset) % HOUR_COUNT
+    return Array.from({ length: ROW_COUNT }, (_value, offset) => (
+      (startHour + offset * SLOT_STEP) % HOUR_COUNT
     ));
   }
 
@@ -74,7 +76,7 @@
     });
 
     const cells = Array.from({ length: SLOT_COUNT }, (_value, index) => {
-      const hour = Math.floor(index / DAY_COUNT);
+      const hour = Math.floor(index / DAY_COUNT) * SLOT_STEP;
       const day = index % DAY_COUNT;
       const calendarDay = (day + (hour < startHour ? 1 : 0)) % DAY_COUNT;
       const participantIndexes = [];
@@ -126,7 +128,7 @@
 
     cells.forEach((cell) => {
       if (!cell || typeof cell !== "object") throw new TypeError("취합 시간 칸이 올바르지 않습니다.");
-      const hour = requireInteger(cell.hour, "시간", 0, HOUR_COUNT - 1);
+      const hour = requireInteger(Number(cell.hour) / SLOT_STEP, "30분 시간 칸", 0, ROW_COUNT - 1) * SLOT_STEP;
       const day = requireInteger(cell.day, "요일", 0, DAY_COUNT - 1);
       const index = slotIndex(hour, day);
       if (cell.index !== undefined && Number(cell.index) !== index) {
@@ -219,9 +221,9 @@
     participantCount,
     startHour,
   }) {
-    const duration = lastOffset - firstOffset + 1;
+    const duration = (lastOffset - firstOffset + 1) * SLOT_STEP;
     const firstHour = hours[firstOffset];
-    const timelineStartHour = startHour + firstOffset;
+    const timelineStartHour = startHour + firstOffset * SLOT_STEP;
     const timelineEndHour = timelineStartHour + duration;
     const slotIndexes = hours
       .slice(firstOffset, lastOffset + 1)
@@ -252,7 +254,7 @@
       slotIndexes: Object.freeze(slotIndexes),
       firstIndex: slotIndexes[0],
       lastIndex: slotIndexes[slotIndexes.length - 1],
-      screenOrder: dayOrder * HOUR_COUNT + firstOffset,
+      screenOrder: dayOrder * ROW_COUNT + firstOffset,
     });
   }
 
@@ -274,9 +276,9 @@
 
     days.forEach((day, dayOrder) => {
       const rowParticipants = hours.map((hour) => cells[slotIndex(hour, day)].participantIndexes);
-      for (let firstOffset = 0; firstOffset < HOUR_COUNT; firstOffset += 1) {
+      for (let firstOffset = 0; firstOffset < ROW_COUNT; firstOffset += 1) {
         let common = [...rowParticipants[firstOffset]];
-        for (let lastOffset = firstOffset; lastOffset < HOUR_COUNT && common.length; lastOffset += 1) {
+        for (let lastOffset = firstOffset; lastOffset < ROW_COUNT && common.length; lastOffset += 1) {
           if (lastOffset > firstOffset) common = intersect(common, rowParticipants[lastOffset]);
           if (!common.length) break;
 
@@ -286,7 +288,7 @@
             maximalFirst -= 1;
           }
           while (
-            maximalLast + 1 < HOUR_COUNT
+            maximalLast + 1 < ROW_COUNT
             && includesEvery(rowParticipants[maximalLast + 1], common)
           ) {
             maximalLast += 1;
@@ -368,7 +370,7 @@
     if (!options || typeof options !== "object" || Array.isArray(options)) {
       throw new TypeError("후보 설정은 객체여야 합니다.");
     }
-    const duration = requireInteger(options.duration ?? DEFAULT_DURATION, "필요 연속 시간", 1, 6);
+    const duration = requireInteger(Number(options.duration ?? DEFAULT_DURATION) / SLOT_STEP, "필요 연속 시간 (30분 단위)", 1, 12) * SLOT_STEP;
     const normalized = normalizeSource(source, options);
     const startDay = normalizeStartDay(options.startDay ?? source?.startDay ?? 0);
     const allCandidates = enumerateMaximalCandidates(

@@ -11,9 +11,10 @@
     { short: "일", full: "일요일" },
   ];
   const HOURS = 24;
-  const SLOT_COUNT = DAYS.length * HOURS;
+  const SLOT_STEP = 0.5;
+  const SLOT_COUNT = DAYS.length * HOURS / SLOT_STEP;
   const SLOT_BYTES = SLOT_COUNT / 8;
-  const SHARE_VERSION = "1";
+  const SHARE_VERSION = "2";
   const DEFAULT_TITLE = "우리의 가능한 시간";
   const MAX_OVERLAP_LEVEL = 8;
   const DRAFT_KEY = "eonjepyo-draft";
@@ -87,11 +88,11 @@
   }
 
   function slotIndex(hour, day) {
-    return hour * DAYS.length + day;
+    return hour / SLOT_STEP * DAYS.length + day;
   }
 
   function slotCoordinates(index) {
-    return { hour: Math.floor(index / DAYS.length), day: index % DAYS.length };
+    return { hour: Math.floor(index / DAYS.length) * SLOT_STEP, day: index % DAYS.length };
   }
 
   function createSlots(fill = false) {
@@ -156,11 +157,23 @@
   }
 
   function decodeSlots(encoded) {
-    if (typeof encoded !== "string" || !/^[A-Za-z0-9_-]{28}$/.test(encoded)) {
+    if (typeof encoded !== "string" || !/^(?:[A-Za-z0-9_-]{28}|[A-Za-z0-9_-]{56})$/.test(encoded)) {
       throw new Error("공유 일정 데이터의 형식이 올바르지 않습니다.");
     }
     const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
     const bytes = base64ToBytes(base64);
+    // Version 1 stored one bit per hour. Expand each bit into both half hours.
+    if (bytes.length === 21) {
+      const expanded = createSlots();
+      for (let index = 0; index < 168; index += 1) {
+        if (!(bytes[index >> 3] & (1 << (index & 7)))) continue;
+        const hour = Math.floor(index / DAYS.length);
+        const day = index % DAYS.length;
+        setSelected(expanded, slotIndex(hour, day), true);
+        setSelected(expanded, slotIndex(hour + SLOT_STEP, day), true);
+      }
+      return expanded;
+    }
     if (bytes.length !== SLOT_BYTES) throw new Error("공유 일정 데이터의 길이가 올바르지 않습니다.");
     return bytes;
   }
@@ -180,6 +193,11 @@
     return Array.from({ length: HOURS }, (_value, offset) => (start + offset) % HOURS);
   }
 
+  function displaySlots(startHour = 0) {
+    const start = normalizeStartHour(startHour);
+    return Array.from({ length: HOURS / SLOT_STEP }, (_value, offset) => (start + offset * SLOT_STEP) % HOURS);
+  }
+
   function normalizeStartDay(value, fallback = 0) {
     const number = Number(value);
     return Number.isInteger(number) && number >= 0 && number < DAYS.length ? number : fallback;
@@ -196,20 +214,20 @@
     }
     const { hour, day } = slotCoordinates(index);
     return {
-      row: (hour - normalizeStartHour(startHour) + HOURS) % HOURS,
+      row: ((hour - normalizeStartHour(startHour) + HOURS) % HOURS) / SLOT_STEP,
       column: (day - normalizeStartDay(startDay) + DAYS.length) % DAYS.length,
     };
   }
 
   function slotIndexAtVisibleCoordinates(row, column, startHour = 0, startDay = 0) {
-    if (!Number.isInteger(row) || row < 0 || row >= HOURS) {
+    if (!Number.isInteger(row) || row < 0 || row >= HOURS / SLOT_STEP) {
       throw new RangeError("시간표 행 좌표가 범위를 벗어났습니다.");
     }
     if (!Number.isInteger(column) || column < 0 || column >= DAYS.length) {
       throw new RangeError("시간표 열 좌표가 범위를 벗어났습니다.");
     }
     return slotIndex(
-      (normalizeStartHour(startHour) + row) % HOURS,
+      (normalizeStartHour(startHour) + row * SLOT_STEP) % HOURS,
       (normalizeStartDay(startDay) + column) % DAYS.length,
     );
   }
@@ -333,9 +351,9 @@
     if (!baseDate) return null;
     return {
       startDate: baseDate,
-      endDate: Number(hour) === HOURS - 1 ? addCalendarDays(baseDate, 1) : baseDate,
-      startHour: normalizeStartHour(hour),
-      endHour: (normalizeStartHour(hour) + 1) % HOURS,
+      endDate: Number(hour) === HOURS - SLOT_STEP ? addCalendarDays(baseDate, 1) : baseDate,
+      startHour: Number(hour),
+      endHour: (Number(hour) + SLOT_STEP) % HOURS,
     };
   }
 
@@ -367,10 +385,13 @@
     if (!source || source === "#") return null;
     const parameters = new URLSearchParams(source.replace(/^#/, ""));
 
-    if (parameters.getAll("v").length !== 1 || parameters.get("v") !== SHARE_VERSION) {
+    if (parameters.getAll("v").length !== 1 || !["1", SHARE_VERSION].includes(parameters.get("v"))) {
       throw new Error("지원하지 않는 공유 링크 버전입니다.");
     }
     if (parameters.getAll("s").length !== 1) throw new Error("공유 일정 데이터가 없습니다.");
+    if (parameters.get("s")?.length !== (parameters.get("v") === "1" ? 28 : 56)) {
+      throw new Error("공유 일정 데이터의 길이가 올바르지 않습니다.");
+    }
     if (
       parameters.getAll("t").length > 1 ||
       parameters.getAll("z").length > 1 ||
@@ -406,7 +427,25 @@
   }
 
   function formatHour(hour) {
-    return `${String(hour).padStart(2, "0")}:00`;
+    return `${String(Math.floor(hour)).padStart(2, "0")}:${hour % 1 ? "30" : "00"}`;
+  }
+
+  function rangeSlotIndexes(days, start, end, startHour = 0) {
+    const firstHour = normalizeStartHour(startHour);
+    if (!Array.isArray(days) || !days.length || days.some((day) => !Number.isInteger(day) || day < 0 || day >= DAYS.length)) {
+      throw new Error("요일을 하나 이상 골라 주세요.");
+    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isInteger(start / SLOT_STEP) || !Number.isInteger(end / SLOT_STEP)) {
+      throw new Error("시간은 30분 단위로 골라 주세요.");
+    }
+    if (start < firstHour || end > firstHour + HOURS || start >= end) {
+      throw new Error("종료 시간은 시작 시간보다 뒤여야 해요. 자정 이후는 ‘익일’ 시간을 골라 주세요.");
+    }
+    const indexes = [];
+    for (let hour = start; hour < end; hour += SLOT_STEP) {
+      new Set(days).forEach((day) => indexes.push(slotIndex(hour % HOURS, day)));
+    }
+    return indexes;
   }
 
   function selectedRanges(slots, day, startHour = 0) {
@@ -415,7 +454,7 @@
     let start = null;
     const firstHour = normalizeStartHour(startHour);
 
-    for (let offset = 0; offset <= HOURS; offset += 1) {
+    for (let offset = 0; offset <= HOURS; offset += SLOT_STEP) {
       const hour = (firstHour + offset) % HOURS;
       const selected = offset < HOURS && isSelected(slots, slotIndex(hour, day));
       const timelineHour = firstHour + offset;
@@ -455,7 +494,7 @@
       lines.push(`${day.short}: ${description}`);
     });
 
-    lines.push("", `가능한 시간 ${countSelected(slots)}칸 · 언제표`);
+    lines.push("", `가능한 시간 ${countSelected(slots) * SLOT_STEP}시간 · 언제표`);
     return lines.join("\n");
   }
 
@@ -562,8 +601,8 @@
     const gridY = 156;
     const gridWidth = 900;
     const headerHeight = 45;
-    const rowHeight = 30;
-    const gridHeight = headerHeight + HOURS * rowHeight;
+    const rowHeight = 15;
+    const gridHeight = headerHeight + HOURS / SLOT_STEP * rowHeight;
     const height = gridY + gridHeight + 74;
     const fontFamily = '"Schedule D2Coding", "D2Coding", monospace';
     const title = cleanMeta(metadata.title, DEFAULT_TITLE, 60);
@@ -613,7 +652,7 @@
       117,
     );
     context.textAlign = "right";
-    context.fillText(`가능한 시간  ${countSelected(slots)}칸`, width - 36, 117);
+    context.fillText(`가능한 시간  ${countSelected(slots) * SLOT_STEP}시간`, width - 36, 117);
 
     context.fillStyle = "#153c34";
     context.fillRect(36, gridY, width - 72, headerHeight);
@@ -635,14 +674,14 @@
       );
     });
 
-    displayHours(startHour).forEach((hour, rowOffset) => {
+    displaySlots(startHour).forEach((hour, rowOffset) => {
       const top = gridY + headerHeight + rowOffset * rowHeight;
       context.fillStyle = rowOffset % 2 ? "#f7f8ef" : "#fffdf5";
       context.fillRect(36, top, width - 72, rowHeight);
       context.font = `400 ${hour < startHour ? 8 : 10}px ${fontFamily}`;
       context.fillStyle = "#60736c";
       context.textAlign = "center";
-      context.fillText(`${hour < startHour ? "익일 " : ""}${formatHour(hour)}`, 70, top + rowHeight / 2);
+      if (Number.isInteger(hour)) context.fillText(`${hour < startHour ? "익일 " : ""}${formatHour(hour)}`, 70, top + rowHeight);
 
       dayOrder.forEach((day, columnIndex) => {
         if (!isSelected(slots, slotIndex(hour, day))) return;
@@ -657,7 +696,7 @@
     });
 
     context.fillStyle = "#9aaba1";
-    for (let hour = 0; hour <= HOURS; hour += 1) {
+    for (let hour = 0; hour <= HOURS / SLOT_STEP; hour += 1) {
       const y = gridY + headerHeight + hour * rowHeight;
       context.fillRect(36, y, width - 72, 1);
     }
@@ -667,7 +706,7 @@
       context.fillRect(x, gridY, 1, gridHeight);
     }
     if (startHour !== 0) {
-      const midnightOffset = HOURS - startHour;
+      const midnightOffset = (HOURS - startHour) / SLOT_STEP;
       const midnightY = gridY + headerHeight + midnightOffset * rowHeight;
       context.fillStyle = "#f36c3f";
       context.fillRect(36, midnightY, width - 72, 2);
@@ -761,7 +800,7 @@
       ? aggregate.cells.filter((cell) => cell.count === aggregate.maxCount).length
       : 0;
     const everyoneCells = aggregate.cells.filter((cell) => cell.count === roster.length).length;
-    const imageHourOrder = displayHours(startHour);
+    const imageHourOrder = displaySlots(startHour);
     const isCellInImageScope = (cell) => mode === "overlap"
       ? cell.count > 0
       : mode === "all"
@@ -784,7 +823,7 @@
     const gridY = 222;
     const gridWidth = 880;
     const headerHeight = 45;
-    const rowHeight = 30;
+    const rowHeight = 15;
     const gridHeight = headerHeight + imageHours.length * rowHeight;
     const height = gridY + gridHeight + 92;
     const fontFamily = '"Schedule D2Coding", "D2Coding", monospace';
@@ -885,7 +924,7 @@
       context.font = `400 ${hour < startHour ? 9 : 10}px ${fontFamily}`;
       context.fillStyle = "#60736c";
       context.textAlign = "center";
-      context.fillText(`${hour < startHour ? "익일 " : ""}${formatHour(hour)}`, 80, top + rowHeight / 2);
+      if (Number.isInteger(hour) || croppedRowOffset === 0) context.fillText(`${hour < startHour ? "익일 " : ""}${formatHour(hour)}`, 80, top + rowHeight / 2);
 
       dayOrder.forEach((day, columnIndex) => {
         const cell = aggregate.cells[slotIndex(hour, day)];
@@ -934,7 +973,7 @@
       context.fillRect(x, gridY, 1, gridHeight);
     }
     if (startHour !== 0 && imageHours.length) {
-      const midnightOffset = HOURS - startHour;
+      const midnightOffset = (HOURS - startHour) / SLOT_STEP;
       const croppedMidnightOffset = midnightOffset - firstRowOffset;
       if (croppedMidnightOffset > 0 && croppedMidnightOffset < imageHours.length) {
         const midnightY = gridY + headerHeight + croppedMidnightOffset * rowHeight;
@@ -1083,6 +1122,7 @@
     let comparisonCollectionDirty = false;
     let comparisonImageBusy = false;
     let scheduleReadOnly = false;
+    let rangeEditor = null;
     let scheduleViewStartDate = "";
     let comparisonViewStartDate = "";
     const participantColors = ["#f36c3f", "#2d765f", "#49778a", "#d69231", "#7b6aa8", "#b85167", "#42877d", "#6d7f35"];
@@ -1280,11 +1320,11 @@
 
     function daySelectionState(day) {
       let selected = 0;
-      for (let hour = 0; hour < HOURS; hour += 1) {
+      for (let hour = 0; hour < HOURS; hour += SLOT_STEP) {
         if (isSelected(slots, slotIndex(hour, day))) selected += 1;
       }
       if (selected === 0) return "false";
-      if (selected === HOURS) return "true";
+      if (selected === HOURS / SLOT_STEP) return "true";
       return "mixed";
     }
 
@@ -1306,7 +1346,7 @@
       const startHour = currentStartHour();
       const timelineHour = timelineHourFor(hour);
       const startLabel = formatTimelineHour(timelineHour, startHour);
-      const endLabel = formatTimelineHour(timelineHour + 1, startHour);
+      const endLabel = formatTimelineHour(timelineHour + SLOT_STEP, startHour);
       const dateLabel = slotCalendarLabel(
         scheduleViewStartDate,
         currentStartDay(),
@@ -1335,12 +1375,13 @@
           `${date ? calendarDateFull(date) : DAYS[day].full} 전체 ${state === "true" ? "선택 해제" : "선택"}`,
         );
       });
-      timeButtons.forEach((button, hour) => {
+      timeButtons.forEach((button, offset) => {
+        const hour = offset * SLOT_STEP;
         const state = hourSelectionState(hour);
         const startHour = currentStartHour();
         const timelineHour = timelineHourFor(hour);
         const startLabel = formatTimelineHour(timelineHour, startHour);
-        const endLabel = formatTimelineHour(timelineHour + 1, startHour);
+        const endLabel = formatTimelineHour(timelineHour + SLOT_STEP, startHour);
         button.setAttribute("aria-checked", state);
         button.setAttribute("aria-label", `${startLabel}부터 ${endLabel}까지 일주일 전체 ${state === "true" ? "선택 해제" : "선택"}`);
       });
@@ -1348,7 +1389,7 @@
 
     function updateStatus() {
       const selected = countSelected(slots);
-      elements.count.textContent = String(selected);
+      elements.count.textContent = String(selected * SLOT_STEP);
       elements.progress.style.width = `${(selected / SLOT_COUNT) * 100}%`;
       elements.undo.disabled = scheduleReadOnly || history.length === 0;
       elements.clear.disabled = scheduleReadOnly || selected === 0;
@@ -1404,6 +1445,7 @@
       slotElements.forEach((_element, index) => updateSlotElement(index));
       updateHeaders();
       updateStatus();
+      rangeEditor?.render();
       const startHour = currentStartHour();
       elements.rangeLabel.textContent = startHour === 0
         ? "00:00부터 24:00까지"
@@ -1423,7 +1465,7 @@
       mutator();
       if (!pushHistory(previous)) return;
       renderAll();
-      announce(message || `가능한 시간 ${countSelected(slots)}칸을 선택했습니다.`);
+      announce(message || `가능한 시간 ${countSelected(slots) * SLOT_STEP}시간을 선택했습니다.`);
     }
 
     function setRovingFocus(index, shouldFocus = true) {
@@ -1472,7 +1514,7 @@
         button.addEventListener("click", () => {
           const select = daySelectionState(dayIndex) !== "true";
           commitMutation(() => {
-            for (let hour = 0; hour < HOURS; hour += 1) setSelected(slots, slotIndex(hour, dayIndex), select);
+            for (let hour = 0; hour < HOURS; hour += SLOT_STEP) setSelected(slots, slotIndex(hour, dayIndex), select);
           }, `${day.full} 전체를 ${select ? "선택했습니다" : "지웠습니다"}.`);
         });
         dayButtons[dayIndex] = button;
@@ -1481,9 +1523,9 @@
       fragment.append(headerRow);
 
       const startHour = currentStartHour();
-      displayHours(startHour).forEach((hour) => {
+      displaySlots(startHour).forEach((hour) => {
         const row = document.createElement("div");
-        row.className = "grid-row";
+        row.className = `grid-row ${Number.isInteger(hour) ? "hour-first" : "hour-second"}`;
         row.setAttribute("role", "row");
 
         const timelineHour = hour < startHour ? hour + HOURS : hour;
@@ -1495,14 +1537,14 @@
         timeButton.className = "time-toggle";
         if (isNextDayStart) timeButton.classList.add("next-day-start");
         timeButton.setAttribute("role", "checkbox");
-        timeButton.textContent = startLabel;
+        timeButton.textContent = Number.isInteger(hour) ? startLabel : "";
         timeButton.addEventListener("click", () => {
           const select = hourSelectionState(hour) !== "true";
           commitMutation(() => {
             for (let day = 0; day < DAYS.length; day += 1) setSelected(slots, slotIndex(hour, day), select);
           }, `${startLabel} 시간대를 ${select ? "선택했습니다" : "지웠습니다"}.`);
         });
-        timeButtons[hour] = timeButton;
+        timeButtons[hour / SLOT_STEP] = timeButton;
         row.append(timeButton);
 
         dayOrder.forEach((day) => {
@@ -1583,11 +1625,11 @@
 
       if (event.key === "ArrowLeft" && columnOffset > 0) destination = slotIndex(hour, (day + DAYS.length - 1) % DAYS.length);
       else if (event.key === "ArrowRight" && columnOffset < DAYS.length - 1) destination = slotIndex(hour, (day + 1) % DAYS.length);
-      else if (event.key === "ArrowUp" && rowOffset > 0) destination = slotIndex((hour + HOURS - 1) % HOURS, day);
-      else if (event.key === "ArrowDown" && rowOffset < HOURS - 1) destination = slotIndex((hour + 1) % HOURS, day);
+      else if (event.key === "ArrowUp" && rowOffset > 0) destination = slotIndex((hour + HOURS - SLOT_STEP) % HOURS, day);
+      else if (event.key === "ArrowDown" && rowOffset < HOURS - SLOT_STEP) destination = slotIndex((hour + SLOT_STEP) % HOURS, day);
       else if (event.key === "Home") destination = event.ctrlKey ? slotIndex(startHour, startDay) : slotIndex(hour, startDay);
       else if (event.key === "End") destination = event.ctrlKey
-        ? slotIndex((startHour + HOURS - 1) % HOURS, lastDay)
+        ? slotIndex((startHour + HOURS - SLOT_STEP) % HOURS, lastDay)
         : slotIndex(hour, lastDay);
       else if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
@@ -1697,6 +1739,7 @@
       updateHeaders();
       updateStatus();
       saveDraft();
+      rangeEditor?.render();
       announce(
         `${completed.mode === "rectangle" ? "네모 영역 " : ""}${completed.touched.size}칸을 ${
           completed.paintValue ? "선택했습니다" : "지웠습니다"
@@ -1741,7 +1784,7 @@
       const start = preset === "weekday-morning" ? 9 : 18;
       const end = preset === "weekday-morning" ? 12 : 22;
       commitMutation(() => {
-        for (let hour = start; hour < end; hour += 1) {
+        for (let hour = start; hour < end; hour += SLOT_STEP) {
           for (let day = 0; day < 5; day += 1) setSelected(slots, slotIndex(hour, day), true);
         }
       }, `${preset === "weekday-morning" ? "평일 오전" : "평일 저녁"}을 선택했습니다.`);
@@ -1905,7 +1948,7 @@
 
     function currentComparisonCandidateDuration() {
       const duration = Number(elements.compareCandidateDuration?.value);
-      return Number.isInteger(duration) && duration >= 1 && duration <= 6 ? duration : 3;
+      return Number.isInteger(duration / SLOT_STEP) && duration >= SLOT_STEP && duration <= 6 ? duration : 3;
     }
 
     function currentComparisonCandidateThreshold() {
@@ -2820,7 +2863,7 @@
       const startHour = currentComparisonStartHour();
       const timelineHour = cell.hour < startHour ? cell.hour + HOURS : cell.hour;
       const startLabel = formatTimelineHour(timelineHour, startHour);
-      const endLabel = formatTimelineHour(timelineHour + 1, startHour);
+      const endLabel = formatTimelineHour(timelineHour + SLOT_STEP, startHour);
       const dateLabel = slotCalendarLabel(
         comparisonViewStartDate,
         currentComparisonStartDay(),
@@ -2900,20 +2943,21 @@
       fragment.append(headerRow);
 
       const startHour = currentComparisonStartHour();
-      displayHours(startHour).forEach((hour) => {
+      displaySlots(startHour).forEach((hour) => {
         const row = document.createElement("div");
-        row.className = "compare-grid-row";
+        row.className = `compare-grid-row ${Number.isInteger(hour) ? "hour-first" : "hour-second"}`;
         row.setAttribute("role", "row");
         const timelineHour = hour < startHour ? hour + HOURS : hour;
         const startLabel = formatTimelineHour(timelineHour, startHour);
-        const endLabel = formatTimelineHour(timelineHour + 1, startHour);
+        const endLabel = formatTimelineHour(timelineHour + SLOT_STEP, startHour);
         const isNextDayStart = startHour !== 0 && hour === 0;
 
         const time = document.createElement("div");
         time.className = "compare-time";
         if (isNextDayStart) time.classList.add("next-day-start");
         time.setAttribute("role", "rowheader");
-        time.textContent = startLabel;
+        time.textContent = Number.isInteger(hour) ? startLabel : "";
+        time.setAttribute("aria-label", startLabel);
         row.append(time);
 
         dayOrder.forEach((day) => {
@@ -3057,11 +3101,11 @@
 
       if (event.key === "ArrowLeft" && columnOffset > 0) destination = slotIndex(hour, (day + DAYS.length - 1) % DAYS.length);
       else if (event.key === "ArrowRight" && columnOffset < DAYS.length - 1) destination = slotIndex(hour, (day + 1) % DAYS.length);
-      else if (event.key === "ArrowUp" && rowOffset > 0) destination = slotIndex((hour + HOURS - 1) % HOURS, day);
-      else if (event.key === "ArrowDown" && rowOffset < HOURS - 1) destination = slotIndex((hour + 1) % HOURS, day);
+      else if (event.key === "ArrowUp" && rowOffset > 0) destination = slotIndex((hour + HOURS - SLOT_STEP) % HOURS, day);
+      else if (event.key === "ArrowDown" && rowOffset < HOURS - SLOT_STEP) destination = slotIndex((hour + SLOT_STEP) % HOURS, day);
       else if (event.key === "Home") destination = event.ctrlKey ? slotIndex(startHour, startDay) : slotIndex(hour, startDay);
       else if (event.key === "End") destination = event.ctrlKey
-        ? slotIndex((startHour + HOURS - 1) % HOURS, lastDay)
+        ? slotIndex((startHour + HOURS - SLOT_STEP) % HOURS, lastDay)
         : slotIndex(hour, lastDay);
       else if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
@@ -3097,6 +3141,7 @@
     function applyExternalSchedule(schedule = {}) {
       if (!elements.grid) return false;
       if (dragging) cancelDrag();
+      rangeEditor?.cancel();
       scheduleViewStartDate = normalizeCalendarDate(schedule.startDate);
       const nextSlots = schedule.slots instanceof Uint8Array
         ? schedule.slots.slice()
@@ -3151,6 +3196,7 @@
         button.disabled = scheduleReadOnly;
       });
       updateStatus();
+      rangeEditor?.render();
     }
 
     function replaceComparisonSchedules(schedules = [], options = {}) {
@@ -3182,6 +3228,11 @@
 
     function initScheduleApp() {
       if (!elements.grid) return false;
+      rangeEditor = root.EonjepyoRangeEditor?.create({
+        document,
+        getState: () => ({ slots, ...metadata(), readOnly: scheduleReadOnly }),
+        commit: commitMutation,
+      }) || null;
       if (window.location.hash === "#compare") {
         window.location.replace("./compare.html");
         return true;
@@ -3416,6 +3467,7 @@
     MAX_OVERLAP_LEVEL,
     DAYS,
     HOURS,
+    SLOT_STEP,
     SLOT_COUNT,
     SLOT_BYTES,
     slotIndex,
@@ -3428,6 +3480,8 @@
     decodeSlots,
     normalizeStartHour,
     displayHours,
+    displaySlots,
+    rangeSlotIndexes,
     normalizeStartDay,
     displayDayIndexes,
     visibleSlotCoordinates,

@@ -83,15 +83,15 @@ test("브라우저 부팅은 일정 저장 키를 보관함으로 옮기고 실�
   }
 });
 
-test("월요일 0시부터 일요일 23시까지 168개 인덱스가 모두 고유하다", () => {
+test("월요일 0시부터 일요일 23시 30분까지 336개 인덱스가 모두 고유하다", () => {
   const indexes = new Set();
-  for (let hour = 0; hour < HOURS; hour += 1) {
+  for (let hour = 0; hour < HOURS; hour += 0.5) {
     for (let day = 0; day < DAYS.length; day += 1) indexes.add(slotIndex(hour, day));
   }
   assert.equal(indexes.size, SLOT_COUNT);
   assert.equal(slotIndex(0, 0), 0);
-  assert.equal(slotIndex(23, 6), 167);
-  assert.deepEqual(slotCoordinates(167), { hour: 23, day: 6 });
+  assert.equal(slotIndex(23.5, 6), 335);
+  assert.deepEqual(slotCoordinates(335), { hour: 23.5, day: 6 });
 });
 
 test("겹침 색은 1명부터 8명까지 서로 다른 단계이며 그 이상은 8단계로 묶는다", () => {
@@ -104,14 +104,14 @@ test("겹침 색은 1명부터 8명까지 서로 다른 단계이며 그 이상�
 test("첫 칸과 마지막 칸을 서로 영향 없이 선택하고 지운다", () => {
   const slots = createSlots();
   setSelected(slots, 0, true);
-  setSelected(slots, 167, true);
+  setSelected(slots, 335, true);
   assert.equal(isSelected(slots, 0), true);
   assert.equal(isSelected(slots, 1), false);
-  assert.equal(isSelected(slots, 166), false);
-  assert.equal(isSelected(slots, 167), true);
+  assert.equal(isSelected(slots, 334), false);
+  assert.equal(isSelected(slots, 335), true);
   setSelected(slots, 0, false);
   assert.equal(isSelected(slots, 0), false);
-  assert.equal(isSelected(slots, 167), true);
+  assert.equal(isSelected(slots, 335), true);
 });
 
 test("하루 시작이 8시면 8시부터 23시, 익일 0시부터 7시 순서로 표시한다", () => {
@@ -128,7 +128,7 @@ test("토요일부터 시작하면 토·일·월·화·수·목·금 순서로 �
 
 test("네모 영역은 회전된 시간·요일의 화면 좌표를 기준으로 칸을 계산한다", () => {
   const basic = rectangleSlotIndexes(slotIndex(9, 0), slotIndex(11, 2), 0, 0);
-  assert.deepEqual(basic, [63, 64, 65, 70, 71, 72, 77, 78, 79]);
+  assert.deepEqual(basic, Array.from({ length: 5 }, (_, row) => [slotIndex(9 + row / 2, 0), slotIndex(9 + row / 2, 1), slotIndex(9 + row / 2, 2)]).flat());
   assert.deepEqual(
     rectangleSlotIndexes(slotIndex(11, 2), slotIndex(9, 0), 0, 0),
     basic,
@@ -136,14 +136,14 @@ test("네모 영역은 회전된 시간·요일의 화면 좌표를 기준으로
 
   assert.deepEqual(
     rectangleSlotIndexes(slotIndex(23, 6), slotIndex(1, 1), 8, 5),
-    [167, 161, 162, 6, 0, 1, 13, 7, 8],
-    "08시·토요일 시작 화면에서 일요일 밤부터 화요일 새벽까지 3×3 영역이어야 한다",
+    [23, 23.5, 0, 0.5, 1].flatMap((hour) => [slotIndex(hour, 6), slotIndex(hour, 0), slotIndex(hour, 1)]),
+    "08시·토요일 시작 화면에서 일요일 밤부터 화요일 새벽까지 5×3개의 30분 영역이어야 한다",
   );
-  assert.deepEqual(visibleSlotCoordinates(slotIndex(0, 0), 8, 5), { row: 16, column: 2 });
-  assert.equal(slotIndexAtVisibleCoordinates(16, 2, 8, 5), slotIndex(0, 0));
-  assert.equal(new Set(rectangleSlotIndexes(slotIndex(8, 5), slotIndex(7, 4), 8, 5)).size, 168);
+  assert.deepEqual(visibleSlotCoordinates(slotIndex(0, 0), 8, 5), { row: 32, column: 2 });
+  assert.equal(slotIndexAtVisibleCoordinates(32, 2, 8, 5), slotIndex(0, 0));
+  assert.equal(new Set(rectangleSlotIndexes(slotIndex(8, 5), slotIndex(7.5, 4), 8, 5)).size, 336);
   assert.throws(() => visibleSlotCoordinates(-1, 8, 5), RangeError);
-  assert.throws(() => slotIndexAtVisibleCoordinates(24, 0, 8, 5), RangeError);
+  assert.throws(() => slotIndexAtVisibleCoordinates(48, 0, 8, 5), RangeError);
 });
 
 test("온라인 방 날짜는 7일 기간과 자정 이후 실제 날짜를 시간대와 무관하게 표시한다", () => {
@@ -154,17 +154,17 @@ test("온라인 방 날짜는 7일 기간과 자정 이후 실제 날짜를 시�
   assert.equal(calendarPeriodLabel("2026-07-20"), "2026. 7. 20.(월) ~ 7. 26.(일)");
   assert.equal(
     slotCalendarLabel("2026-07-20", 0, 0, 0, 8, { full: true }),
-    "2026년 7월 21일 화요일 00:00–01:00",
+    "2026년 7월 21일 화요일 00:00–00:30",
   );
   assert.equal(
-    slotCalendarLabel("2026-07-20", 0, 6, 23, 8),
-    "2026. 7. 26.(일) 23:00–2026. 7. 27.(월) 00:00",
+    slotCalendarLabel("2026-07-20", 0, 6, 23.5, 8),
+    "2026. 7. 26.(일) 23:30–2026. 7. 27.(월) 00:00",
   );
 });
 
-test("빈 일정과 전체 일정은 각각 고정된 28자 문자열로 인코딩된다", () => {
-  assert.equal(encodeSlots(createSlots()), "AAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-  assert.equal(encodeSlots(createSlots(true)), "____________________________");
+test("빈 일정과 전체 일정은 각각 고정된 56자 문자열로 인코딩된다", () => {
+  assert.equal(encodeSlots(createSlots()), "A".repeat(56));
+  assert.equal(encodeSlots(createSlots(true)), "_".repeat(56));
 });
 
 test("여러 선택 패턴이 인코딩과 디코딩 후 그대로 복원된다", () => {
@@ -221,8 +221,7 @@ test("저수준 출력 함수는 빈 일정 이름에 호환용 기본 제목을
 });
 
 test("하루 시작과 시작 요일 정보가 없는 기존 공유 hash는 0시·월요일 시작으로 해석한다", () => {
-  const encoded = encodeSlots(createSlots());
-  const parsed = parseShareHash(`#v=1&s=${encoded}`);
+  const parsed = parseShareHash("#v=1&s=" + "A".repeat(28));
   assert.equal(parsed.startHour, 0);
   assert.equal(parsed.startDay, 0);
 });
@@ -230,26 +229,26 @@ test("하루 시작과 시작 요일 정보가 없는 기존 공유 hash는 0시
 test("공유 hash는 버전과 선택 데이터가 없거나 중복되면 거절한다", () => {
   const encoded = encodeSlots(createSlots());
   assert.throws(() => parseShareHash(`#s=${encoded}`));
-  assert.throws(() => parseShareHash(`#v=2&s=${encoded}`));
+  assert.throws(() => parseShareHash(`#v=3&s=${encoded}`));
   assert.throws(() => parseShareHash(`#v=1`));
-  assert.throws(() => parseShareHash(`#v=1&v=1&s=${encoded}`));
-  assert.throws(() => parseShareHash(`#v=1&s=${encoded}&s=${encoded}`));
-  assert.throws(() => parseShareHash(`#v=1&h=8&h=9&s=${encoded}`));
-  assert.throws(() => parseShareHash(`#v=1&d=5&d=6&s=${encoded}`));
+  assert.throws(() => parseShareHash(`#v=2&v=2&s=${encoded}`));
+  assert.throws(() => parseShareHash(`#v=2&s=${encoded}&s=${encoded}`));
+  assert.throws(() => parseShareHash(`#v=2&h=8&h=9&s=${encoded}`));
+  assert.throws(() => parseShareHash(`#v=2&d=5&d=6&s=${encoded}`));
   assert.equal(parseShareHash(""), null);
 });
 
 test("공유 hash의 하루 시작은 0부터 23까지의 정수만 허용한다", () => {
   const encoded = encodeSlots(createSlots());
   for (const invalid of ["", "-1", "24", "1.5", "오전", "008"]) {
-    assert.throws(() => parseShareHash(`#v=1&h=${encodeURIComponent(invalid)}&s=${encoded}`));
+    assert.throws(() => parseShareHash(`#v=2&h=${encodeURIComponent(invalid)}&s=${encoded}`));
   }
 });
 
 test("공유 hash의 시작 요일은 0부터 6까지의 정수만 허용한다", () => {
   const encoded = encodeSlots(createSlots());
   for (const invalid of ["", "-1", "7", "1.5", "토", "06"]) {
-    assert.throws(() => parseShareHash(`#v=1&d=${encodeURIComponent(invalid)}&s=${encoded}`));
+    assert.throws(() => parseShareHash(`#v=2&d=${encodeURIComponent(invalid)}&s=${encoded}`));
   }
 });
 
@@ -261,12 +260,12 @@ test("공유 URL은 기존 경로와 query를 유지하고 hash만 교체한다"
   const parsed = new URL(url);
   assert.equal(parsed.pathname, "/tools/schedule/");
   assert.equal(parsed.search, "?from=home");
-  assert.match(parsed.hash, /^#v=1&/);
+  assert.match(parsed.hash, /^#v=2&/);
 });
 
 test("연속 선택은 하나의 시간 범위로 합치고 빈 구간은 분리한다", () => {
   const slots = createSlots();
-  [9, 10, 11, 14, 15].forEach((hour) => setSelected(slots, slotIndex(hour, 0), true));
+  [9, 10, 11, 14, 15].forEach((hour) => [hour, (hour) + 0.5].forEach((halfHour) => setSelected(slots, slotIndex(halfHour, 0), true)));
   assert.deepEqual(selectedRanges(slots, 0), [
     [9, 12],
     [14, 16],
@@ -278,8 +277,8 @@ test("연속 선택은 하나의 시간 범위로 합치고 빈 구간은 분리
 
 test("텍스트 일정은 설정한 시작 요일부터 출력하되 선택 요일은 바꾸지 않는다", () => {
   const slots = createSlots();
-  setSelected(slots, slotIndex(9, 0), true);
-  setSelected(slots, slotIndex(10, 6), true);
+  [9, (9) + 0.5].forEach((halfHour) => setSelected(slots, slotIndex(halfHour, 0), true));
+  [10, (10) + 0.5].forEach((halfHour) => setSelected(slots, slotIndex(halfHour, 6), true));
   const text = formatScheduleText(slots, { startHour: 8, startDay: 6 });
 
   assert.match(text, /시작 요일: 일요일/);
@@ -289,7 +288,7 @@ test("텍스트 일정은 설정한 시작 요일부터 출력하되 선택 요�
 
 test("8시 시작 일정은 같은 요일 열의 23시·0시·1시를 자정 너머 한 범위로 합친다", () => {
   const slots = createSlots();
-  [23, 0, 1].forEach((hour) => setSelected(slots, slotIndex(hour, 0), true));
+  [23, 0, 1].forEach((hour) => [hour, (hour) + 0.5].forEach((halfHour) => setSelected(slots, slotIndex(halfHour, 0), true)));
 
   assert.deepEqual(selectedRanges(slots, 0, 8), [[23, 26]]);
   assert.match(
@@ -300,19 +299,19 @@ test("8시 시작 일정은 같은 요일 열의 23시·0시·1시를 자정 너
 
 test("23시와 하루 전체 선택의 끝은 24:00으로 표시한다", () => {
   const lastHour = createSlots();
-  setSelected(lastHour, slotIndex(23, 6), true);
+  [23, (23) + 0.5].forEach((halfHour) => setSelected(lastHour, slotIndex(halfHour, 6), true));
   assert.match(formatScheduleText(lastHour), /일: 23:00–24:00/);
 
   const fullMonday = createSlots();
-  for (let hour = 0; hour < HOURS; hour += 1) setSelected(fullMonday, slotIndex(hour, 0), true);
+  for (let hour = 0; hour < HOURS; hour += 0.5) setSelected(fullMonday, slotIndex(hour, 0), true);
   assert.deepEqual(selectedRanges(fullMonday, 0), [[0, 24]]);
   assert.match(formatScheduleText(fullMonday), /월: 00:00–24:00/);
-  assert.equal(countSelected(fullMonday), 24);
+  assert.equal(countSelected(fullMonday), 48);
 });
 
 test("8시 시작 일정의 하루 전체는 익일 8시까지 한 범위로 표시한다", () => {
   const fullMonday = createSlots();
-  for (let hour = 0; hour < HOURS; hour += 1) {
+  for (let hour = 0; hour < HOURS; hour += 0.5) {
     setSelected(fullMonday, slotIndex(hour, 0), true);
   }
 
@@ -730,7 +729,7 @@ test("저장 모듈을 쓸 수 없으면 공유 URL 일정을 작성 화면에 �
   const result = runWithPageDom(WRITER_PAGE_IDS, shareHash, { pathname: "/schedule-maker/" });
 
   assert.equal(result.elements.get("titleInput").value, "새벽 공대");
-  assert.equal(result.elements.get("selectedCount").textContent, "1");
+  assert.equal(result.elements.get("selectedCount").textContent, "0.5");
   assert.equal(result.location.href, "https://example.test/schedule-maker/");
   assert.equal(result.location.search, "");
   assert.equal(result.location.hash, "");
@@ -750,12 +749,13 @@ test("작성 전용 DOM은 취합 요소 없이 독립 초기화된다", () => {
     "textLabel", "imageButton", "imageLabel", "pngButton", "toast",
   ];
   const result = runWithPageDom(ids);
-  assert.equal(result.elements.get("scheduleGrid").children[0].children.length, 25);
+  assert.equal(result.elements.get("scheduleGrid").children[0].children.length, 49);
   const timeLabels = descendantsMatching(
     result.elements.get("scheduleGrid"),
     (element) => element.className === "time-toggle",
   ).map((element) => element.textContent);
-  assert.equal(timeLabels.length, 24);
+  assert.equal(timeLabels.length, 48);
+  assert.equal(timeLabels.filter(Boolean).length, 24);
   assert.ok(timeLabels.includes("익일 00:00"));
   assert.ok(timeLabels.every((label) => !label.includes("~")), "시간 행에는 반복되는 끝시간을 표시하지 않습니다");
   assert.equal(result.storageReads, 2, "초안과 남아 있는 복구 잠금을 각각 확인합니다");
@@ -814,7 +814,7 @@ test("온라인 방 입력표는 실제 날짜 열과 자정 이후 날짜를 �
     result.elements.get("scheduleGrid"),
     (element) => element.dataset?.index === String(slotIndex(0, 2)),
   )[0];
-  assert.match(midnight.title, /2026\. 7\. 23\.\(목\) 00:00–01:00/);
+  assert.match(midnight.title, /2026\. 7\. 23\.\(목\) 00:00–00:30/);
 });
 
 test("이어 칠하기는 지나간 칸만, 네모 영역은 화면 기준 직사각형 전체를 한 번에 칠한다", () => {
@@ -874,7 +874,7 @@ test("이어 칠하기는 지나간 칸만, 네모 영역은 화면 기준 직�
     clientY: 1,
     preventDefault() {},
   });
-  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+  assert.equal(countSelected(result.app.getSchedule().slots), 15);
 
   const smallerEnd = slotIndex(0, 0);
   result.setPointedElement(slotElement(smallerEnd));
@@ -884,7 +884,7 @@ test("이어 칠하기는 지나간 칸만, 네모 영역은 화면 기준 직�
     clientY: 1,
     preventDefault() {},
   });
-  assert.equal(countSelected(result.app.getSchedule().slots), 4, "영역을 줄이면 빠진 칸은 원래 상태로 돌아가야 한다");
+  assert.equal(countSelected(result.app.getSchedule().slots), 6, "영역을 줄이면 빠진 칸은 원래 상태로 돌아가야 한다");
 
   result.setPointedElement(slotElement(end));
   result.documentListeners.get("pointermove")({
@@ -894,11 +894,11 @@ test("이어 칠하기는 지나간 칸만, 네모 영역은 화면 기준 직�
     preventDefault() {},
   });
   result.documentListeners.get("pointerup")({ pointerId: 2 });
-  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+  assert.equal(countSelected(result.app.getSchedule().slots), 15);
   drag(anchor, end, 3);
   assert.equal(countSelected(result.app.getSchedule().slots), 0, "칠해진 시작 칸에서 끌면 영역 전체를 지워야 한다");
   result.elements.get("undoButton").listeners.get("click")();
-  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+  assert.equal(countSelected(result.app.getSchedule().slots), 15);
   result.elements.get("undoButton").listeners.get("click")();
   assert.equal(countSelected(result.app.getSchedule().slots), 0, "네모 영역 전체가 한 번의 되돌리기로 복원돼야 한다");
 });
@@ -931,7 +931,7 @@ test("네모 영역 취소와 읽기 전용 전환은 미리보기를 원래 선
     clientY: 1,
     preventDefault() {},
   });
-  assert.equal(countSelected(result.app.getSchedule().slots), 9);
+  assert.equal(countSelected(result.app.getSchedule().slots), 15);
   result.documentListeners.get("pointercancel")({ pointerId: 3 });
   assert.equal(countSelected(result.app.getSchedule().slots), 0);
   assert.equal(result.elements.get("undoButton").disabled, true, "취소한 미리보기는 실행 취소 기록을 남기지 않아야 한다");
@@ -970,12 +970,13 @@ test("취합 전용 DOM은 작성 요소 없이 초기화되고 페이지 hash�
   ];
   const hash = "#v=1&s=손상된-공유-일정";
   const result = runWithPageDom(ids, hash);
-  assert.equal(result.elements.get("compareGrid").children[0].children.length, 25);
+  assert.equal(result.elements.get("compareGrid").children[0].children.length, 49);
   const timeLabels = descendantsMatching(
     result.elements.get("compareGrid"),
     (element) => element.className === "compare-time",
   ).map((element) => element.textContent);
-  assert.equal(timeLabels.length, 24);
+  assert.equal(timeLabels.length, 48);
+  assert.equal(timeLabels.filter(Boolean).length, 24);
   assert.ok(timeLabels.includes("익일 00:00"));
   assert.ok(timeLabels.every((label) => !label.includes("~")), "취합표 시간 행에도 끝시간을 반복하지 않습니다");
   assert.equal(result.storageReads, 0);
@@ -1061,7 +1062,7 @@ test("온라인 취합표는 날짜 헤더를 표시하고 날짜 없는 방으�
     result.elements.get("compareGrid"),
     (element) => element.dataset?.index === String(slotIndex(0, 0)),
   )[0];
-  assert.match(midnight.title, /2026\. 7\. 21\.\(화\) 00:00–01:00/);
+  assert.match(midnight.title, /2026\. 7\. 21\.\(화\) 00:00–00:30/);
 
   result.app.replaceComparisonSchedules([participant], { startHour: 8, startDay: 0 });
   headers = descendantsMatching(

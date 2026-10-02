@@ -242,7 +242,10 @@ function runCandidatePage() {
 
 function makeParticipant(title, byDayAndHour) {
   const slots = schedule.createSlots();
-  byDayAndHour.forEach(([hour, day]) => schedule.setSelected(slots, schedule.slotIndex(hour, day), true));
+  byDayAndHour.forEach(([hour, day]) => {
+    schedule.setSelected(slots, schedule.slotIndex(hour, day), true);
+    schedule.setSelected(slots, schedule.slotIndex(hour + 0.5, day), true);
+  });
   return { title, timezone: "Asia/Seoul", startHour: 8, startDay: 0, slots };
 }
 
@@ -291,7 +294,7 @@ test("3시간 연속 같은 참석자 후보를 렌더하고 선택 범위와 �
   assert.equal(cards[0].getAttribute("aria-pressed"), "true");
   assert.deepEqual(
     selectedCandidateCells(page).map((cell) => Number(cell.dataset.index)).sort((a, b) => a - b),
-    block.map(([hour, day]) => schedule.slotIndex(hour, day)),
+    block.flatMap(([hour, day]) => [schedule.slotIndex(hour, day), schedule.slotIndex(hour + 0.5, day)]),
   );
   assert.match(elementText(page.elements.get("compareDetail")), /가람/);
   assert.match(elementText(page.elements.get("compareDetail")), /나래/);
@@ -311,8 +314,8 @@ test("선택 후보를 이미지 직접 선택에 정확히 반영하고 후보 
   page.elements.get("compareCandidateApplyButton").listeners.get("click")?.();
 
   assert.equal(page.elements.get("compareImageMode").value, "selected");
-  assert.equal(page.elements.get("compareImageSelectedCount").textContent, "3");
-  assert.equal(gridCells(page).filter((cell) => cell.classList.contains("is-image-selected")).length, 3);
+  assert.equal(page.elements.get("compareImageSelectedCount").textContent, "6");
+  assert.equal(gridCells(page).filter((cell) => cell.classList.contains("is-image-selected")).length, 6);
   assert.equal(page.elements.get("compareImageButton").disabled, false);
 
   page.elements.get("compareCandidateClearButton").listeners.get("click")?.();
@@ -398,7 +401,7 @@ test("온라인식 갱신 뒤에도 같은 시간 범위 후보를 선택한 채
   assert.equal(cards[0].getAttribute("aria-pressed"), "true");
   assert.deepEqual(
     selectedCandidateCells(page).map((cell) => Number(cell.dataset.index)).sort((a, b) => a - b),
-    block.map(([hour, day]) => schedule.slotIndex(hour, day)),
+    block.flatMap(([hour, day]) => [schedule.slotIndex(hour, day), schedule.slotIndex(hour + 0.5, day)]),
   );
   const detail = elementText(page.elements.get("compareDetail"));
   assert.match(detail, /새 가람/);
@@ -414,7 +417,7 @@ test("이미지에 반영한 후보가 온라인식 갱신으로 사라지면 �
   replaceParticipants(page, { 가람: block, 나래: block });
   clickCandidate(page, candidateCards(page)[0]);
   page.elements.get("compareCandidateApplyButton").listeners.get("click")?.();
-  assert.equal(page.elements.get("compareImageSelectedCount").textContent, "3");
+  assert.equal(page.elements.get("compareImageSelectedCount").textContent, "6");
 
   const changedSchedules = [
     makeParticipant("가람", [[19, 5]]),

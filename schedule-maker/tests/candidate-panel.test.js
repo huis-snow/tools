@@ -40,13 +40,13 @@ test("수동·온라인 취합표는 같은 후보 패널 ID 계약을 중복 �
   }
 });
 
-test("후보 조건은 1~6시간과 자동·전원·n-1·n-2 기준을 제공한다", () => {
+test("후보 조건은 30분~6시간과 자동·전원·n-1·n-2 기준을 제공한다", () => {
   for (const name of PAGE_NAMES) {
     const html = readPage(name);
     const duration = html.match(/<select\b[^>]*id="compareCandidateDurationSelect"[^>]*>[\s\S]*?<\/select>/)?.[0] || "";
     const threshold = html.match(/<select\b[^>]*id="compareCandidateThresholdSelect"[^>]*>[\s\S]*?<\/select>/)?.[0] || "";
 
-    assert.deepEqual([...duration.matchAll(/<option\s+value="(\d)"/g)].map((match) => match[1]), ["1", "2", "3", "4", "5", "6"]);
+    assert.deepEqual([...duration.matchAll(/<option\s+value="([\d.]+)"/g)].map((match) => Number(match[1])), Array.from({ length: 12 }, (_, index) => (index + 1) / 2));
     assert.match(duration, /<option value="3" selected>3시간<\/option>/);
     assert.deepEqual([...threshold.matchAll(/<option\s+value="([^"]+)"/g)].map((match) => match[1]), ["auto", "all", "n-1", "n-2"]);
     assert.match(threshold, /<option value="auto" selected>자동 추천<\/option>/);
